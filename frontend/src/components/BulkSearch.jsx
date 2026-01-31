@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, ChevronDown } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, ChevronDown, FileUp, AlertCircle } from 'lucide-react';
 import { bulkSearch } from '../services/api';
 import * as XLSX from 'xlsx';
 
@@ -9,6 +9,8 @@ const BulkSearch = () => {
     const [results, setResults] = useState(null);
     const [error, setError] = useState(null);
     const [showExportMenu, setShowExportMenu] = useState(false);
+    const [dragging, setDragging] = useState(false);
+    const fileInputRef = useRef(null);
 
     const handleSearch = async () => {
         const processList = numbers.split('\n').map(n => n.trim()).filter(n => n.length > 0);
@@ -23,6 +25,66 @@ const BulkSearch = () => {
             setError('Falha ao processar a busca em lote.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) parseFile(file);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setDragging(true);
+    };
+
+    const handleDragLeave = () => {
+        setDragging(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (file) parseFile(file);
+    };
+
+    const parseFile = (file) => {
+        const reader = new FileReader();
+        const extension = file.name.split('.').pop().toLowerCase();
+
+        reader.onload = (e) => {
+            const content = e.target.result;
+            let detectedNumbers = [];
+
+            try {
+                if (extension === 'txt') {
+                    detectedNumbers = content.split('\n').map(n => n.trim()).filter(n => n.length > 0);
+                } else if (extension === 'csv' || extension === 'xlsx') {
+                    const workbook = XLSX.read(content, { type: 'binary' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    // Extract from first column of each row
+                    detectedNumbers = jsonData.map(row => row[0]?.toString().trim()).filter(n => n && n.length > 0);
+                }
+
+                if (detectedNumbers.length > 0) {
+                    setNumbers(detectedNumbers.join('\n'));
+                    setError(null);
+                } else {
+                    setError('Nenhum número de processo detectado no arquivo.');
+                }
+            } catch (err) {
+                setError('Erro ao ler o arquivo. Verifique o formato.');
+            }
+        };
+
+        if (extension === 'txt') {
+            reader.readAsText(file);
+        } else {
+            reader.readAsBinaryString(file);
         }
     };
 
@@ -92,22 +154,48 @@ const BulkSearch = () => {
                         Busca em Lote (Milhares de Processos)
                     </h2>
                     <p className="text-violet-100 text-sm mt-1">
-                        Insira um número por linha para realizar a consulta simultânea.
+                        Insira os números abaixo ou faça o upload de um arquivo.
                     </p>
                 </div>
 
-                <div className="p-6">
-                    <textarea
-                        className="w-full h-48 p-4 border rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent font-mono text-sm leading-relaxed"
-                        placeholder="Exemplo:&#10;0001745-93.1989.8.19.0002&#10;0002834-12.2023.8.19.0001"
-                        value={numbers}
-                        onChange={(e) => setNumbers(e.target.value)}
-                    />
+                <div className="p-6 space-y-4">
+                    {/* Drag and Drop Zone */}
+                    <div
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => fileInputRef.current.click()}
+                        className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all ${dragging ? 'border-violet-500 bg-violet-50' : 'border-gray-200 hover:border-violet-300 hover:bg-gray-50'
+                            }`}
+                    >
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            accept=".txt,.csv,.xlsx"
+                            className="hidden"
+                        />
+                        <FileUp className={`h-10 w-10 mb-3 ${dragging ? 'text-violet-500' : 'text-gray-400'}`} />
+                        <p className="text-sm font-semibold text-gray-700">Clique ou arraste um arquivo para importar</p>
+                        <p className="text-xs text-gray-400 mt-1">Suporta .txt, .csv e .xlsx</p>
+                    </div>
+
+                    <div className="relative">
+                        <div className="absolute top-3 left-4 flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest bg-white pr-2">
+                            Listagem de Números
+                        </div>
+                        <textarea
+                            className="w-full h-48 p-6 pt-10 border rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent font-mono text-sm leading-relaxed"
+                            placeholder="Um número por linha..."
+                            value={numbers}
+                            onChange={(e) => setNumbers(e.target.value)}
+                        />
+                    </div>
 
                     <button
                         onClick={handleSearch}
                         disabled={loading || !numbers.trim()}
-                        className={`mt-4 w-full flex items-center justify-center p-4 rounded-xl font-bold text-white transition-all ${loading ? 'bg-gray-400' : 'bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-200'
+                        className={`w-full flex items-center justify-center p-4 rounded-xl font-bold text-white transition-all ${loading ? 'bg-gray-400' : 'bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-200'
                             }`}
                     >
                         {loading ? (
@@ -115,14 +203,19 @@ const BulkSearch = () => {
                         ) : (
                             <Search className="mr-2 h-5 w-5" />
                         )}
-                        {loading ? 'Processando...' : 'Pesquisar em Lote'}
+                        {loading ? 'Processando Lote...' : 'Iniciar Consulta em Lote'}
                     </button>
-                    {error && <p className="mt-2 text-red-500 text-sm font-medium">{error}</p>}
+                    {error && (
+                        <div className="flex items-center text-red-500 bg-red-50 p-3 rounded-lg text-sm font-medium">
+                            <AlertCircle className="h-4 w-4 mr-2" />
+                            {error}
+                        </div>
+                    )}
                 </div>
             </div>
 
             {results && (
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center relative">
                         <div>
                             <h3 className="text-lg font-bold text-gray-900">Resultados da Consulta</h3>
