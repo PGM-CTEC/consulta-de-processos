@@ -42,57 +42,48 @@ class ProcessService:
         return self.db.query(models.Process).filter(models.Process.number == process_number).first()
 
     def _save_process_data(self, process_number: str, data: dict) -> models.Process:
+        logger.info(f"KEYS IN DATA: {list(data.keys())}")
+        
         # 1. Upsert Process
         process = self.get_from_db(process_number)
         
-        # Extract fields (Updated Mapping based on Inspection)
-        # Root keys: classe, tribunal, dataAjuizamento
-        
+        # Extract fields (Final Mappings based on raw JSON)
         class_node = data.get("classe", {})
-        class_name = class_node.get("nome", "")
+        class_name = class_node.get("nome", "N/A")
         
-        tribunal = data.get("tribunal", "")
+        tribunal = data.get("tribunal", "N/A")
         
-        # Try to find specific unit (Vara) from the last movement or other heuristic
-        # DataJud response doesn't always have "orgaoJulgador" at root for public API sometimes
-        specific_unit = ""
-        movements_data = data.get("movimentos", [])
-        if movements_data:
-             # Look at the most recent movement for current location
-             try:
-                 # Ensure sorted? DataJud usually sends sorted by date desc? Let's check or just take first
-                 # Inspection showed item 0 is oldest (1989)? 
-                 # Wait, inspection output (Step 542) showed item 0 has date "1989". 
-                 # Item 0 is Distribution. Last item is recent (2020).
-                 # So list is ASCENDING? 
-                 # I should sort it DESC to find current status.
-                 sorted_movs = sorted(movements_data, key=lambda x: x.get("dataHora", ""), reverse=True)
-                 last_mov = sorted_movs[0]
-                 specific_unit = last_mov.get("orgaoJulgador", {}).get("nome", "")
-             except:
-                 pass
+        # Court/Vara from root orgaoJulgador
+        root_orgao = data.get("orgaoJulgador", {})
+        vara_name = root_orgao.get("nome", "")
         
-        court_display = f"{tribunal} - {specific_unit}" if specific_unit else tribunal
+        court_display = f"{tribunal} - {vara_name}" if vara_name else tribunal
         
-        # Distribution Date
+        logger.info(f"EXTRACTED: Class={class_name}, Tribunal={tribunal}, Vara={vara_name}, CourtDisplay={court_display}")
+        
+        # Assunto (from 'assuntos' list)
+        assuntos = data.get("assuntos", [])
+        subject_name = assuntos[0].get("nome", "") if assuntos else "N/A"
+        
+        # Distribution Date (dataAjuizamento: YYYYMMDDHHMMSS)
         dist_raw = data.get("dataAjuizamento", "")
         dist_date = None
         if dist_raw:
-             # Format YYYYMMDDHHMMSS -> 20070423000000
              try:
-                 dist_date = datetime.strptime(dist_raw, "%Y%m%d%H%M%S")
+                 dist_date = datetime.strptime(dist_raw[:14], "%Y%m%d%H%M%S")
              except:
                  pass
         
         # Phase Analysis
+        movements_data = data.get("movimentos", [])
         from .phase_analyzer import PhaseAnalyzer
         phase = PhaseAnalyzer.analyze(class_name, movements_data, tribunal, data.get("grau", "G1"))
 
         mapped_data = {
             "class_nature": class_name,
-            "subject": str(data.get("assunto", {}).get("nome", "")), # Assuming similar structure if exists, or check raw
+            "subject": subject_name,
             "court": court_display,
-            "district": data.get("orgaoJulgador", {}).get("codigoMunicipioIBGE", ""), 
+            "district": str(root_orgao.get("codigoMunicipioIBGE", "")), 
             "distribution_date": dist_date,
             "phase": phase,
             "raw_data": data
@@ -111,7 +102,7 @@ class ProcessService:
         # 2. Update Movements
         self.db.query(models.Movement).filter(models.Movement.process_id == process.id).delete()
         
-        # Sort movements desc (Newest first) for UI
+        # Sort movements desc (Newest first)
         sorted_movements = sorted(movements_data, key=lambda x: x.get("dataHora", ""), reverse=True)
         
         for mov in sorted_movements:
@@ -119,30 +110,31 @@ class ProcessService:
             mov_date = None
             if "dataHora" in mov:
                 try:
-                    # ISO Format from DataJud: 2020-09-09T14:22:21.000Z
-                    # Python 3.11 fromisoformat handles Z. 
                     t_str = mov["dataHora"].replace("Z", "+00:00")
                     mov_date = datetime.fromisoformat(t_str)
                 except:
                     pass
             
-            # Name/Description Logic
-            # Use 'nome' primarily, fall back to 'descricao' in complements
-            description = mov.get("nome", "")
-            if not description:
-                 description = "Movimentação"
+            # DESCRIPTION FIX: DataJud uses 'nome' for the core movement description
+            main_name = mov.get("nome", "")
+            if not main_name:
+                 main_name = "Movimentação"
             
-            # Append complements if any (e.g. "tipo_de_peticao: Petição (outras)")
-            # In raw data: complementosTabelados: [{nome: ..., descricao: ...}]
+            # Complements (tipo de petição, etc)
             comps = mov.get("complementosTabelados", [])
+            comp_details = []
             for c in comps:
-                c_name = c.get("nome")
-                if c_name:
-                    description += f" - {c_name}"
+                c_val_name = c.get("nome", "")
+                if c_val_name:
+                    comp_details.append(c_val_name)
+            
+            full_description = main_name
+            if comp_details:
+                full_description += f" ({' | '.join(comp_details)})"
 
             new_mov = models.Movement(
                 process_id=process.id,
-                description=description,
+                description=full_description,
                 code=str(mov.get("codigo")),
                 date=mov_date or datetime.now()
             )

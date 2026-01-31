@@ -9,9 +9,8 @@ import models
 
 def init_db():
     print(f"Creating database tables in: {engine.url}")
-    # Drop all first to ensure clean state if schema changed (optional, but good here)
-    # Base.metadata.drop_all(bind=engine) 
-    # Actually, let's just create.
+    # Drop all first to ensure clean state if schema changed
+    Base.metadata.drop_all(bind=engine) 
     Base.metadata.create_all(bind=engine)
     print("Tables created successfully.")
 
