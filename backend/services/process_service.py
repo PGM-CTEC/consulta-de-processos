@@ -86,7 +86,7 @@ class ProcessService:
         
         # Phase Analysis
         from .phase_analyzer import PhaseAnalyzer
-        phase = PhaseAnalyzer.analyze(class_name, movements_data, tribunal)
+        phase = PhaseAnalyzer.analyze(class_name, movements_data, tribunal, data.get("grau", "G1"))
 
         mapped_data = {
             "class_nature": class_name,
