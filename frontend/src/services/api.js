@@ -9,4 +9,9 @@ export const searchProcess = async (number) => {
     return response.data;
 };
 
+export const bulkSearch = async (numbers) => {
+    const response = await api.post('/processes/bulk', { numbers });
+    return response.data;
+};
+
 export default api;

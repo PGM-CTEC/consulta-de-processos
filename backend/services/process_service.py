@@ -143,3 +143,25 @@ class ProcessService:
         self.db.commit()
         self.db.refresh(process)
         return process
+
+    async def get_bulk_processes(self, numbers: list) -> dict:
+        """
+        Executes multiple lookups.
+        """
+        results = []
+        failures = []
+        
+        # Simple async loop (can be optimized with semaphore if needed)
+        for number in numbers:
+            try:
+                # Reuse existing logic
+                process = await self.get_or_update_process(number)
+                if process:
+                    results.append(process)
+                else:
+                    failures.append(number)
+            except Exception as e:
+                logger.error(f"Error in bulk processing for {number}: {e}")
+                failures.append(number)
+        
+        return {"results": results, "failures": failures}

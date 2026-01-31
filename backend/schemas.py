@@ -37,3 +37,10 @@ class ProcessResponse(ProcessBase):
 
     class Config:
         from_attributes = True
+
+class BulkProcessRequest(BaseModel):
+    numbers: List[str]
+
+class BulkProcessResponse(BaseModel):
+    results: List[ProcessResponse]
+    failures: List[str] = []

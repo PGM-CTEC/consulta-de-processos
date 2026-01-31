@@ -34,6 +34,14 @@ async def get_process(number: str, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/processes/bulk", response_model=schemas.BulkProcessResponse)
+async def get_processes_bulk(request: schemas.BulkProcessRequest, db: Session = Depends(get_db)):
+    service = ProcessService(db)
+    try:
+        return await service.get_bulk_processes(request.numbers)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to Consulta Processual API"}
