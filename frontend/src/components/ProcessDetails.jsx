@@ -14,19 +14,19 @@ export default function ProcessDetails({ data }) {
                     <h1 className="text-2xl font-bold font-mono tracking-wide">{data.number}</h1>
                     <p className="opacity-90 mt-1">{data.subject || 'Assunto não informado'}</p>
                 </div>
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                     <div className="flex items-start space-x-3">
                         <Gavel className="h-5 w-5 text-indigo-500 mt-1" />
                         <div>
                             <p className="text-xs text-gray-500 uppercase font-semibold">Classe</p>
-                            <p className="text-sm font-medium text-gray-900">{data.class_nature || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 leading-tight">{data.class_nature || 'N/A'}</p>
                         </div>
                     </div>
                     <div className="flex items-start space-x-3">
                         <Building2 className="h-5 w-5 text-indigo-500 mt-1" />
                         <div>
-                            <p className="text-xs text-gray-500 uppercase font-semibold">Tribunal</p>
-                            <p className="text-sm font-medium text-gray-900">{data.court || 'N/A'}</p>
+                            <p className="text-xs text-gray-500 uppercase font-semibold">Tribunal / Vara</p>
+                            <p className="text-sm font-medium text-gray-900 leading-tight">{data.court || 'N/A'}</p>
                         </div>
                     </div>
                     <div className="flex items-start space-x-3">
@@ -38,6 +38,21 @@ export default function ProcessDetails({ data }) {
                                     ? format(new Date(data.distribution_date), "dd/MM/yyyy", { locale: ptBR })
                                     : 'N/A'}
                             </p>
+                        </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                        <FileText className="h-5 w-5 text-violet-500 mt-1" />
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase font-semibold">Fase Atual</p>
+                            <div className="mt-1">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${data.phase === 'Execução' ? 'bg-orange-100 text-orange-800' :
+                                        data.phase === 'Trânsito em Julgado' ? 'bg-green-100 text-green-800' :
+                                            data.phase === 'Arquivado / Baixa Definitiva' ? 'bg-gray-100 text-gray-800' :
+                                                'bg-blue-100 text-blue-800'
+                                    }`}>
+                                    {data.phase || 'Conhecimento'}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
