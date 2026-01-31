@@ -12,9 +12,10 @@ class Process(Base):
     # Metadata fields extracted from DataJud
     class_nature = Column(String, nullable=True) # Classe processual
     subject = Column(String, nullable=True)      # Assunto principal
-    court = Column(String, nullable=True)        # Tribunal/Órgão julgador
+    court = Column(String, nullable=True)        # Unified court field (legacy)
+    tribunal_name = Column(String, nullable=True) # Ex: TJRJ
+    court_unit = Column(String, nullable=True)    # Ex: 6ª Vara Cível
     district = Column(String, nullable=True)     # Comarca
-    judge = Column(String, nullable=True)        # Magistrado
     
     distribution_date = Column(DateTime(timezone=True), nullable=True)
     phase = Column(String, nullable=True)

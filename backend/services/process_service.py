@@ -83,6 +83,8 @@ class ProcessService:
             "class_nature": class_name,
             "subject": subject_name,
             "court": court_display,
+            "tribunal_name": tribunal,
+            "court_unit": vara_name,
             "district": str(root_orgao.get("codigoMunicipioIBGE", "")), 
             "distribution_date": dist_date,
             "phase": phase,

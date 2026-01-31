@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download } from 'lucide-react';
+import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, ChevronDown } from 'lucide-react';
 import { bulkSearch } from '../services/api';
+import * as XLSX from 'xlsx';
 
 const BulkSearch = () => {
     const [numbers, setNumbers] = useState('');
     const [loading, setLoading] = useState(false);
     const [results, setResults] = useState(null);
     const [error, setError] = useState(null);
+    const [showExportMenu, setShowExportMenu] = useState(false);
 
     const handleSearch = async () => {
         const processList = numbers.split('\n').map(n => n.trim()).filter(n => n.length > 0);
@@ -24,30 +26,58 @@ const BulkSearch = () => {
         }
     };
 
-    const downloadCSV = () => {
-        if (!results) return;
+    const getExportData = () => {
+        if (!results) return [];
+        return results.results.map(p => ({
+            'Número': p.number,
+            'Tribunal': p.tribunal_name || p.court?.split(' - ')[0] || 'N/A',
+            'Sede / Vara': p.court_unit || p.court?.split(' - ')[1] || p.court || 'N/A',
+            'Fase Atual': p.phase || 'Conhecimento'
+        }));
+    };
 
-        const headers = ['Número', 'Classe', 'Assunto', 'Tribunal', 'Data Distribuição', 'Fase Atual'];
-        const rows = results.results.map(p => [
-            p.number,
-            p.class_nature,
-            p.subject,
-            p.court,
-            p.distribution_date ? new Date(p.distribution_date).toLocaleDateString('pt-BR') : 'N/A',
-            p.phase
-        ]);
-
+    const exportToCSV = () => {
+        const data = getExportData();
+        const headers = ['Número', 'Tribunal', 'Sede / Vara', 'Fase Atual'];
         const csvContent = [
             headers.join(','),
-            ...rows.map(row => row.map(cell => `"${cell || ''}"`).join(','))
+            ...data.map(row => Object.values(row).map(v => `"${v}"`).join(','))
         ].join('\n');
+        downloadFile(csvContent, 'csv', 'text/csv');
+    };
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const exportToXLSX = () => {
+        const data = getExportData();
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Processos');
+        XLSX.writeFile(workbook, `consulta_lote_${new Date().getTime()}.xlsx`);
+    };
+
+    const exportToTXT = () => {
+        const data = getExportData();
+        const txtContent = data.map(row =>
+            `${row['Número']} | ${row['Tribunal']} | ${row['Sede / Vara']} | ${row['Fase Atual']}`
+        ).join('\n');
+        downloadFile(txtContent, 'txt', 'text/plain');
+    };
+
+    const exportToMD = () => {
+        const data = getExportData();
+        const headers = ['Número', 'Tribunal', 'Sede / Vara', 'Fase Atual'];
+        const mdHeader = `| ${headers.join(' | ')} |`;
+        const mdDivider = `| ${headers.map(() => '---').join(' | ')} |`;
+        const mdRows = data.map(row => `| ${Object.values(row).join(' | ')} |`).join('\n');
+        const mdContent = `${mdHeader}\n${mdDivider}\n${mdRows}`;
+        downloadFile(mdContent, 'md', 'text/markdown');
+    };
+
+    const downloadFile = (content, ext, type) => {
+        const blob = new Blob([content], { type: `${type};charset=utf-8;` });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `consulta_processual_lote_${new Date().getTime()}.csv`);
-        link.style.visibility = 'hidden';
+        link.href = url;
+        link.setAttribute('download', `consulta_lote_${new Date().getTime()}.${ext}`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -93,61 +123,89 @@ const BulkSearch = () => {
 
             {results && (
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                    <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <div className="p-6 border-b border-gray-100 flex justify-between items-center relative">
                         <div>
-                            <h3 className="text-lg font-bold text-gray-900">Resultados</h3>
+                            <h3 className="text-lg font-bold text-gray-900">Resultados da Consulta</h3>
                             <p className="text-sm text-gray-500">
-                                {results.results.length} processados com sucesso | {results.failures.length} falhas
+                                {results.results.length} processados | {results.failures.length} falhas
                             </p>
                         </div>
-                        <button
-                            onClick={downloadCSV}
-                            className="flex items-center space-x-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-lg font-semibold hover:bg-emerald-100 transition-colors"
-                        >
-                            <Download className="h-5 w-5" />
-                            <span>Exportar CSV</span>
-                        </button>
+
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowExportMenu(!showExportMenu)}
+                                className="flex items-center space-x-2 bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+                            >
+                                <Download className="h-5 w-5" />
+                                <span>Exportar Relatório</span>
+                                <ChevronDown className={`h-4 w-4 transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {showExportMenu && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                    <button onClick={() => { exportToCSV(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
+                                        <FileText className="mr-2 h-4 w-4 text-emerald-500" /> Excel / CSV (.csv)
+                                    </button>
+                                    <button onClick={() => { exportToXLSX(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
+                                        <FileText className="mr-2 h-4 w-4 text-green-600" /> Planilha Excel (.xlsx)
+                                    </button>
+                                    <button onClick={() => { exportToTXT(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
+                                        <FileText className="mr-2 h-4 w-4 text-gray-600" /> Texto Puro (.txt)
+                                    </button>
+                                    <button onClick={() => { exportToMD(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium flex items-center">
+                                        <FileText className="mr-2 h-4 w-4 text-blue-600" /> Markdown (.md)
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
+                        <table className="w-full text-left border-collapse">
                             <thead className="bg-gray-50 border-b border-gray-100">
                                 <tr>
-                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Número</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Classe / Assunto</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Fase Atual</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Tribunal</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Processo Judicial</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Tribunal</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Órgão Judicial / Vara</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Fase Atual</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {results.results.map((p, idx) => (
-                                    <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 font-mono text-sm">{p.number}</td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-sm font-semibold text-gray-900">{p.class_nature}</div>
-                                            <div className="text-xs text-gray-400 uppercase tracking-tight">{p.subject}</div>
+                                    <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                                        <td className="px-6 py-4 font-mono font-bold text-gray-900 text-sm whitespace-nowrap">
+                                            {p.number}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm font-semibold text-indigo-600">
+                                            {p.tribunal_name || p.court?.split(' - ')[0] || 'N/A'}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">
+                                            {p.court_unit || p.court?.split(' - ')[1] || p.court || 'N/A'}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${p.phase === 'Fase Executiva' ? 'bg-orange-100 text-orange-800' :
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${p.phase === 'Fase Executiva' ? 'bg-orange-100 text-orange-800' :
                                                     p.phase === 'Trânsito em Julgado' ? 'bg-green-100 text-green-800' :
                                                         'bg-blue-100 text-blue-800'
                                                 }`}>
-                                                {p.phase}
+                                                {p.phase || 'Conhecimento'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">{p.court}</td>
                                         <td className="px-6 py-4">
-                                            <CheckCircle className="h-5 w-5 text-green-500" />
+                                            <div className="flex items-center text-green-600 text-xs font-semibold">
+                                                <CheckCircle className="h-4 w-4 mr-1" /> OK
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
                                 {results.failures.map((num, idx) => (
-                                    <tr key={`fail-${idx}`} className="bg-red-50/30">
-                                        <td className="px-6 py-4 font-mono text-sm text-red-700">{num}</td>
-                                        <td colSpan="3" className="px-6 py-4 text-sm text-red-500 italic">Não encontrado na base pública</td>
+                                    <tr key={`fail-${idx}`} className="bg-red-50/20">
+                                        <td className="px-6 py-4 font-mono text-sm text-red-700 font-bold">{num}</td>
+                                        <td colSpan="3" className="px-6 py-4 text-xs text-red-500 italic font-medium">
+                                            Não localizado nos sistemas DataJud
+                                        </td>
                                         <td className="px-6 py-4">
-                                            <XCircle className="h-5 w-5 text-red-500" />
+                                            <XCircle className="h-4 w-4 text-red-500" />
                                         </td>
                                     </tr>
                                 ))}

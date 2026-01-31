@@ -21,6 +21,8 @@ class ProcessBase(BaseModel):
     class_nature: Optional[str] = None
     subject: Optional[str] = None
     court: Optional[str] = None
+    tribunal_name: Optional[str] = None
+    court_unit: Optional[str] = None
     district: Optional[str] = None
     judge: Optional[str] = None
     distribution_date: Optional[datetime] = None
