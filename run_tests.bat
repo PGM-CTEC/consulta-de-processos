@@ -1,4 +1,5 @@
 @echo off
+setlocal
 REM Script para executar testes do backend
 
 echo ========================================
@@ -7,13 +8,14 @@ echo ========================================
 echo.
 
 echo [1/3] Verificando dependencias...
-cd backend
+pushd backend
 pip install -q -r requirements.txt
-if %ERRORLEVEL% NEQ 0 (
+if errorlevel 1 (
     echo ERRO: Falha ao instalar dependencias
+    popd
     exit /b 1
 )
-echo ✓ Dependencias OK
+echo Dependencias OK
 echo.
 
 echo [2/3] Executando testes...
@@ -21,9 +23,9 @@ pytest tests/ -v --tb=short -p no:asyncio
 set TEST_RESULT=%ERRORLEVEL%
 echo.
 
-if %TEST_RESULT% EQU 0 (
+if "%TEST_RESULT%"=="0" (
     echo ========================================
-    echo ✓ TODOS OS TESTES PASSARAM!
+    echo TODOS OS TESTES PASSARAM!
     echo ========================================
     echo.
     echo Proximos passos:
@@ -33,7 +35,7 @@ if %TEST_RESULT% EQU 0 (
     echo.
 ) else (
     echo ========================================
-    echo ✗ ALGUNS TESTES FALHARAM
+    echo ALGUNS TESTES FALHARAM
     echo ========================================
     echo.
     echo Execute novamente com mais detalhes:
@@ -41,5 +43,5 @@ if %TEST_RESULT% EQU 0 (
     echo.
 )
 
-cd ..
+popd
 exit /b %TEST_RESULT%
