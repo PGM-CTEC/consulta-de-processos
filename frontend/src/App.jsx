@@ -29,7 +29,15 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Toaster position="top-right" />
+      {/* Skip to main content link for accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-lg focus:shadow-lg"
+      >
+        Pular para conteúdo principal
+      </a>
+
+      <Toaster position="top-right" toastOptions={{ ariaLive: 'polite' }} />
 
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
@@ -46,25 +54,31 @@ function App() {
             </div>
           </div>
 
-          <nav className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
+          <nav className="flex bg-gray-100 p-1 rounded-xl border border-gray-200" role="tablist" aria-label="Tipo de consulta">
             <button
               onClick={() => setActiveTab('single')}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'single'
+              role="tab"
+              aria-selected={activeTab === 'single'}
+              aria-controls="tab-panel-single"
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${activeTab === 'single'
                   ? 'bg-white text-indigo-600 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
                 }`}
             >
-              <Search className="h-4 w-4" />
+              <Search className="h-4 w-4" aria-hidden="true" />
               <span>Consulta Individual</span>
             </button>
             <button
               onClick={() => setActiveTab('bulk')}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'bulk'
+              role="tab"
+              aria-selected={activeTab === 'bulk'}
+              aria-controls="tab-panel-bulk"
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${activeTab === 'bulk'
                   ? 'bg-white text-indigo-600 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
                 }`}
             >
-              <Layers className="h-4 w-4" />
+              <Layers className="h-4 w-4" aria-hidden="true" />
               <span>Busca em Lote</span>
             </button>
           </nav>
@@ -72,11 +86,16 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow py-12 px-4 sm:px-6 lg:px-8">
+      <main id="main-content" className="flex-grow py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-12">
 
           {activeTab === 'single' ? (
-            <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div
+              id="tab-panel-single"
+              role="tabpanel"
+              aria-labelledby="tab-single"
+              className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700"
+            >
               <div className="text-center space-y-4">
                 <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
                   Consulte processos em <br />
@@ -94,7 +113,12 @@ function App() {
               {data && <ProcessDetails data={data} />}
             </div>
           ) : (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div
+              id="tab-panel-bulk"
+              role="tabpanel"
+              aria-labelledby="tab-bulk"
+              className="animate-in fade-in slide-in-from-bottom-4 duration-700"
+            >
               <BulkSearch />
             </div>
           )}

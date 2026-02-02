@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, ChevronDown, FileUp, AlertCircle } from 'lucide-react';
 import { bulkSearch } from '../services/api';
 import * as XLSX from 'xlsx';
+import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
+import { exporters } from '../utils/exportHelpers';
 
 const BulkSearch = () => {
     const [numbers, setNumbers] = useState('');
@@ -88,62 +90,11 @@ const BulkSearch = () => {
         }
     };
 
-    const getExportData = () => {
-        if (!results) return [];
-        return results.results.map(p => ({
-            'Número': p.number,
-            'Tribunal': p.tribunal_name || p.court?.split(' - ')[0] || 'N/A',
-            'Sede / Vara': p.court_unit || p.court?.split(' - ')[1] || p.court || 'N/A',
-            'Fase Atual': p.phase || 'Conhecimento'
-        }));
-    };
-
-    const exportToCSV = () => {
-        const data = getExportData();
-        const headers = ['Número', 'Tribunal', 'Sede / Vara', 'Fase Atual'];
-        const csvContent = [
-            headers.join(','),
-            ...data.map(row => Object.values(row).map(v => `"${v}"`).join(','))
-        ].join('\n');
-        downloadFile(csvContent, 'csv', 'text/csv');
-    };
-
-    const exportToXLSX = () => {
-        const data = getExportData();
-        const worksheet = XLSX.utils.json_to_sheet(data);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Processos');
-        XLSX.writeFile(workbook, `consulta_lote_${new Date().getTime()}.xlsx`);
-    };
-
-    const exportToTXT = () => {
-        const data = getExportData();
-        const txtContent = data.map(row =>
-            `${row['Número']} | ${row['Tribunal']} | ${row['Sede / Vara']} | ${row['Fase Atual']}`
-        ).join('\n');
-        downloadFile(txtContent, 'txt', 'text/plain');
-    };
-
-    const exportToMD = () => {
-        const data = getExportData();
-        const headers = ['Número', 'Tribunal', 'Sede / Vara', 'Fase Atual'];
-        const mdHeader = `| ${headers.join(' | ')} |`;
-        const mdDivider = `| ${headers.map(() => '---').join(' | ')} |`;
-        const mdRows = data.map(row => `| ${Object.values(row).join(' | ')} |`).join('\n');
-        const mdContent = `${mdHeader}\n${mdDivider}\n${mdRows}`;
-        downloadFile(mdContent, 'md', 'text/markdown');
-    };
-
-    const downloadFile = (content, ext, type) => {
-        const blob = new Blob([content], { type: `${type};charset=utf-8;` });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `consulta_lote_${new Date().getTime()}.${ext}`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
+    // Export functions now use centralized utilities
+    const handleExportCSV = () => exporters.csv(results.results);
+    const handleExportXLSX = () => exporters.xlsx(results.results);
+    const handleExportTXT = () => exporters.txt(results.results);
+    const handleExportMD = () => exporters.md(results.results);
 
     return (
         <div className="space-y-6">
@@ -236,17 +187,17 @@ const BulkSearch = () => {
 
                             {showExportMenu && (
                                 <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                    <button onClick={() => { exportToCSV(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
-                                        <FileText className="mr-2 h-4 w-4 text-emerald-500" /> Excel / CSV (.csv)
+                                    <button onClick={() => { handleExportCSV(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
+                                        <FileText className="mr-2 h-4 w-4 text-emerald-500" aria-hidden="true" /> Excel / CSV (.csv)
                                     </button>
-                                    <button onClick={() => { exportToXLSX(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
-                                        <FileText className="mr-2 h-4 w-4 text-green-600" /> Planilha Excel (.xlsx)
+                                    <button onClick={() => { handleExportXLSX(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
+                                        <FileText className="mr-2 h-4 w-4 text-green-600" aria-hidden="true" /> Planilha Excel (.xlsx)
                                     </button>
-                                    <button onClick={() => { exportToTXT(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
-                                        <FileText className="mr-2 h-4 w-4 text-gray-600" /> Texto Puro (.txt)
+                                    <button onClick={() => { handleExportTXT(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
+                                        <FileText className="mr-2 h-4 w-4 text-gray-600" aria-hidden="true" /> Texto Puro (.txt)
                                     </button>
-                                    <button onClick={() => { exportToMD(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium flex items-center">
-                                        <FileText className="mr-2 h-4 w-4 text-blue-600" /> Markdown (.md)
+                                    <button onClick={() => { handleExportMD(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium flex items-center">
+                                        <FileText className="mr-2 h-4 w-4 text-blue-600" aria-hidden="true" /> Markdown (.md)
                                     </button>
                                 </div>
                             )}
@@ -266,7 +217,7 @@ const BulkSearch = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {results.results.map((p, idx) => (
-                                    <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                                    <tr key={p.number} className="hover:bg-gray-50/50 transition-colors">
                                         <td className="px-6 py-4 font-mono font-bold text-gray-900 text-sm whitespace-nowrap">
                                             {p.number}
                                         </td>
@@ -277,11 +228,8 @@ const BulkSearch = () => {
                                             {p.court_unit || p.court?.split(' - ')[1] || p.court || 'N/A'}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${p.phase === 'Fase Executiva' ? 'bg-orange-100 text-orange-800' :
-                                                    p.phase === 'Trânsito em Julgado' ? 'bg-green-100 text-green-800' :
-                                                        'bg-blue-100 text-blue-800'
-                                                }`}>
-                                                {p.phase || 'Conhecimento'}
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(p.phase)}`}>
+                                                {getPhaseDisplayName(p.phase)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
@@ -292,7 +240,7 @@ const BulkSearch = () => {
                                     </tr>
                                 ))}
                                 {results.failures.map((num, idx) => (
-                                    <tr key={`fail-${idx}`} className="bg-red-50/20">
+                                    <tr key={`failure-${num}`} className="bg-red-50/20">
                                         <td className="px-6 py-4 font-mono text-sm text-red-700 font-bold">{num}</td>
                                         <td colSpan="3" className="px-6 py-4 text-xs text-red-500 italic font-medium">
                                             Não localizado nos sistemas DataJud

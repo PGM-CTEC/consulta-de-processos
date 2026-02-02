@@ -1,0 +1,119 @@
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║         🚀 CONSULTA PROCESSUAL - Sistema DataJud                 ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+📋 COMO USAR:
+
+┌─────────────────────────────────────────────────────────────────┐
+│  OPÇÃO 1: Clique duas vezes no arquivo:                        │
+│                                                                 │
+│     ▶ "Iniciar Consulta Processual.bat"                        │
+│                                                                 │
+│  A aplicação iniciará automaticamente!                         │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  OPÇÃO 2: Via linha de comando:                                │
+│                                                                 │
+│     python launcher.py                                          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  OPÇÃO 3: Gerar executável (.exe):                             │
+│                                                                 │
+│  1. Instale PyInstaller:                                        │
+│     pip install pyinstaller                                     │
+│                                                                 │
+│  2. Gere o .exe:                                                │
+│     pyinstaller launcher.spec                                   │
+│                                                                 │
+│  3. O executável estará em: dist/Consulta Processual/Consulta Processual.exe       │
+│                                                                 │
+│  📖 Veja GERAR_EXE.md para detalhes completos                   │
+└─────────────────────────────────────────────────────────────────┘
+
+
+⚙️ PRÉ-REQUISITOS:
+
+  ✓ Python 3.8 ou superior
+    └─ Download: https://www.python.org/downloads/
+
+  ✓ Node.js (LTS)
+    └─ Download: https://nodejs.org/
+
+
+🎯 O QUE ACONTECE NA PRIMEIRA EXECUÇÃO:
+
+  1. [Auto] Verifica Python e Node.js
+  2. [Auto] Instala dependências do backend
+  3. [Auto] Instala dependências do frontend
+  4. [Auto] Inicia servidor backend (porta 8010)
+  5. [Auto] Inicia servidor frontend (porta 5173)
+  6. [Auto] Abre navegador em http://localhost:5173
+
+
+⏱️ TEMPO DE PRIMEIRA EXECUÇÃO:
+
+  • Instalação de dependências: ~2-5 minutos
+  • Execuções seguintes: ~10 segundos
+
+
+🛑 COMO ENCERRAR:
+
+  • Feche a janela do terminal/console
+  • Ou pressione Ctrl+C
+
+
+📚 DOCUMENTAÇÃO:
+
+  • TESTING.md ........... Guia de testes
+  • GERAR_EXE.md ......... Como criar executável
+  • backend/README.md .... Documentação do backend
+  • frontend/README.md ... Documentação do frontend
+
+
+🐛 PROBLEMAS COMUNS:
+
+┌─────────────────────────────────────────────────────────────────┐
+│ ERRO: "Python não encontrado"                                  │
+│   → Instale Python e marque "Add to PATH"                      │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ ERRO: "Node.js não encontrado"                                 │
+│   → Instale Node.js e reinicie o terminal                      │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ ERRO: Porta já em uso                                          │
+│   → Encerre processos nas portas 8010 e 5173                   │
+│   → Windows: netstat -ano | findstr "8010"                     │
+│   → Linux: lsof -i :8010                                       │
+└─────────────────────────────────────────────────────────────────┘
+
+
+✨ RECURSOS:
+
+  ✓ Consulta individual de processos
+  ✓ Busca em lote (milhares de processos)
+  ✓ Export para XLSX, CSV, TXT, MD
+  ✓ Upload de arquivos (.txt, .csv, .xlsx)
+  ✓ Integração com DataJud/CNJ
+  ✓ Validação de números CNJ
+  ✓ Interface moderna e responsiva
+
+
+📞 SUPORTE:
+
+  • GitHub: [seu-repositorio]
+  • Email: [seu-email]
+
+
+═══════════════════════════════════════════════════════════════════
+
+          Desenvolvido com ❤️ usando FastAPI + React
+
+═══════════════════════════════════════════════════════════════════

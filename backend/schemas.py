@@ -1,6 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, Field
 from typing import List, Optional, Any
 from datetime import datetime
+from validators import ProcessNumberValidator
+from exceptions import ValidationException
 
 class MovementBase(BaseModel):
     date: datetime
@@ -41,7 +43,17 @@ class ProcessResponse(ProcessBase):
         from_attributes = True
 
 class BulkProcessRequest(BaseModel):
-    numbers: List[str]
+    numbers: List[str] = Field(..., min_length=1, max_length=1000, description="List of process numbers (max 1000)")
+
+    @field_validator("numbers")
+    @classmethod
+    def validate_numbers(cls, v):
+        """Validate that we have a reasonable number of processes."""
+        if not v:
+            raise ValidationException("Lista de números não pode estar vazia")
+        if len(v) > 1000:
+            raise ValidationException("Máximo de 1000 processos por requisição")
+        return v
 
 class BulkProcessResponse(BaseModel):
     results: List[ProcessResponse]
