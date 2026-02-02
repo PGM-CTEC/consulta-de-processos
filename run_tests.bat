@@ -19,6 +19,7 @@ echo Dependencias OK
 echo.
 
 echo [2/3] Executando testes...
+set "PYTHONPATH=%CD%"
 pytest tests/ -v --tb=short -p no:asyncio
 set TEST_RESULT=%ERRORLEVEL%
 echo.

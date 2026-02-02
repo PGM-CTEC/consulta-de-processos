@@ -8,6 +8,7 @@ echo ""
 
 echo "[1/3] Verificando dependências..."
 cd backend
+export PYTHONPATH="$(pwd)"
 pip install -q -r requirements.txt
 if [ $? -ne 0 ]; then
     echo "ERRO: Falha ao instalar dependências"
