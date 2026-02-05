@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
+import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
@@ -9,6 +9,8 @@ function ProcessDetails({ data }) {
     const [showAll, setShowAll] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDocTypes, setSelectedDocTypes] = useState([]); // Empty array means 'Todos'
+
+    const [showJson, setShowJson] = useState(false);
 
     const DOC_TYPES = useMemo(() => ({
         'Decisões': ['3', '193', '246', '80', '81'],
@@ -33,7 +35,6 @@ function ProcessDetails({ data }) {
         if (selectedDocTypes.length > 0) {
             filtered = filtered.filter(mov => {
                 const sCode = String(mov.code);
-                // Check if movement code belongs to ANY selected category
                 return selectedDocTypes.some(type => DOC_TYPES[type]?.includes(sCode));
             });
         }
@@ -66,6 +67,20 @@ function ProcessDetails({ data }) {
         setShowAll(false);
     };
 
+    const handleDownloadJson = () => {
+        if (!data.raw_data) return;
+        const jsonString = JSON.stringify(data.raw_data, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `processo-${data.number}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     const getCategoryStyles = (category) => {
         switch (category) {
             case 'Decisões': return 'bg-amber-100 text-amber-700 border-amber-200';
@@ -94,9 +109,29 @@ function ProcessDetails({ data }) {
         <article className="max-w-4xl mx-auto p-4 space-y-6" aria-labelledby="process-title">
             {/* Header Card */}
             <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" aria-label="Informações do processo">
-                <header className="bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white">
-                    <h1 id="process-title" className="text-2xl font-bold font-mono tracking-wide">{data.number}</h1>
-                    <p className="opacity-90 mt-1">{data.subject || 'Assunto não informado'}</p>
+                <header className="bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white flex justify-between items-start">
+                    <div>
+                        <h1 id="process-title" className="text-2xl font-bold font-mono tracking-wide">{data.number}</h1>
+                        <p className="opacity-90 mt-1">{data.subject || 'Assunto não informado'}</p>
+                    </div>
+                    {data.raw_data && (
+                        <div className="flex space-x-2">
+                            <button
+                                onClick={() => setShowJson(!showJson)}
+                                className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors"
+                                title="Ver JSON Bruto"
+                            >
+                                <FileJson className="h-5 w-5" />
+                            </button>
+                            <button
+                                onClick={handleDownloadJson}
+                                className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors"
+                                title="Baixar JSON"
+                            >
+                                <Download className="h-5 w-5" />
+                            </button>
+                        </div>
+                    )}
                 </header>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                     <div className="flex items-start space-x-3">
@@ -259,6 +294,40 @@ function ProcessDetails({ data }) {
                     </div>
                 )}
             </section>
+
+            {/* JSON Modal */}
+            {showJson && data.raw_data && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                                <FileJson className="mr-2 h-5 w-5 text-indigo-600" />
+                                Dados Brutos (DataJud)
+                            </h3>
+                            <div className="flex items-center space-x-2">
+                                <button
+                                    onClick={handleDownloadJson}
+                                    className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors"
+                                >
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Baixar JSON
+                                </button>
+                                <button
+                                    onClick={() => setShowJson(false)}
+                                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-auto p-6 bg-gray-900">
+                            <pre className="font-mono text-sm text-green-400 overflow-x-auto">
+                                <code>{JSON.stringify(data.raw_data, null, 2)}</code>
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+            )}
         </article>
     );
 }

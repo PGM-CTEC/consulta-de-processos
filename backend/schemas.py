@@ -37,6 +37,7 @@ class ProcessCreate(ProcessBase):
 class ProcessResponse(ProcessBase):
     id: int
     last_update: datetime
+    raw_data: Optional[Any] = None
     movements: List[MovementResponse] = []
 
     class Config:
