@@ -8,6 +8,8 @@ __pycache__/
 .pytest_cache/
 backend/__pycache__/
 backend/.pytest_cache/
+venv/
+backend/venv/
 
 # Node / JS builds
 node_modules/
@@ -31,3 +33,13 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# INCLUDED FILES (Explicitly allowed per user request)
+# .env
+# .env.local
+# *.db
+# *.sqlite3
