@@ -8,25 +8,34 @@ import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors'
 function ProcessDetails({ data }) {
     const [showAll, setShowAll] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedDocType, setSelectedDocType] = useState('Todos');
+    const [selectedDocTypes, setSelectedDocTypes] = useState([]); // Empty array means 'Todos'
 
     const DOC_TYPES = useMemo(() => ({
-        'Todos': null,
         'Decisões': ['3', '193', '246', '80', '81'],
         'Petições': ['11011', '85', '60', '50', '7', '67', '66', '56', '59'],
         'Despachos': ['11010', '11009'],
         'Citações': ['122', '123', '124', '15216', '12177']
     }), []);
 
+    // Calculate distribution date from the earliest movement
+    const distributionDate = useMemo(() => {
+        if (!data?.movements?.length) return data?.distribution_date;
+        const sorted = [...data.movements].sort((a, b) => new Date(a.date) - new Date(b.date));
+        return sorted[0].date;
+    }, [data?.movements, data?.distribution_date]);
+
     const filteredMovements = useMemo(() => {
         if (!data?.movements) return [];
 
         let filtered = data.movements;
 
-        // Apply Document Type Filter
-        if (selectedDocType !== 'Todos' && DOC_TYPES[selectedDocType]) {
-            const codes = DOC_TYPES[selectedDocType];
-            filtered = filtered.filter(mov => codes.includes(String(mov.code)));
+        // Apply Document Type Filter (Multi-select OR logic)
+        if (selectedDocTypes.length > 0) {
+            filtered = filtered.filter(mov => {
+                const sCode = String(mov.code);
+                // Check if movement code belongs to ANY selected category
+                return selectedDocTypes.some(type => DOC_TYPES[type]?.includes(sCode));
+            });
         }
 
         // Apply Text Search Filter
@@ -39,7 +48,23 @@ function ProcessDetails({ data }) {
         }
 
         return filtered;
-    }, [data?.movements, searchTerm, selectedDocType, DOC_TYPES]);
+    }, [data?.movements, searchTerm, selectedDocTypes, DOC_TYPES]);
+
+    const toggleFilter = (type) => {
+        if (type === 'Todos') {
+            setSelectedDocTypes([]);
+            return;
+        }
+
+        setSelectedDocTypes(prev => {
+            if (prev.includes(type)) {
+                return prev.filter(t => t !== type);
+            } else {
+                return [...prev, type];
+            }
+        });
+        setShowAll(false);
+    };
 
     const getCategoryStyles = (category) => {
         switch (category) {
@@ -68,7 +93,6 @@ function ProcessDetails({ data }) {
     return (
         <article className="max-w-4xl mx-auto p-4 space-y-6" aria-labelledby="process-title">
             {/* Header Card */}
-            {/* ... (keep header as is) */}
             <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" aria-label="Informações do processo">
                 <header className="bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white">
                     <h1 id="process-title" className="text-2xl font-bold font-mono tracking-wide">{data.number}</h1>
@@ -94,8 +118,8 @@ function ProcessDetails({ data }) {
                         <div>
                             <p className="text-xs text-gray-500 uppercase font-semibold">Distribuição</p>
                             <p className="text-sm font-medium text-gray-900">
-                                {data.distribution_date
-                                    ? format(new Date(data.distribution_date), "dd/MM/yyyy", { locale: ptBR })
+                                {distributionDate
+                                    ? format(new Date(distributionDate), "dd/MM/yyyy", { locale: ptBR })
                                     : 'N/A'}
                             </p>
                         </div>
@@ -149,23 +173,32 @@ function ProcessDetails({ data }) {
                         </div>
                     </div>
 
-                    {/* Document Type Chips */}
+                    {/* Document Type Chips (Multi-select) */}
                     <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-50">
-                        {Object.keys(DOC_TYPES).map(type => (
-                            <button
-                                key={type}
-                                onClick={() => {
-                                    setSelectedDocType(type);
-                                    setShowAll(false); // Reset expansion on filter change
-                                }}
-                                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border shadow-sm ${selectedDocType === type
+                        <button
+                            onClick={() => toggleFilter('Todos')}
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border shadow-sm ${selectedDocTypes.length === 0
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                                }`}
+                        >
+                            Todos
+                        </button>
+                        {Object.keys(DOC_TYPES).map(type => {
+                            const isActive = selectedDocTypes.includes(type);
+                            return (
+                                <button
+                                    key={type}
+                                    onClick={() => toggleFilter(type)}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border shadow-sm ${isActive
                                         ? 'bg-indigo-600 text-white border-indigo-600'
-                                        : `bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600`
-                                    }`}
-                            >
-                                {type}
-                            </button>
-                        ))}
+                                        : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                                        }`}
+                                >
+                                    {type}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
