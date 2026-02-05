@@ -133,9 +133,11 @@ class ProcessService:
 
         # Phase Analysis
         movements_data = data.get("movimentos", [])
+        class_code = class_node.get("codigo")
+        
         from .phase_analyzer import PhaseAnalyzer
         phase = PhaseAnalyzer.analyze(
-            class_name,
+            class_code,
             movements_data,
             tribunal,
             data.get("grau", "G1")

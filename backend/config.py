@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     DATAJUD_TIMEOUT: int = 30
     DATAJUD_BASE_URL: str = "https://api-publica.datajud.cnj.jus.br"
 
+    # AI Integration (OpenRouter)
+    OPENROUTER_API_KEY: str = ""
+    AI_MODEL: str = "google/gemini-2.0-flash-001"
+
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_API_KEYS: bool = False  # NEVER log API keys in production

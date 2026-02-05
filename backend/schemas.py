@@ -78,3 +78,29 @@ class DatabaseStats(BaseModel):
     phases: List[PhaseStats]
     timeline: List[TimelineStats]
     last_updated: Optional[datetime] = None
+
+class SQLConnectionConfig(BaseModel):
+    driver: str = Field(..., description="SQLAlchemy driver (ex: postgresql, mysql, mssql+pyodbc)")
+    host: str
+    port: int
+    user: str
+    password: str
+    database: str
+    query: str = Field(..., description="Query SQL para selecionar os números dos processos")
+
+class SQLConnectionTestResponse(BaseModel):
+    success: bool
+    message: str
+    sample_data: Optional[List[str]] = None
+
+class SQLImportRequest(SQLConnectionConfig):
+    pass
+
+class AISettingsUpdate(BaseModel):
+    api_key: str = Field(..., description="OpenRouter API Key")
+    model: Optional[str] = "google/gemini-2.0-flash-001"
+
+class AISettingsResponse(BaseModel):
+    success: bool
+    message: str
+    masked_key: str

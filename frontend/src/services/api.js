@@ -59,4 +59,24 @@ export const getStats = async () => {
     return response.data;
 };
 
+export const testSQLConnection = async (config) => {
+    const response = await api.post('/sql/test', config);
+    return response.data;
+};
+
+export const importFromSQL = async (config) => {
+    const response = await api.post('/sql/import', config);
+    return response.data;
+};
+
+export const getAISettings = async () => {
+    const response = await api.get('/settings/ai');
+    return response.data;
+};
+
+export const updateAISettings = async (settings) => {
+    const response = await api.post('/settings/ai', settings);
+    return response.data;
+};
+
 export default api;

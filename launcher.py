@@ -52,12 +52,11 @@ class ConsultaProcessualLauncher:
                     check=True
                 )
                 version = (result.stdout or result.stderr).strip()
-                self.python_cmd = cmd
-                print(f"V Python {version} encontrado ({label})")
+                print(f"[OK] Python {version} encontrado ({label})")
                 return True
             except (subprocess.CalledProcessError, FileNotFoundError):
                 continue
-        print("? Python nao encontrado!")
+        print("[!] Python nao encontrado!")
         print("   Por favor, instale Python de: https://www.python.org/downloads/")
         return False
 
@@ -72,9 +71,9 @@ class ConsultaProcessualLauncher:
                 check=True
             )
             version = result.stdout.strip()
-            print(f"V Node.js {version} encontrado")
+            print(f"[OK] Node.js {version} encontrado")
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("? Node.js nao encontrado!")
+            print("[!] Node.js nao encontrado!")
             print("   Por favor, instale Node.js de: https://nodejs.org/")
             return False
 
@@ -86,26 +85,34 @@ class ConsultaProcessualLauncher:
                 check=True
             )
             npm_version = result.stdout.strip()
-            print(f"V npm {npm_version} encontrado")
+            print(f"[OK] npm {npm_version} encontrado")
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("? npm nao encontrado!")
+            print("[!] npm nao encontrado!")
             print("   Verifique a instalacao do Node.js e o PATH do npm.")
             return False
 
     def install_backend_deps(self):
         """Instala dependências do backend"""
-        print("\n[3/6] Instalando dependências do backend...")
+        print("\n[3/6] Instalando dependencias do backend...")
+        
+        # Tenta usar o venv se existir
+        pip_cmd = self.python_cmd + ["-m", "pip"]
+        venv_pip = self.backend_dir / "venv" / "Scripts" / "pip.exe"
+        if venv_pip.exists():
+            pip_cmd = [str(venv_pip)]
+            print(f"Uso de venv detectado: {venv_pip}")
+
         try:
             subprocess.run(
-                self.python_cmd + ["-m", "pip", "install", "-q", "-r", "requirements.txt"],
+                pip_cmd + ["install", "-r", "requirements.txt"],
                 cwd=self.backend_dir,
                 check=True
             )
-            print("✓ Dependências do backend instaladas")
+            print("[OK] Dependencias do backend instaladas")
             return True
         except subprocess.CalledProcessError as e:
-            print(f"✗ Erro ao instalar dependências do backend: {e}")
+            print(f"[ERRO] Erro ao instalar dependencias do backend: {e}")
             return False
 
     def install_frontend_deps(self):
@@ -115,7 +122,7 @@ class ConsultaProcessualLauncher:
         # Verifica se node_modules existe
         node_modules = self.frontend_dir / "node_modules"
         if node_modules.exists():
-            print("✓ Dependências do frontend já instaladas")
+            print("[OK] Dependencias do frontend ja instaladas")
             return True
 
         try:
@@ -126,18 +133,26 @@ class ConsultaProcessualLauncher:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
-            print("✓ Dependências do frontend instaladas")
+            print("[OK] Dependencias do frontend instaladas")
             return True
         except subprocess.CalledProcessError as e:
-            print(f"✗ Erro ao instalar dependências do frontend: {e}")
+            print(f"[ERRO] Erro ao instalar dependencias do frontend: {e}")
             return False
 
     def start_backend(self):
         """Inicia servidor backend"""
         print("\n[5/6] Iniciando servidor backend...")
+        
+        # Tenta usar o python do venv se existir
+        python_cmd = self.python_cmd
+        venv_python = self.backend_dir / "venv" / "Scripts" / "python.exe"
+        if venv_python.exists():
+            python_cmd = [str(venv_python)]
+            print(f"Uso de venv detectado: {venv_python}")
+
         try:
             self.backend_process = subprocess.Popen(
-                self.python_cmd + ["-m", "uvicorn", "main:app", "--port", str(BACKEND_PORT), "--host", "127.0.0.1"],
+                python_cmd + ["-m", "uvicorn", "main:app", "--port", str(BACKEND_PORT), "--host", "127.0.0.1", "--reload"],
                 cwd=self.backend_dir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -146,13 +161,13 @@ class ConsultaProcessualLauncher:
             time.sleep(3)  # Aguarda backend iniciar
 
             if self.backend_process.poll() is None:
-                print(f"✓ Backend rodando em {BACKEND_URL}")
+                print(f"[OK] Backend rodando em {BACKEND_URL}")
                 return True
             else:
-                print("✗ Backend falhou ao iniciar")
+                print("[ERRO] Backend falhou ao iniciar")
                 return False
         except Exception as e:
-            print(f"✗ Erro ao iniciar backend: {e}")
+            print(f"[ERRO] Erro ao iniciar backend: {e}")
             return False
 
     def start_frontend(self):
@@ -174,19 +189,19 @@ class ConsultaProcessualLauncher:
             time.sleep(5)  # Aguarda frontend iniciar
 
             if self.frontend_process.poll() is None:
-                print(f"✓ Frontend rodando em {FRONTEND_URL}")
+                print(f"[OK] Frontend rodando em {FRONTEND_URL}")
                 return True
             else:
-                print("✗ Frontend falhou ao iniciar")
+                print("[ERRO] Frontend falhou ao iniciar")
                 return False
         except Exception as e:
-            print(f"✗ Erro ao iniciar frontend: {e}")
+            print(f"[ERRO] Erro ao iniciar frontend: {e}")
             return False
 
     def open_browser(self):
         """Abre navegador com a aplicação"""
         print(f"\n{'='*60}")
-        print("✓ APLICAÇÃO INICIADA COM SUCESSO!")
+        print("[OK] APLICACAO INICIADA COM SUCESSO!")
         print(f"{'='*60}")
         print(f"\nAbrindo navegador em: {FRONTEND_URL}")
         print("\nPara encerrar a aplicação, feche esta janela ou pressione Ctrl+C")
@@ -209,7 +224,7 @@ class ConsultaProcessualLauncher:
             self.frontend_process.terminate()
             self.frontend_process.wait(timeout=5)
 
-        print("\n✓ Aplicação encerrada com sucesso!")
+        print("\n[OK] Aplicacao encerrada com sucesso!")
 
     def run(self):
         """Executa o launcher"""
@@ -253,10 +268,10 @@ class ConsultaProcessualLauncher:
                     time.sleep(1)
                     # Verifica se processos ainda estão rodando
                     if self.backend_process.poll() is not None:
-                        print("\n✗ Backend parou inesperadamente!")
+                        print("\n[!] Backend parou inesperadamente!")
                         break
                     if self.frontend_process.poll() is not None:
-                        print("\n✗ Frontend parou inesperadamente!")
+                        print("\n[!] Frontend parou inesperadamente!")
                         break
             except KeyboardInterrupt:
                 print("\n\nInterrompido pelo usuário...")
