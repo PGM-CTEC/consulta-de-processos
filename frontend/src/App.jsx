@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { Search, Database, Layers } from 'lucide-react';
+import { Search, Database, Layers, BarChart3 } from 'lucide-react';
 import SearchProcess from './components/SearchProcess';
 import ProcessDetails from './components/ProcessDetails';
 import BulkSearch from './components/BulkSearch';
+import Dashboard from './components/Dashboard';
 import { searchProcess } from './services/api';
 
 function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('single'); // 'single' or 'bulk'
+  const [activeTab, setActiveTab] = useState('single'); // 'single', 'bulk', or 'analytics'
 
   const handleSearch = async (number) => {
     setLoading(true);
@@ -81,6 +82,19 @@ function App() {
               <Layers className="h-4 w-4" aria-hidden="true" />
               <span>Busca em Lote</span>
             </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              role="tab"
+              aria-selected={activeTab === 'analytics'}
+              aria-controls="tab-panel-analytics"
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${activeTab === 'analytics'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+                }`}
+            >
+              <BarChart3 className="h-4 w-4" aria-hidden="true" />
+              <span>Analytics / BI</span>
+            </button>
           </nav>
         </div>
       </header>
@@ -89,7 +103,7 @@ function App() {
       <main id="main-content" className="flex-grow py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-12">
 
-          {activeTab === 'single' ? (
+          {activeTab === 'single' && (
             <div
               id="tab-panel-single"
               role="tabpanel"
@@ -112,7 +126,9 @@ function App() {
 
               {data && <ProcessDetails data={data} />}
             </div>
-          ) : (
+          )}
+
+          {activeTab === 'bulk' && (
             <div
               id="tab-panel-bulk"
               role="tabpanel"
@@ -120,6 +136,17 @@ function App() {
               className="animate-in fade-in slide-in-from-bottom-4 duration-700"
             >
               <BulkSearch />
+            </div>
+          )}
+
+          {activeTab === 'analytics' && (
+            <div
+              id="tab-panel-analytics"
+              role="tabpanel"
+              aria-labelledby="tab-analytics"
+              className="animate-in fade-in slide-in-from-bottom-4 duration-700"
+            >
+              <Dashboard />
             </div>
           )}
 

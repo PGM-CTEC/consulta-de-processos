@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import get_db
 from services.process_service import ProcessService
+from services.stats_service import StatsService
 import schemas
 from dotenv import load_dotenv
 from config import settings
@@ -56,6 +57,15 @@ async def get_processes_bulk(
     """
     service = ProcessService(db)
     return await service.get_bulk_processes(request.numbers)
+
+@app.get("/stats", response_model=schemas.DatabaseStats)
+async def get_database_stats(db: Session = Depends(get_db)):
+    """
+    Get statistics from the local database.
+    Returns aggregated data about stored processes for BI/Analytics.
+    """
+    service = StatsService(db)
+    return service.get_database_stats()
 
 @app.get("/")
 async def root():

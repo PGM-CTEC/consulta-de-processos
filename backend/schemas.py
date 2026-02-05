@@ -58,3 +58,23 @@ class BulkProcessRequest(BaseModel):
 class BulkProcessResponse(BaseModel):
     results: List[ProcessResponse]
     failures: List[str] = []
+
+class TribunalStats(BaseModel):
+    tribunal_name: str
+    count: int
+
+class PhaseStats(BaseModel):
+    phase: str
+    count: int
+
+class TimelineStats(BaseModel):
+    month: str
+    count: int
+
+class DatabaseStats(BaseModel):
+    total_processes: int
+    total_movements: int
+    tribunals: List[TribunalStats]
+    phases: List[PhaseStats]
+    timeline: List[TimelineStats]
+    last_updated: Optional[datetime] = None
