@@ -1,15 +1,14 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from database import get_db
-from services.process_service import ProcessService
-from services.stats_service import StatsService
-from services.sql_integration_service import SQLIntegrationService
-import schemas
-from dotenv import load_dotenv
-from config import settings
-from error_handlers import register_exception_handlers
-from exceptions import ProcessNotFoundException
+from .database import get_db
+from .services.process_service import ProcessService
+from .services.stats_service import StatsService
+from .services.sql_integration_service import SQLIntegrationService
+from . import schemas
+from .config import settings
+from .error_handlers import register_exception_handlers
+from .exceptions import ProcessNotFoundException
 
 load_dotenv()
 

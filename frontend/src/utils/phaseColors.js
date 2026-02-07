@@ -14,17 +14,29 @@
  * getPhaseColorClasses('Execução')
  * // returns 'bg-orange-100 text-orange-800'
  */
+// Matches roughly based on keywords or exact strings from classification_rules.py
 export function getPhaseColorClasses(phase) {
-  const phaseMap = {
-    'Execução': 'bg-orange-100 text-orange-800',
-    'Fase Executiva': 'bg-orange-100 text-orange-800',
-    'Trânsito em Julgado': 'bg-green-100 text-green-800',
-    'Arquivado / Baixa Definitiva': 'bg-gray-100 text-gray-800',
-    'Arquivado': 'bg-gray-100 text-gray-800',
-    'Conhecimento': 'bg-blue-100 text-blue-800',
-  };
+  // Matches roughly based on keywords or exact strings from classification_rules.py
+  const phaseLower = (phase || '').toLowerCase();
 
-  return phaseMap[phase] || 'bg-blue-100 text-blue-800'; // Default to blue (Conhecimento)
+  if (phaseLower.includes('arquivado') || phaseLower.includes('baixa') || phaseLower.startsWith('15')) {
+    return 'bg-gray-100 text-gray-800';
+  }
+  if (phaseLower.includes('execução') || phaseLower.startsWith('10') || phaseLower.startsWith('11') || phaseLower.startsWith('12')) {
+    return 'bg-orange-100 text-orange-800';
+  }
+  if (phaseLower.includes('suspenso') || phaseLower.includes('sobrestado') || phaseLower.startsWith('13')) {
+    return 'bg-yellow-100 text-yellow-800';
+  }
+  if (phaseLower.includes('transitad') || phaseLower.includes('trânsito') || phaseLower.includes('03') || phaseLower.includes('06') || phaseLower.includes('09')) {
+    return 'bg-green-100 text-green-800';
+  }
+  if (phaseLower.includes('conversão') || phaseLower.startsWith('14')) {
+    return 'bg-purple-100 text-purple-800';
+  }
+
+  // Default for Conhecimento (01, 02, 04, 05, 07, 08 and others)
+  return 'bg-blue-100 text-blue-800';
 }
 
 /**

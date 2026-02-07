@@ -1,1 +1,97 @@
-AGENTS.mdSetup CommandsBackend (Python):Install: pip install -r requirements.txtDev: fastapi dev main.pyTest: pytestFrontend (React):Install: npm installDev: npm run devBuild: npm run buildCode StylePython: PEP 8, Black formatter, Type Hints (obrigatório).React: Functional Components, Hooks, ESLint standard.Seguir padrões em @context/knowledge/patterns/ (quando criados).Context Files to LoadAntes de começar o trabalho, carregue:@context/intent/project-intent.md (Sempre)@context/decisions/001-tech-stack.md (Stack definida)@context/decisions/*.md (Outras decisões relevantes)Project Structureroot/├── AGENTS.md├── context/│   ├── intent/│   ├── decisions/│   ├── knowledge/│   └── evolution/├── backend/            # FastAPI app│   ├── app/│   │   ├── main.py│   │   ├── routers/│   │   └── services/   # DataJud integration logic│   └── requirements.txt└── frontend/           # React app├── src/└── package.jsonAI Agent RulesAlwaysCarregue o contexto antes de implementar.Siga as decisões em @context/decisions/.Atualize o contexto após a implementação (Status, Outcomes, Changelog).Use httpx assíncrono para chamadas ao DataJud.NeverIgnore decisões documentadas.Deixe o contexto desatualizado.Comite chaves de API.Definition of Done (Build Phase)Antes de concluir a implementação:[ ] ADR (Decisão) existe antes da implementação.[ ] Código segue padrões do projeto.[ ] Testes passando.[ ] Contexto atualizado.[ ] Changelog atualizado.[ ] Critérios de Aceitação cumpridos.
+# Agent Instructions
+
+## Setup Commands
+
+### Backend (Python)
+
+- **Install:** `pip install -r requirements.txt`
+- **Dev:** `fastapi dev main.py`
+- **Test:** `pytest`
+
+### Frontend (React)
+
+- **Install:** `npm install`
+- **Dev:** `npm run dev`
+- **Build:** `npm run build`
+
+---
+
+## Code Style
+
+### Python
+
+- PEP 8 compliance
+- Black formatter
+- Type Hints (mandatory)
+
+### React
+
+- Functional Components
+- Hooks
+- ESLint standard
+- Follow patterns in `@context/knowledge/patterns/` (when created)
+
+---
+
+## Context Files to Load
+
+Before starting work, load:
+
+| Priority | File | Description |
+|----------|------|-------------|
+| Always | `@context/intent/project-intent.md` | Project intent |
+| High | `@context/decisions/001-tech-stack.md` | Defined stack |
+| Medium | `@context/decisions/*.md` | Other relevant decisions |
+
+---
+
+## Project Structure
+
+```
+root/
+├── AGENTS.md
+├── context/
+│   ├── intent/
+│   ├── decisions/
+│   ├── knowledge/
+│   └── evolution/
+├── backend/            # FastAPI app
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── routers/
+│   │   └── services/   # DataJud integration logic
+│   └── requirements.txt
+└── frontend/           # React app
+    ├── src/
+    └── package.json
+```
+
+---
+
+## AI Agent Rules
+
+### Always
+
+- [x] Load context before implementing
+- [x] Follow decisions in `@context/decisions/`
+- [x] Update context after implementation (Status, Outcomes, Changelog)
+- [x] Use async `httpx` for DataJud calls
+
+### Never
+
+- [ ] Ignore documented decisions
+- [ ] Leave context outdated
+- [ ] Commit API keys
+
+---
+
+## Definition of Done (Build Phase)
+
+Before completing implementation:
+
+- [ ] ADR (Decision) exists before implementation
+- [ ] Code follows project standards
+- [ ] Tests passing
+- [ ] Context updated
+- [ ] Changelog updated
+- [ ] Acceptance criteria met

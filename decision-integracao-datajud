@@ -1,1 +1,73 @@
-Feature: Integração DataJudWhatImplementar um serviço de backend capaz de consultar a API pública do DataJud (CNJ) utilizando um número de processo no formato padrão (NNNNNNN-DD.AAAA.J.TR.OOOO). O serviço deve tratar a autenticação (se necessária) e normalizar a resposta bruta.WhyEsta é a funcionalidade core do sistema. Sem a capacidade de buscar os dados na fonte oficial, o sistema não cumpre seu propósito de "Consulta Processual". Precisamos abstrair a complexidade da API do CNJ para o resto da aplicação.Acceptance Criteria[ ] Validar se o número do processo segue o formato CNJ (regex/máscara).[ ] Realizar requisição HTTP segura à API do DataJud.[ ] Tratar erros de conexão (Timeouts, API fora do ar) e erros de negócio (Processo não encontrado/404).[ ] Retornar os dados estruturados (Classe, Assuntos, Movimentos) para o chamador.RelatedProject IntentDecision: Integração TécnicaStatusCreated: 2026-01-31 (Phase: Intent)Status: Draft
+# Decision: Integração DataJud
+
+## Feature
+
+Integração com API pública do DataJud (CNJ)
+
+---
+
+## Context
+
+### What
+
+Implementar um serviço de backend capaz de consultar a API pública do DataJud (CNJ) utilizando um número de processo no formato padrão (`NNNNNNN-DD.AAAA.J.TR.OOOO`). O serviço deve tratar a autenticação (se necessária) e normalizar a resposta bruta.
+
+### Why
+
+Esta é a funcionalidade core do sistema. Sem a capacidade de buscar os dados na fonte oficial, o sistema não cumpre seu propósito de "Consulta Processual". Precisamos abstrair a complexidade da API do CNJ para o resto da aplicação.
+
+---
+
+## Decision
+
+Arquitetura do serviço de integração baseada em **Service Pattern** com as seguintes características:
+
+| Aspecto | Decisão |
+|---------|---------|
+| **Padrão** | Service Pattern |
+| **HTTP Client** | `httpx` (assíncrono) |
+| **Validação** | Regex para formato CNJ |
+| **Tratamento de Erros** | Exceções customizadas |
+| **Resposta** | Modelo Pydantic normalizado |
+
+---
+
+## Rationale
+
+- **Service Pattern**: Separa a lógica de integração da API do resto da aplicação, facilitando testes e manutenção
+- **httpx assíncrono**: Melhor performance para I/O-bound operations (chamadas HTTP externas)
+- **Pydantic**: Validação automática e serialização tipada dos dados
+
+---
+
+## Alternatives Considered
+
+| Alternativa | Pros | Cons | Decisão |
+|-------------|------|------|---------|
+| `requests` (síncrono) | Simples, bem documentado | Bloqueante, menor performance | Rejeitado |
+| `aiohttp` | Assíncrono, performático | Mais verboso, curva de aprendizado | Rejeitado |
+| `httpx` | Assíncrono, API similar ao requests | - | **Aceito** |
+
+---
+
+## Acceptance Criteria
+
+- [ ] Validar se o número do processo segue o formato CNJ (regex/máscara)
+- [ ] Realizar requisição HTTP segura à API do DataJud
+- [ ] Tratar erros de conexão (Timeouts, API fora do ar) e erros de negócio (Processo não encontrado/404)
+- [ ] Retornar os dados estruturados (Classe, Assuntos, Movimentos) para o chamador
+
+---
+
+## Related
+
+- [Project Intent](project-intent)
+- [Feature: Integração DataJud](feature-integracao-datajud)
+
+---
+
+## Status
+
+- **Created**: 2026-01-31
+- **Phase**: Intent
+- **Status**: Draft

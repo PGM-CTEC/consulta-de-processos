@@ -1,1 +1,78 @@
-Project Intent: Consulta ProcessualWhatUm Web App com API integrada ao DataJud (CNJ). O sistema recebe um número único de processo judicial (formato CNJ), realiza a consulta na base pública do DataJud e retorna todos os dados possíveis, incluindo movimentos processuais desde o início, classe processual e decisões proferidas.WhyÉ fundamental para a gestão do acervo de processos e para análises macro. O sistema permite identificar rapidamente a classe do processo e em qual fase do procedimento ele se encontra, centralizando dados dispersos.Acceptance Criteria[ ] Obter informações da API pública do DataJud a partir do número do processo.[ ] Armazenar as informações retornadas (movimentos, classe, metadados) em um banco de dados local.[ ] Apresentar os dados de forma estruturada para o usuário.ScopeIntegração com API DataJud.Armazenamento de dados (PostgreSQL).Interface de consulta (React).API Backend (FastAPI).StatusCreated: 2026-01-31 (Phase: Intent)Status: Draft
+# Project Intent: Consulta Processual
+
+## What
+
+Um Web App com API integrada ao **DataJud (CNJ)**. O sistema recebe um número único de processo judicial (formato CNJ), realiza a consulta na base pública do DataJud e retorna todos os dados possíveis, incluindo:
+
+- Movimentos processuais desde o início
+- Classe processual
+- Decisões proferidas
+- Partes envolvidas
+- Metadados do processo
+
+## Why
+
+É fundamental para a **gestão do acervo de processos** e para **análises macro**. O sistema permite:
+
+- Identificar rapidamente a classe do processo
+- Determinar em qual fase do procedimento ele se encontra
+- Centralizar dados dispersos em uma única interface
+- Realizar análises estatísticas sobre o acervo processual
+
+---
+
+## Acceptance Criteria
+
+### Funcionalidades Core
+
+- [x] Obter informações da API pública do DataJud a partir do número do processo
+- [x] Armazenar as informações retornadas (movimentos, classe, metadados) em um banco de dados local
+- [x] Apresentar os dados de forma estruturada para o usuário
+
+### Funcionalidades Adicionais
+
+- [x] Interface de busca em lote (bulk search)
+- [x] Dashboard com estatísticas do acervo
+- [x] Análise automática de fase processual
+- [x] Exportação de dados (CSV/Excel)
+- [x] Cache local para otimização de consultas repetidas
+
+---
+
+## Scope
+
+### In Scope
+
+| Componente | Descrição | Tecnologia |
+|------------|-----------|------------|
+| Integração DataJud | Consulta à API pública do CNJ | `httpx`, `async/await` |
+| Armazenamento | Persistência de dados estruturados | PostgreSQL + SQLAlchemy |
+| Interface Web | Frontend de consulta e visualização | React + Vite + Tailwind CSS |
+| API Backend | Endpoints REST para consulta e gestão | FastAPI |
+| Análise de Fases | Classificação automática de fase processual | Pandas + Regras customizadas |
+
+### Out of Scope (Future)
+
+- Integração com outros tribunais (PJe, e-SAJ)
+- Módulo de relatórios avançados com gráficos
+- Sistema de notificações de movimentações
+- Autenticação e controle de usuários
+
+---
+
+## Status
+
+| Atributo | Valor |
+|----------|-------|
+| **Created** | 2026-01-31 |
+| **Phase** | Intent |
+| **Status** | In Progress |
+| **Last Updated** | 2026-02-06 |
+
+---
+
+## Related Documents
+
+- [Decision Stack](decision-stack)
+- [Decision: Integração DataJud](decision-integracao-datajud)
+- [Context Mesh](context-mesh)

@@ -284,12 +284,24 @@ O CNJ atualiza periodicamente as Tabelas Processuais Unificadas. Recomenda-se:
 
 ## 9. Próximos Passos
 
-1. **Validação com Procuradores**: Apresentar estrutura para validação das equipes de contencioso
-2. **Mapeamento Completo de Movimentos**: Expandir a tabela com todos os códigos relevantes à PGM
-3. **Prototipação**: Desenvolver MVP com amostra de processos reais
-4. **Integração com Sistema Atual**: Definir pontos de integração com PA Virtual
-5. **Testes e Ajustes**: Validar regras de transição com casos históricos
-6. **Capacitação**: Treinar equipes no uso do sistema de fases
+- [ ] **Validação com Procuradores**: Apresentar estrutura para validação das equipes de contencioso
+- [ ] **Mapeamento Completo de Movimentos**: Expandir a tabela com todos os códigos relevantes à PGM
+- [ ] **Prototipação**: Desenvolver MVP com amostra de processos reais
+- [ ] **Integração com Sistema Atual**: Definir pontos de integração com PA Virtual
+- [ ] **Testes e Ajustes**: Validar regras de transição com casos históricos
+- [ ] **Capacitação**: Treinar equipes no uso do sistema de fases
+
+---
+
+## Document Control
+
+| Atributo | Valor |
+|----------|-------|
+| **Versão** | 1.0 |
+| **Data** | Janeiro de 2026 |
+| **Autor** | Coordenação de Tecnologia da PGM-Rio |
+| **Status** | Draft |
+| **Última Atualização** | 2026-02-06 |
 
 ---
 

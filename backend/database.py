@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator
 from contextlib import contextmanager
 from sqlalchemy.exc import IntegrityError
-from config import settings, is_sqlite_db
+from .config import settings, is_sqlite_db
 
 # Configure database engine with conditional SQLite args
 connect_args = {}

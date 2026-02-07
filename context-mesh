@@ -1,3 +1,134 @@
-Context Mesh FrameworkOverviewContext Mesh is a framework for maintaining context in AI-assisted software development. It separates Intent (What/Why), Decisions (How), and Knowledge (Patterns) to ensure AI agents always work with complete context.Core Workflow (3 Steps)Intent (Plan): Define WHAT and WHY in context/intent/.Build (Execute): Make technical decisions in context/decisions/ and implement code.Learn (Reflect): Extract patterns to context/knowledge/ and update context.File Structure & Rules1. Intent (context/intent/)project-intent.md: Single source of truth for project goals.feature-[name].md: One file per feature. Must link to its Decision file.Rules:Never implement code without an Intent file.Keep "Status" updated.2. Decisions (context/decisions/)[number]-[topic].md: Architecture Decision Records (ADR).Rules:Create a decision file BEFORE implementing complex features.Link back to the Intent file (Related section).Must include "Context", "Decision", "Rationale", and "Alternatives".3. Knowledge (context/knowledge/)patterns/[name].md: Reusable code patterns or conventions.anti-patterns/: Approaches to avoid.Rules:Check patterns before writing code.If a new pattern emerges, create a file here.4. Evolution (context/evolution/)changelog.md: Track high-level changes to the context/project.5. Agents (context/agents/)Store prompt templates or specific agent configurations here.Operational Rules for AI AgentsPlan, Approve, ExecutePlan: Read Intent and existing Context. Propose changes.Approve: Wait for user confirmation.Execute: Write code, then UPDATE the context files (Status, Outcomes).Bidirectional LinkingFeatures must link to Decisions: - [Decision: Name](../decisions/001-name.md)Decisions must link to Features: - [Feature: Name](../intent/feature-name.md)Definition of DoneCode implemented.Tests passed.Context files updated (Status changed to "Completed", "Outcomes" filled in Decision).Changelog updated.Status Section RequirementsAll Intent and Decision files must end with:## Status
+# Context Mesh Framework
+
+## Overview
+
+**Context Mesh** is a framework for maintaining context in AI-assisted software development. It separates **Intent** (What/Why), **Decisions** (How), and **Knowledge** (Patterns) to ensure AI agents always work with complete context.
+
+---
+
+## Core Workflow (3 Steps)
+
+| Step | Phase | Description |
+|------|-------|-------------|
+| 1 | **Intent** (Plan) | Define WHAT and WHY in `context/intent/` |
+| 2 | **Build** (Execute) | Make technical decisions in `context/decisions/` and implement code |
+| 3 | **Learn** (Reflect) | Extract patterns to `context/knowledge/` and update context |
+
+---
+
+## File Structure & Rules
+
+### 1. Intent (`context/intent/`)
+
+| File | Purpose |
+|------|---------|
+| `project-intent.md` | Single source of truth for project goals |
+| `feature-[name].md` | One file per feature. Must link to its Decision file |
+
+**Rules:**
+
+- [ ] Never implement code without an Intent file
+- [ ] Keep "Status" updated
+
+---
+
+### 2. Decisions (`context/decisions/`)
+
+| File Pattern | Purpose |
+|--------------|---------|
+| `[number]-[topic].md` | Architecture Decision Records (ADR) |
+
+**Rules:**
+
+- [ ] Create a decision file BEFORE implementing complex features
+- [ ] Link back to the Intent file (Related section)
+- [ ] Must include "Context", "Decision", "Rationale", and "Alternatives"
+
+---
+
+### 3. Knowledge (`context/knowledge/`)
+
+| Directory | Purpose |
+|-----------|---------|
+| `patterns/[name].md` | Reusable code patterns or conventions |
+| `anti-patterns/` | Approaches to avoid |
+
+**Rules:**
+
+- [ ] Check patterns before writing code
+- [ ] If a new pattern emerges, create a file here
+
+---
+
+### 4. Evolution (`context/evolution/`)
+
+| File | Purpose |
+|------|---------|
+| `changelog.md` | Track high-level changes to the context/project |
+
+---
+
+### 5. Agents (`context/agents/`)
+
+Store prompt templates or specific agent configurations here.
+
+---
+
+## Operational Rules for AI Agents
+
+### Plan, Approve, Execute
+
+| Phase | Action |
+|-------|--------|
+| **Plan** | Read Intent and existing Context. Propose changes. |
+| **Approve** | Wait for user confirmation. |
+| **Execute** | Write code, then UPDATE the context files (Status, Outcomes). |
+
+---
+
+## Bidirectional Linking
+
+### Features must link to Decisions
+
+```markdown
+- [Decision: Name](../decisions/001-name.md)
+```
+
+### Decisions must link to Features
+
+```markdown
+- [Feature: Name](../intent/feature-name.md)
+```
+
+---
+
+## Definition of Done
+
+- [ ] Code implemented
+- [ ] Tests passed
+- [ ] Context files updated (Status changed to "Completed", "Outcomes" filled in Decision)
+- [ ] Changelog updated
+
+---
+
+## Status Section Requirements
+
+All Intent and Decision files must end with:
+
+```markdown
+## Status
+
 - **Created**: YYYY-MM-DD
 - **Status**: [Draft/Proposed/Accepted/In Progress/Completed/Deprecated]
+```
+
+### Status Values
+
+| Status | Description |
+|--------|-------------|
+| `Draft` | Initial idea, not yet reviewed |
+| `Proposed` | Ready for discussion |
+| `Accepted` | Approved but not yet started |
+| `In Progress` | Currently being implemented |
+| `Completed` | Implementation finished |
+| `Deprecated` | No longer valid/relevant |

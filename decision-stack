@@ -1,1 +1,96 @@
-Decision: Tech StackContextO projeto "Consulta Processual" tem dois pilares principais:Integração Intensa: Consultas constantes à API externa do DataJud.Análise de Dados: Necessidade de "análises macro" sobre o acervo e gestão processual.Precisamos de uma stack que suporte concorrência para as chamadas de API e ofereça ferramentas robustas para tratamento estatístico e analítico dos dados retornados.DecisionBackend: Python 3.11+ com FastAPI.Frontend: React (Vite) + Tailwind CSS.Database: PostgreSQL.Key Dependencies:httpx (para chamadas assíncronas ao DataJud).pandas (para estruturação e análise macro dos dados).sqlalchemy (ORM para banco de dados).pydantic (validação de dados rigorosa).RationalePython para Análise: A escolha por Python é mandatória devido ao requisito de "análises macro". Bibliotecas como Pandas permitem transformar os JSONs complexos do DataJud em DataFrames para análise estatística com facilidade inigualável.FastAPI vs Django: Optamos por FastAPI por ser mais leve e nativamente assíncrono (async/await), o que é crítico para performance quando a maior parte do trabalho do backend será aguardar respostas da API do DataJud (I/O bound).PostgreSQL: A estrutura de um processo judicial é relacional e hierárquica (Processo -> Movimentos, Processo -> Partes). Um banco relacional robusto é ideal. JSONB no Postgres também permite armazenar o payload bruto do DataJud se necessário.Alternatives ConsideredNode.js (Express/NestJS):Prós: Excelente para I/O e manipulação de JSON.Contras: Perde muito para Python na capacidade de análise de dados e ciência de dados nativa. Obrigaria a criar um microserviço separado em Python para as análises futuras.Java (Spring Boot):Prós: Muito robusto e tipado.Contras: Verbosidade e tempo de desenvolvimento inicial mais alto. Curva de aprendizado maior para tarefas simples de scripting/análise de dados.Outcomes[A ser atualizado após implementação no Passo 3: Learn]RelatedProject IntentStatusCreated: 2026-01-31 (Phase: Intent)Status: Accepted
+# Decision: Tech Stack
+
+## Context
+
+O projeto "Consulta Processual" tem dois pilares principais:
+
+1. **Integração Intensa**: Consultas constantes à API externa do DataJud
+2. **Análise de Dados**: Necessidade de "análises macro" sobre o acervo e gestão processual
+
+Precisamos de uma stack que suporte concorrência para as chamadas de API e ofereça ferramentas robustas para tratamento estatístico e analítico dos dados retornados.
+
+---
+
+## Decision
+
+### Backend
+
+- **Python 3.11+** com **FastAPI**
+
+### Frontend
+
+- **React** (Vite) + **Tailwind CSS**
+
+### Database
+
+- **PostgreSQL**
+
+### Key Dependencies
+
+| Pacote | Propósito |
+|--------|-----------|
+| `httpx` | Chamadas assíncronas ao DataJud |
+| `pandas` | Estruturação e análise macro dos dados |
+| `sqlalchemy` | ORM para banco de dados |
+| `pydantic` | Validação de dados rigorosa |
+
+---
+
+## Rationale
+
+### Python para Análise
+
+A escolha por Python é mandatória devido ao requisito de "análises macro". Bibliotecas como **Pandas** permitem transformar os JSONs complexos do DataJud em DataFrames para análise estatística com facilidade inigualável.
+
+### FastAPI vs Django
+
+Optamos por **FastAPI** por ser mais leve e nativamente assíncrono (`async/await`), o que é crítico para performance quando a maior parte do trabalho do backend será aguardar respostas da API do DataJud (I/O bound).
+
+### PostgreSQL
+
+A estrutura de um processo judicial é relacional e hierárquica:
+
+```
+Processo -> Movimentos
+Processo -> Partes
+```
+
+Um banco relacional robusto é ideal. JSONB no Postgres também permite armazenar o payload bruto do DataJud se necessário.
+
+---
+
+## Alternatives Considered
+
+### Node.js (Express/NestJS)
+
+- **Prós**: Excelente para I/O e manipulação de JSON
+- **Contras**: Perde muito para Python na capacidade de análise de dados e ciência de dados nativa. Obrigaria a criar um microserviço separado em Python para as análises futuras.
+
+### Java (Spring Boot)
+
+- **Prós**: Muito robusto e tipado
+- **Contras**: Verbosidade e tempo de desenvolvimento inicial mais alto. Curva de aprendizado maior para tarefas simples de scripting/análise de dados.
+
+---
+
+## Outcomes
+
+- [x] Backend FastAPI implementado em `backend/main.py`
+- [x] Frontend React + Vite + Tailwind configurado em `frontend/`
+- [x] Integração com DataJud via `httpx` em `backend/services/datajud.py`
+- [x] Modelos Pydantic definidos em `backend/models.py` e `backend/schemas.py`
+- [x] Análise de fases processuais via Pandas em `backend/services/phase_analyzer.py`
+
+---
+
+## Related
+
+- [Project Intent](project-intent)
+
+---
+
+## Status
+
+- **Created**: 2026-01-31 (Phase: Intent)
+- **Status**: Accepted
+- **Last Updated**: 2026-02-06

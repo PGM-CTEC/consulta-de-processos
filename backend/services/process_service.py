@@ -1,11 +1,9 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Optional
-import models
-import schemas
-from .datajud import DataJudClient
-from database import transaction_scope
-from exceptions import DataJudAPIException, ProcessNotFoundException
+from .. import models, schemas
+from ..database import transaction_scope
+from ..exceptions import DataJudAPIException, ProcessNotFoundException
 import logging
 
 logger = logging.getLogger(__name__)
