@@ -228,8 +228,8 @@ const BulkSearch = () => {
                                             {p.court_unit || p.court?.split(' - ')[1] || p.court || 'N/A'}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(p.phase)}`}>
-                                                {getPhaseDisplayName(p.phase)}
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(p.phase, p.class_nature)}`}>
+                                                {getPhaseDisplayName(p.phase, p.class_nature)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">

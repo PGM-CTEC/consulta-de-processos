@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Documentation:** Criação do [`project-intent`](project-intent) definindo objetivos de consulta ao DataJud
 - **Decision:** [`decision-stack`](decision-stack) - Definido Python (FastAPI) e React
 
+### Fixed
+
+- **Backend:** Ajuste de imports e inicialização do dotenv para evitar `ModuleNotFoundError`/`NameError` ao iniciar a API.
+- **DataJud:** Seleção automática da instância mais recente quando houver múltiplos retornos, com metadados no `raw_data`.
+
 ---
 
-**Last Updated:** 2026-01-31
+**Last Updated:** 2026-02-07

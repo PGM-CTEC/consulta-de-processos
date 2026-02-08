@@ -4,7 +4,7 @@ These handlers ensure user-friendly error messages while logging full details se
 """
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
-from exceptions import (
+from .exceptions import (
     ProcessNotFoundException,
     DataJudAPIException,
     InvalidProcessNumberException,

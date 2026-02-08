@@ -50,9 +50,9 @@
   1. [Auto] Verifica Python e Node.js
   2. [Auto] Instala dependências do backend
   3. [Auto] Instala dependências do frontend
-  4. [Auto] Inicia servidor backend (porta 8010)
-  5. [Auto] Inicia servidor frontend (porta 5173)
-  6. [Auto] Abre navegador em http://localhost:5173
+  4. [Auto] Inicia servidor backend (porta 8010 ou próxima disponível)
+  5. [Auto] Inicia servidor frontend (porta 5173 ou próxima disponível)
+  6. [Auto] Abre navegador na porta correta exibida no terminal
 
 
 ⏱️ TEMPO DE PRIMEIRA EXECUÇÃO:

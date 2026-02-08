@@ -1,10 +1,13 @@
-from sqlalchemy.orm import Session
+import logging
 from datetime import datetime
 from typing import Optional
+
+from sqlalchemy.orm import Session
+
+from .datajud import DataJudClient
 from .. import models, schemas
 from ..database import transaction_scope
 from ..exceptions import DataJudAPIException, ProcessNotFoundException
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -115,8 +118,10 @@ class ProcessService:
         tribunal = data.get("tribunal", "N/A")
 
         # Court/Vara information
-        root_orgao = data.get("orgaoJulgador", {})
-        vara_name = root_orgao.get("nome", "")
+        root_orgao = data.get("orgaoJulgador", {}) or {}
+        movements_data = data.get("movimentos", [])
+        latest_orgao = self._get_latest_movement_orgao(movements_data) or root_orgao
+        vara_name = latest_orgao.get("nome", "") if isinstance(latest_orgao, dict) else ""
         court_display = f"{tribunal} - {vara_name}" if vara_name else tribunal
 
         # Subject (first from assuntos list)
@@ -130,7 +135,6 @@ class ProcessService:
         )
 
         # Phase Analysis
-        movements_data = data.get("movimentos", [])
         class_code = class_node.get("codigo")
         
         from .phase_analyzer import PhaseAnalyzer
@@ -147,11 +151,36 @@ class ProcessService:
             "court": court_display,
             "tribunal_name": tribunal,
             "court_unit": vara_name,
-            "district": str(root_orgao.get("codigoMunicipioIBGE", "")),
+            "district": str((root_orgao or {}).get("codigoMunicipioIBGE", "")),
             "distribution_date": dist_date,
             "phase": phase,
             "raw_data": data
         }
+
+    def _get_latest_movement_orgao(self, movements_data: list) -> Optional[dict]:
+        """
+        Get the orgaoJulgador from the most recent movement.
+        This indicates where the process is currently tramiting.
+        """
+        latest_mov = None
+        latest_date = None
+
+        for mov in movements_data or []:
+            mov_date = None
+            if "dataHora" in mov:
+                try:
+                    t_str = mov["dataHora"].replace("Z", "+00:00")
+                    mov_date = datetime.fromisoformat(t_str)
+                except (ValueError, AttributeError):
+                    mov_date = None
+
+            if mov_date and (latest_date is None or mov_date > latest_date):
+                latest_date = mov_date
+                latest_mov = mov
+
+        if latest_mov and isinstance(latest_mov, dict):
+            return latest_mov.get("orgaoJulgador") or None
+        return None
 
     def _parse_datajud_date(self, date_str: str, field_name: str) -> Optional[datetime]:
         """
@@ -216,7 +245,7 @@ class ProcessService:
         """
         results = []
         failures = []
-        
+
         # Simple async loop (can be optimized with semaphore if needed)
         for number in numbers:
             try:
@@ -229,5 +258,52 @@ class ProcessService:
             except Exception as e:
                 logger.error(f"Error in bulk processing for {number}: {e}")
                 failures.append(number)
-        
+
         return {"results": results, "failures": failures}
+
+    async def get_all_instances(self, process_number: str) -> dict:
+        """
+        Busca todas as instâncias de um processo no DataJud.
+        Retorna lista com todas as instâncias encontradas.
+        """
+        try:
+            api_data, meta = await self.client.get_process_instances(process_number)
+
+            if not api_data:
+                raise ProcessNotFoundException(process_number)
+
+            if not meta or meta.get("instances_count", 1) <= 1:
+                # Apenas uma instância, retornar dados atuais
+                return {
+                    "process_number": process_number,
+                    "instances_count": 1,
+                    "instances": [self._parse_instance_summary(api_data, 0)]
+                }
+
+            # Múltiplas instâncias - retornar metadados
+            return {
+                "process_number": process_number,
+                "instances_count": meta["instances_count"],
+                "selected_index": meta.get("selected_index", 0),
+                "instances": [
+                    self._parse_instance_summary(inst, idx)
+                    for idx, inst in enumerate(meta.get("instances", []))
+                ]
+            }
+
+        except DataJudAPIException as e:
+            logger.error(f"Error fetching instances for {process_number}: {e}")
+            raise
+
+    def _parse_instance_summary(self, instance_data: dict, index: int) -> dict:
+        """
+        Cria um resumo de uma instância do processo.
+        """
+        return {
+            "index": index,
+            "grau": instance_data.get("grau", "N/A"),
+            "tribunal": instance_data.get("tribunal", "N/A"),
+            "orgao_julgador": instance_data.get("orgao_julgador", "N/A"),
+            "latest_movement_at": instance_data.get("latest_movement_at"),
+            "updated_at": instance_data.get("updated_at")
+        }

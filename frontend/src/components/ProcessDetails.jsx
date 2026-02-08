@@ -4,6 +4,8 @@ import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
+import { normalizePhaseWithMovements } from '../constants/phases';
+import InstanceSelector from './InstanceSelector';
 
 function ProcessDetails({ data }) {
     const [showAll, setShowAll] = useState(false);
@@ -25,6 +27,11 @@ function ProcessDetails({ data }) {
         const sorted = [...data.movements].sort((a, b) => new Date(a.date) - new Date(b.date));
         return sorted[0].date;
     }, [data?.movements, data?.distribution_date]);
+
+    // Corrigir fase considerando movimentos (força Fase 15 se houver baixa)
+    const correctedPhase = useMemo(() => {
+        return normalizePhaseWithMovements(data?.phase, data?.class_nature, data?.movements);
+    }, [data?.phase, data?.class_nature, data?.movements]);
 
     const filteredMovements = useMemo(() => {
         if (!data?.movements) return [];
@@ -107,6 +114,9 @@ function ProcessDetails({ data }) {
 
     return (
         <article className="max-w-4xl mx-auto p-4 space-y-6" aria-labelledby="process-title">
+            {/* Instance Selector - Shows when multiple instances exist */}
+            <InstanceSelector processNumber={data.number} meta={data?.raw_data?.__meta__} />
+
             {/* Header Card */}
             <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" aria-label="Informações do processo">
                 <header className="bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white flex justify-between items-start">
@@ -164,8 +174,8 @@ function ProcessDetails({ data }) {
                         <div>
                             <p className="text-xs text-gray-500 uppercase font-semibold">Fase Atual</p>
                             <div className="mt-1">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPhaseColorClasses(data.phase)}`}>
-                                    {getPhaseDisplayName(data.phase)}
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPhaseColorClasses(correctedPhase, data.class_nature)}`}>
+                                    {correctedPhase}
                                 </span>
                             </div>
                         </div>

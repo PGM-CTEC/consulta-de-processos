@@ -77,21 +77,50 @@ class PhaseAnalyzer:
             # strict rules rely partially on documents. using movements as proxy where possible.
 
             # Determine Polo (Autora vs Ré)
-            # This is tricky without analyzing the 'partes'. Defaulting to RE (Fazenda Ré) 
+            # This is tricky without analyzing the 'partes'. Defaulting to RE (Fazenda Ré)
             # unless we can determine otherwise from raw_data.
             polo = "RE"
             # TODO: Implement basic logic to check if PGM/Município is in 'poloAtivo'
-            
+
             class_desc = "" # We might not have description easily available, but code is what matters most
             if raw_data:
                 class_desc = raw_data.get('classe', {}).get('nome', '')
+
+            # Determine situação do processo
+            # Verificar se há movimento de baixa definitiva (código 22) ou arquivamento
+            situacao = "MOVIMENTO"  # Default
+
+            # Códigos de movimentos que indicam baixa definitiva/arquivamento
+            CODIGOS_BAIXA = {22, 246, 861, 865, 10965, 10966, 10967, 12618}
+
+            # Verificar se algum movimento indica baixa
+            has_baixa = any(m.codigo in CODIGOS_BAIXA for m in movimentos_adaptados)
+
+            # Se há movimento de baixa e não há movimento posterior de desarquivamento
+            # então o processo está BAIXADO
+            if has_baixa:
+                # Pegar o último movimento de baixa
+                movs_baixa = [m for m in movimentos_adaptados if m.codigo in CODIGOS_BAIXA]
+                if movs_baixa:
+                    ultima_baixa = max(movs_baixa, key=lambda m: m.data)
+
+                    # Códigos de desarquivamento/reativação
+                    CODIGOS_DESARQUIVAMENTO = {900, 12617}
+
+                    # Verificar se há desarquivamento posterior
+                    movs_desarq = [m for m in movimentos_adaptados
+                                  if m.codigo in CODIGOS_DESARQUIVAMENTO and m.data > ultima_baixa.data]
+
+                    if not movs_desarq:
+                        situacao = "BAIXADO"
+                        logger.info(f"Processo {process_number} detectado como BAIXADO (movimento código {ultima_baixa.codigo})")
 
             processo = ProcessoJudicial(
                 numero=process_number or "0000000-00.0000.0.00.0000",
                 classe_codigo=int(class_code or 0),
                 classe_descricao=class_desc,
                 grau_atual=grau_enum,
-                situacao="MOVIMENTO", # Default
+                situacao=situacao,
                 movimentos=movimentos_adaptados,
                 documentos=documentos_adaptados,
                 polo_fazenda=polo

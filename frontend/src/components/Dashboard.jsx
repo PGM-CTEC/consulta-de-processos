@@ -158,8 +158,8 @@ const Dashboard = () => {
                             <div key={idx} className="space-y-1">
                                 <div className="flex justify-between items-center text-sm">
                                     <div className="flex items-center space-x-2">
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getPhaseColorClasses(phase.phase)}`}>
-                                            {getPhaseDisplayName(phase.phase)}
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getPhaseColorClasses(phase.phase, phase.class_nature)}`}>
+                                            {getPhaseDisplayName(phase.phase, phase.class_nature)}
                                         </span>
                                     </div>
                                     <span className="font-bold text-indigo-600">{phase.count.toLocaleString()}</span>

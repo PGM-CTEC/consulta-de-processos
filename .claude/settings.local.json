@@ -8,7 +8,12 @@
       "Bash(pip uninstall:*)",
       "Bash(python:*)",
       "Bash(del generate_valid_cnj.py)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(curl:*)",
+      "Read(//c/Users/rodri/Downloads/**)",
+      "Bash(ping:*)"
     ]
   }
 }

@@ -2,7 +2,7 @@
 Tests for configuration management.
 """
 import pytest
-from config import settings, is_sqlite_db
+from ..config import settings, is_sqlite_db
 
 
 class TestConfiguration:

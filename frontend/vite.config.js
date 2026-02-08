@@ -6,16 +6,20 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      '/api': {
+        target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8010',
+        changeOrigin: true,
+      },
       '/processes': {
-        target: 'http://127.0.0.1:8010',
+        target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8010',
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://127.0.0.1:8010',
+        target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8010',
         changeOrigin: true,
       },
       '/stats': {
-        target: 'http://127.0.0.1:8010',
+        target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8010',
         changeOrigin: true,
       },
     },

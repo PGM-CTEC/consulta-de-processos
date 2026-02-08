@@ -2,51 +2,47 @@
  * Utility for consistent phase color styling across the application.
  *
  * Centralizes the logic for determining Tailwind CSS classes based on process phase.
+ * Based on the PGM-Rio classification model (Version 2.0 - February 2026)
  */
+
+import { getPhaseInfo, normalizePhase, VALID_PHASES } from '../constants/phases';
 
 /**
  * Get Tailwind CSS classes for a given process phase
  *
- * @param {string} phase - The process phase name
+ * @param {string} phase - The process phase name or code
+ * @param {string} classNature - Optional class nature to improve classification accuracy
  * @returns {string} Tailwind CSS classes for styling the phase badge
  *
  * @example
  * getPhaseColorClasses('Execução')
  * // returns 'bg-orange-100 text-orange-800'
  */
-// Matches roughly based on keywords or exact strings from classification_rules.py
-export function getPhaseColorClasses(phase) {
-  // Matches roughly based on keywords or exact strings from classification_rules.py
-  const phaseLower = (phase || '').toLowerCase();
+export function getPhaseColorClasses(phase, classNature = null) {
+  const phaseInfo = getPhaseInfo(phase, classNature);
 
-  if (phaseLower.includes('arquivado') || phaseLower.includes('baixa') || phaseLower.startsWith('15')) {
-    return 'bg-gray-100 text-gray-800';
-  }
-  if (phaseLower.includes('execução') || phaseLower.startsWith('10') || phaseLower.startsWith('11') || phaseLower.startsWith('12')) {
-    return 'bg-orange-100 text-orange-800';
-  }
-  if (phaseLower.includes('suspenso') || phaseLower.includes('sobrestado') || phaseLower.startsWith('13')) {
-    return 'bg-yellow-100 text-yellow-800';
-  }
-  if (phaseLower.includes('transitad') || phaseLower.includes('trânsito') || phaseLower.includes('03') || phaseLower.includes('06') || phaseLower.includes('09')) {
-    return 'bg-green-100 text-green-800';
-  }
-  if (phaseLower.includes('conversão') || phaseLower.startsWith('14')) {
-    return 'bg-purple-100 text-purple-800';
-  }
+  // Color mapping based on phase color property
+  const colorMap = {
+    'blue': 'bg-blue-100 text-blue-800',
+    'green': 'bg-green-100 text-green-800',
+    'orange': 'bg-orange-100 text-orange-800',
+    'yellow': 'bg-yellow-100 text-yellow-800',
+    'purple': 'bg-purple-100 text-purple-800',
+    'gray': 'bg-gray-100 text-gray-800'
+  };
 
-  // Default for Conhecimento (01, 02, 04, 05, 07, 08 and others)
-  return 'bg-blue-100 text-blue-800';
+  return colorMap[phaseInfo.color] || 'bg-blue-100 text-blue-800';
 }
 
 /**
- * Get a human-readable phase name with fallback
+ * Get a normalized phase name for display
  *
- * @param {string} phase - The process phase name
- * @returns {string} Formatted phase name or default
+ * @param {string} phase - The process phase name or code from backend
+ * @param {string} classNature - Optional class nature to improve classification accuracy
+ * @returns {string} Normalized phase name (one of the 15 valid phases)
  */
-export function getPhaseDisplayName(phase) {
-  return phase || 'Conhecimento';
+export function getPhaseDisplayName(phase, classNature = null) {
+  return normalizePhase(phase, classNature);
 }
 
 /**
@@ -56,13 +52,8 @@ export function getPhaseDisplayName(phase) {
  * @returns {boolean} True if the phase indicates the process is closed
  */
 export function isTerminalPhase(phase) {
-  const terminalPhases = [
-    'Arquivado / Baixa Definitiva',
-    'Arquivado',
-    'Baixa Definitiva',
-  ];
-
-  return terminalPhases.includes(phase);
+  const normalizedPhase = normalizePhase(phase);
+  return normalizedPhase === VALID_PHASES.ARQUIVADO.name;
 }
 
 /**
@@ -72,14 +63,14 @@ export function isTerminalPhase(phase) {
  * @returns {string} Emoji representing the phase
  */
 export function getPhaseIcon(phase) {
+  const phaseInfo = getPhaseInfo(phase);
+
   const iconMap = {
-    'Execução': '⚖️',
-    'Fase Executiva': '⚖️',
-    'Trânsito em Julgado': '✅',
-    'Arquivado / Baixa Definitiva': '📦',
-    'Arquivado': '📦',
     'Conhecimento': '📋',
+    'Execução': '⚖️',
+    'Transversal': '⏸️',
+    'Final': '📦'
   };
 
-  return iconMap[phase] || '📋';
+  return iconMap[phaseInfo.type] || '📋';
 }

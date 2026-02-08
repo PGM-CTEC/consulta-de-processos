@@ -2,13 +2,16 @@ import asyncio
 import sys
 import os
 import json
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Ensure backend path is in sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Ensure project root is in sys.path
+backend_dir = Path(__file__).resolve().parent
+project_root = backend_dir.parent
+sys.path.append(str(project_root))
 load_dotenv()
 
-from services.datajud import DataJudClient
+from backend.services.datajud import DataJudClient
 
 async def inspect_data():
     client = DataJudClient()

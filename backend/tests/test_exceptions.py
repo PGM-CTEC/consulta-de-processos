@@ -2,7 +2,7 @@
 Tests for custom exceptions.
 """
 import pytest
-from exceptions import (
+from ..exceptions import (
     ProcessNotFoundException,
     DataJudAPIException,
     InvalidProcessNumberException,

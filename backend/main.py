@@ -1,3 +1,6 @@
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -45,6 +48,16 @@ async def get_process(number: str, db: Session = Depends(get_db)):
     if not process:
         raise ProcessNotFoundException(number)
     return process
+
+
+@app.get("/processes/{number}/instances")
+async def get_process_instances(number: str, db: Session = Depends(get_db)):
+    """
+    Lista todas as instâncias de um processo (1ª, 2ª, Superiores).
+    Retorna metadados sobre cada instância encontrada no DataJud.
+    """
+    service = ProcessService(db)
+    return await service.get_all_instances(number)
 
 
 @app.post("/processes/bulk", response_model=schemas.BulkProcessResponse)

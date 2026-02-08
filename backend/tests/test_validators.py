@@ -2,8 +2,8 @@
 Tests for CNJ process number validation.
 """
 import pytest
-from validators import ProcessNumberValidator
-from exceptions import InvalidProcessNumberException
+from ..validators import ProcessNumberValidator
+from ..exceptions import InvalidProcessNumberException
 
 
 class TestProcessNumberValidator:

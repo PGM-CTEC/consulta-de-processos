@@ -2,7 +2,8 @@
 Validation utilities for CNJ process numbers and other inputs.
 """
 import re
-from exceptions import InvalidProcessNumberException
+
+from .exceptions import InvalidProcessNumberException
 
 
 class ProcessNumberValidator:
