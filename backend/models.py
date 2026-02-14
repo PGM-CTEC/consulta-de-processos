@@ -39,3 +39,11 @@ class Movement(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     process = relationship("Process", back_populates="movements")
+
+class SearchHistory(Base):
+    __tablename__ = "search_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    number = Column(String, index=True, nullable=False)
+    court = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

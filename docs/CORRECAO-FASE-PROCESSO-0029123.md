@@ -5,6 +5,7 @@
 O processo **0029123-13.2015.8.19.0002** estava sendo classificado incorretamente como **"Conhecimento — Antes da Sentença"** no frontend, quando deveria ser classificado como **"Execução"**.
 
 ### Dados do Processo
+
 - **Número**: 0029123-13.2015.8.19.0002
 - **Classe**: Cumprimento de sentença
 - **Fase no banco**: 2.1 Trânsito em Julgado
@@ -16,11 +17,13 @@ O processo **0029123-13.2015.8.19.0002** estava sendo classificado incorretament
 A função `normalizePhase()` estava classificando a fase com base apenas na string da fase (`"2.1 Trânsito em Julgado"`), sem considerar a **classe processual** do processo.
 
 **Problema**:
+
 - "2.1 Trânsito em Julgado" contém a palavra "trânsito"
-- Mas não contém "execução" ou "cumprimento"
+- But não contém "execução" ou "cumprimento"
 - Portanto era classificado como **Conhecimento** (fase padrão)
 
 **Correto**:
+
 - A classe é "Cumprimento de sentença" → **classe de execução**
 - Processo já transitou no conhecimento e agora está em **execução**
 - Deveria ser classificado como **Execução (Fase 10)**
@@ -92,6 +95,7 @@ return isExecution
 Todos os componentes foram atualizados para passar a classe processual:
 
 ### 1. ProcessDetails.jsx
+
 ```jsx
 <span className={getPhaseColorClasses(data.phase, data.class_nature)}>
   {getPhaseDisplayName(data.phase, data.class_nature)}
@@ -99,6 +103,7 @@ Todos os componentes foram atualizados para passar a classe processual:
 ```
 
 ### 2. BulkSearch.jsx
+
 ```jsx
 <span className={getPhaseColorClasses(p.phase, p.class_nature)}>
   {getPhaseDisplayName(p.phase, p.class_nature)}
@@ -106,6 +111,7 @@ Todos os componentes foram atualizados para passar a classe processual:
 ```
 
 ### 3. Dashboard.jsx
+
 ```jsx
 <span className={getPhaseColorClasses(phase.phase, phase.class_nature)}>
   {getPhaseDisplayName(phase.phase, phase.class_nature)}
@@ -113,6 +119,7 @@ Todos os componentes foram atualizados para passar a classe processual:
 ```
 
 ### 4. exportHelpers.js
+
 ```javascript
 'Fase Atual': normalizePhase(p.phase, p.class_nature)
 ```
@@ -128,7 +135,7 @@ node test-phase-fix.js
 
 ### Resultado do Teste
 
-```
+```text
 ========================================
 Teste de Normalização de Fase
 ========================================
@@ -154,12 +161,14 @@ Resultado:
 ## 📊 Impacto da Correção
 
 ### Antes
+
 - ❌ Processo classificado como: **"Conhecimento — Antes da Sentença"**
 - ❌ Cor do badge: 🔵 Azul
 - ❌ Relatórios exportados: fase incorreta
 - ❌ Dashboard: estatísticas incorretas
 
 ### Depois
+
 - ✅ Processo classificado como: **"Execução"**
 - ✅ Cor do badge: 🟠 Laranja
 - ✅ Relatórios exportados: fase correta
@@ -170,7 +179,7 @@ Resultado:
 A correção melhora a classificação para todos estes cenários:
 
 | Fase no Banco | Classe | Antes | Depois |
-|---------------|--------|-------|--------|
+| :--- | :--- | :--- | :--- |
 | 2.1 Trânsito em Julgado | Cumprimento de sentença | ❌ Conhecimento (01) | ✅ Execução (10) |
 | Trânsito em Julgado | Execução Fiscal | ❌ Conhecimento (03) | ✅ Execução (10) |
 | Execução | Cumprimento de sentença | ✅ Execução (10) | ✅ Execução (10) |
@@ -180,22 +189,25 @@ A correção melhora a classificação para todos estes cenários:
 ## 🔍 Testes Adicionais Recomendados
 
 ### Teste 1: Visualizar o Processo Corrigido
+
 1. Abrir o frontend em modo dev: `cd frontend && npm run dev`
 2. Buscar o processo: `0029123-13.2015.8.19.0002`
 3. Verificar se a fase aparece como **"Execução"** com badge 🟠 laranja
 
 ### Teste 2: Verificar Dashboard
+
 1. Ir para a aba Dashboard
 2. Verificar se o processo aparece na estatística de **"Execução"**
 
 ### Teste 3: Exportar Relatório
+
 1. Fazer busca em lote incluindo o processo
 2. Exportar para CSV/XLSX
 3. Verificar se a fase está como **"Execução"**
 
 ## 📝 Arquivos Modificados
 
-```
+```text
 frontend/src/
 ├── constants/
 │   └── phases.js (atualizado)
@@ -213,23 +225,27 @@ frontend/src/
 ### Passos para Aplicar a Correção
 
 1. **Instalar dependências** (se necessário):
+
    ```bash
    cd frontend
    npm install
    ```
 
 2. **Rebuild do frontend**:
+
    ```bash
    npm run build
    ```
 
 3. **Reiniciar o servidor** (se em produção):
+
    ```bash
    # No diretório raiz
    python launcher.py
    ```
 
 4. **Testar no navegador**:
+
    - Limpar cache: Ctrl+Shift+R
    - Buscar o processo problemático
    - Verificar a classificação
@@ -261,6 +277,7 @@ frontend/src/
 ## 📞 Suporte
 
 Se encontrar outros processos com classificação incorreta:
+
 1. Anotar número do processo
 2. Verificar classe processual no banco
 3. Verificar se a classe está na lista `EXECUTION_CLASSES`

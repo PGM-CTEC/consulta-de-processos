@@ -24,7 +24,7 @@ echo [2/3] Gerando executavel...
 echo   Isso pode levar alguns minutos...
 echo.
 
-pyinstaller launcher.spec --clean --noconfirm
+pyinstaller "%~dp0launcher.spec" --clean --noconfirm
 
 if %ERRORLEVEL% NEQ 0 (
     echo.

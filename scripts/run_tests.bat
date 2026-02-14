@@ -8,7 +8,7 @@ echo ========================================
 echo.
 
 echo [1/3] Verificando dependencias...
-pushd backend
+pushd ..\backend
 pip install -q -r requirements.txt
 if errorlevel 1 (
     echo ERRO: Falha ao instalar dependencias

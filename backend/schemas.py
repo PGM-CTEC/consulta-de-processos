@@ -30,6 +30,15 @@ class ProcessBase(BaseModel):
     distribution_date: Optional[datetime] = None
     phase: Optional[str] = None
 
+class HistoryResponse(BaseModel):
+    id: int
+    number: str
+    court: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class ProcessCreate(ProcessBase):
     raw_data: Optional[Any] = None
     movements: List[MovementCreate] = []

@@ -48,7 +48,26 @@ class ProcessService:
             return None
 
         # Transform and Save with transaction management
-        return self._save_process_data(process_number, api_data)
+        process = self._save_process_data(process_number, api_data)
+
+        # Record search in history
+        if process:
+            self._record_history(process)
+
+        return process
+
+    def _record_history(self, process: models.Process):
+        """Record the search in history."""
+        try:
+            history_entry = models.SearchHistory(
+                number=process.number,
+                court=process.court
+            )
+            self.db.add(history_entry)
+            self.db.commit()
+        except Exception as e:
+            logger.error(f"Error recording history for {process.number}: {e}")
+            self.db.rollback()
 
     def get_from_db(self, process_number: str) -> Optional[models.Process]:
         """Fetch process from database without locking."""

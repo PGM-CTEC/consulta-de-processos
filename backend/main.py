@@ -1,6 +1,7 @@
 import os
 
 from dotenv import load_dotenv
+from typing import List
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -162,3 +163,15 @@ async def update_ai_settings(config: schemas.AISettingsUpdate):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/history", response_model=List[schemas.HistoryResponse])
+async def get_search_history(db: Session = Depends(get_db)):
+    """Retrieve the recent search history."""
+    return db.query(models.SearchHistory).order_by(models.SearchHistory.created_at.desc()).limit(50).all()
+
+@app.delete("/history")
+async def clear_search_history(db: Session = Depends(get_db)):
+    """Clear all search history."""
+    db.query(models.SearchHistory).delete()
+    db.commit()
+    return {"message": "Histórico limpo"}
