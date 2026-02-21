@@ -44,3 +44,25 @@ Thumbs.db
 # .env.local
 # *.db
 # *.sqlite3
+
+# Environment & Secrets (AIOS)
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# Dependencies (AIOS)
+node_modules
+
+# Build & Logs (AIOS)
+*.log
+logs/
+
+# IDE & OS (AIOS)
+*.swp
+
+# AIOS Local (AIOS)
+.aios-core/local/
+.claude/settings.local.json
+.aios/install-log.txt

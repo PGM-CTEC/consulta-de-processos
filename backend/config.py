@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     DATABASE_ECHO: bool = False
 
     # DataJud Integration
-    DATAJUD_API_KEY: str = ""
+    DATAJUD_API_KEY: str = "cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=="
     DATAJUD_TIMEOUT: int = 30
     DATAJUD_BASE_URL: str = "https://api-publica.datajud.cnj.jus.br"
 

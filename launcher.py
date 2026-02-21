@@ -23,6 +23,11 @@ class ConsultaProcessualLauncher:
             self.base_dir = Path(__file__).parent
         self.backend_dir = self.base_dir / "backend"
         self.frontend_dir = self.base_dir / "frontend"
+        self.venv_dirs = [
+            self.backend_dir / "venv",
+            self.base_dir / ".venv",
+            self.base_dir / "venv"
+        ]
         self.backend_process = None
         self.frontend_process = None
         self.python_cmd = None
@@ -168,12 +173,17 @@ class ConsultaProcessualLauncher:
         """Instala dependências do backend"""
         print("\n[3/6] Instalando dependencias do backend...")
         
-        # Tenta usar o venv se existir
+        # Tenta usar o venv se existir e for válido
         pip_cmd = self.python_cmd + ["-m", "pip"]
-        venv_pip = self.backend_dir / "venv" / "Scripts" / "pip.exe"
-        if venv_pip.exists():
-            pip_cmd = [str(venv_pip)]
-            print(f"Uso de venv detectado: {venv_pip}")
+        
+        for venv_dir in self.venv_dirs:
+            venv_pip = venv_dir / ("Scripts" if sys.platform == "win32" else "bin") / ("pip.exe" if sys.platform == "win32" else "pip")
+            pyvenv_cfg = venv_dir / "pyvenv.cfg"
+            
+            if venv_pip.exists() and pyvenv_cfg.exists():
+                pip_cmd = [str(venv_pip)]
+                print(f"Uso de venv detectado: {venv_dir}")
+                break
 
         try:
             requirements_file = "requirements-runtime.txt"
@@ -218,12 +228,17 @@ class ConsultaProcessualLauncher:
         """Inicia servidor backend"""
         print("\n[5/6] Iniciando servidor backend...")
         
-        # Tenta usar o python do venv se existir
+        # Tenta usar o python do venv se existir e for válido
         python_cmd = self.python_cmd
-        venv_python = self.backend_dir / "venv" / "Scripts" / "python.exe"
-        if venv_python.exists():
-            python_cmd = [str(venv_python)]
-            print(f"Uso de venv detectado: {venv_python}")
+        
+        for venv_dir in self.venv_dirs:
+            venv_python = venv_dir / ("Scripts" if sys.platform == "win32" else "bin") / ("python.exe" if sys.platform == "win32" else "python")
+            pyvenv_cfg = venv_dir / "pyvenv.cfg"
+            
+            if venv_python.exists() and pyvenv_cfg.exists():
+                python_cmd = [str(venv_python)]
+                print(f"Uso de venv detectado: {venv_dir}")
+                break
 
         try:
             self.backend_process = subprocess.Popen(

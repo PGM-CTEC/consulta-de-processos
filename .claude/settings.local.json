@@ -13,7 +13,24 @@
       "Bash(findstr:*)",
       "Bash(curl:*)",
       "Read(//c/Users/rodri/Downloads/**)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(echo:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(node --version:*)",
+      "Bash(sqlite3:*)"
+    ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".claude/hooks/synapse-engine.js\""
+          }
+        ]
+      }
     ]
   }
 }
