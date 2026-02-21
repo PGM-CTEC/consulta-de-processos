@@ -5,6 +5,7 @@ sqlalchemy
 pydantic
 pydantic-settings
 python-dotenv
+python-json-logger
 
 # Testing
 pytest==8.0.0

@@ -1,9 +1,11 @@
 import os
+import logging
 
 from dotenv import load_dotenv
 from typing import List
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from .database import get_db
 from .services.process_service import ProcessService
@@ -15,7 +17,12 @@ from .error_handlers import register_exception_handlers
 from .exceptions import ProcessNotFoundException
 from . import models
 from .database import engine
+from .utils.logger import setup_logger
+from .utils.redact import redact_dict
 from contextlib import asynccontextmanager
+
+# Initialize logger
+logger = setup_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -35,6 +42,25 @@ app = FastAPI(
 # Register custom exception handlers
 register_exception_handlers(app)
 
+
+# Global exception handler for logging
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Log unhandled exceptions and return error response."""
+    logger.error(
+        "Unhandled exception",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error_type": type(exc).__name__,
+        },
+        exc_info=True
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"}
+    )
+
 # Configure CORS with environment variables
 app.add_middleware(
     CORSMiddleware,
@@ -47,6 +73,20 @@ app.add_middleware(
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "Consulta Processual API"}
+
+
+@app.post("/api/logs")
+async def receive_logs(logs: List[dict]):
+    """Receive frontend logs and write to backend log file."""
+    for log in logs:
+        logger.info(
+            log.get('message', 'Frontend log'),
+            extra={
+                'service': 'frontend',
+                'level': log.get('level'),
+            }
+        )
+    return {"received": len(logs)}
 
 @app.get("/processes/{number}", response_model=schemas.ProcessResponse)
 async def get_process(number: str, db: Session = Depends(get_db)):
