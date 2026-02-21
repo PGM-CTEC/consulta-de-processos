@@ -1,0 +1,43 @@
+Diagnosing process: 04357568020128190001
+
+INDEX                     | Q_TYPE       | ST   | HITS
+-------------------------------------------------------
+api_publica_tjrj          | match        | 200  | 1    *** FOUND!
+api_publica_tjrj          | term_kw      | 200  | 1    *** FOUND!
+api_publica_tjrj          | q_string     | 200  | 0   
+api_publica_tjrj_1g       | match        | 404  | -
+api_publica_tjrj_1g       | term_kw      | 404  | -
+api_publica_tjrj_1g       | q_string     | 404  | -
+api_publica_tjrj_2g       | match        | 404  | -
+api_publica_tjrj_2g       | term_kw      | 404  | -
+api_publica_tjrj_2g       | q_string     | 404  | -
+api_publica_cnj           | match        | 404  | -
+api_publica_cnj           | term_kw      | 404  | -
+api_publica_cnj           | q_string     | 404  | -
+api_publica_stj           | match        | 200  | 0   
+api_publica_stj           | term_kw      | 200  | 0   
+api_publica_stj           | q_string     | 200  | 0   
+api_publica_stf           | match        | 404  | -
+api_publica_stf           | term_kw      | 404  | -
+api_publica_stf           | q_string     | 404  | -
+api_publica_tst           | match        | 200  | 0   
+api_publica_tst           | term_kw      | 200  | 0   
+api_publica_tst           | q_string     | 200  | 0   
+tjrj                      | match        | 403  | -
+tjrj                      | term_kw      | 403  | -
+tjrj                      | q_string     | 403  | -
+api_publica_tj            | match        | 404  | -
+api_publica_tj            | term_kw      | 404  | -
+api_publica_tj            | q_string     | 404  | -
+
+================================================================================
+UNIQUE DETAILED HITS
+================================================================================
+
+Hit 0 (Found in Index: api_publica_tjrj):
+  Classe: 1728 - ApelaþÒo / Remessa Necessßria
+  Grau: G2
+  Tribunal: TJRJ
+  ËrgÒo Julgador: 13 C´┐¢MARA C´┐¢VEL
+  ┌ltima MovimentaþÒo: 2021-10-19T13:44:00.000Z
+  ID: G2_TJRJ_16611

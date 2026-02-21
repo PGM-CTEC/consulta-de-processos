@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API configuration from environment variables
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8010';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/';
 const API_TIMEOUT = import.meta.env.VITE_API_TIMEOUT || 30000;
 
 const api = axios.create({
@@ -46,6 +46,16 @@ api.interceptors.response.use(
 
 export const searchProcess = async (number) => {
     const response = await api.get(`/processes/${number}`);
+    return response.data;
+};
+
+export const getProcessInstance = async (number, index) => {
+    const response = await api.get(`/processes/${number}/instances/${index}`);
+    return response.data;
+};
+
+export const getProcessInstances = async (number) => {
+    const response = await api.get(`/processes/${number}/instances`);
     return response.data;
 };
 

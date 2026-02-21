@@ -1,0 +1,24 @@
+Diagnosing process: 04357568020128190001
+
+================================================================================
+INDEX                          | STATUS     | HITS  | SUMMARY
+--------------------------------------------------------------------------------
+api_publica_tjrj               | 200        | 1     | 1 hits
+api_publica_tjrj_1g            | 404        | -     | None
+api_publica_tjrj_2g            | 404        | -     | None
+api_publica_cnj                | 404        | -     | None
+api_publica_stj                | 200        | 0     | 0 hits
+api_publica_stf                | 404        | -     | None
+api_publica_tst                | 200        | 0     | 0 hits
+
+================================================================================
+DETAILED HITS
+================================================================================
+
+Hit 0 (Index: api_publica_tjrj):
+  Classe: 1728 - ApelaþÒo / Remessa Necessßria
+  Grau: G2
+  Tribunal: TJRJ
+  ËrgÒo Julgador: 13 C´┐¢MARA C´┐¢VEL
+  ┌ltima MovimentaþÒo: 2021-10-19T13:44:00.000Z
+  Movimentos count: 83

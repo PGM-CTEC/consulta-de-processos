@@ -1,0 +1,9 @@
+Probing indexes for 04357568020128190001...
+
+FOUND in api_publica_tjrj: 2 total potential hits
+  [0] 04357568020128190001 | Grau: G2 | Classe: ApelaþÒo / Remessa Necessßria
+      !!! EXACT MATCH !!!
+  [1] 04357565120108190001 | Grau: G1 | Classe: ExecuþÒo Fiscal
+
+FOUND in api_publica_stj: 1 total potential hits
+  [0] 04357561120243000000 | Grau: SUP | Classe: Habeas Corpus

@@ -1,13 +1,23 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download } from 'lucide-react';
+import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
+import { getPhaseColorClasses } from '../utils/phaseColors';
 import { normalizePhaseWithMovements } from '../constants/phases';
 import InstanceSelector from './InstanceSelector';
+import { getProcessInstance } from '../services/api';
+import { toast } from 'react-hot-toast';
 
 function ProcessDetails({ data }) {
+    const [activeData, setActiveData] = useState(data);
+    const [loadingInstance, setLoadingInstance] = useState(false);
+
+    // Sync local state when props change
+    useEffect(() => {
+        setActiveData(data);
+    }, [data]);
+
     const [showAll, setShowAll] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDocTypes, setSelectedDocTypes] = useState([]); // Empty array means 'Todos'
@@ -23,20 +33,20 @@ function ProcessDetails({ data }) {
 
     // Calculate distribution date from the earliest movement
     const distributionDate = useMemo(() => {
-        if (!data?.movements?.length) return data?.distribution_date;
-        const sorted = [...data.movements].sort((a, b) => new Date(a.date) - new Date(b.date));
+        if (!activeData?.movements?.length) return activeData?.distribution_date;
+        const sorted = [...activeData.movements].sort((a, b) => new Date(a.date) - new Date(b.date));
         return sorted[0].date;
-    }, [data?.movements, data?.distribution_date]);
+    }, [activeData?.movements, activeData?.distribution_date]);
 
     // Corrigir fase considerando movimentos (força Fase 15 se houver baixa)
     const correctedPhase = useMemo(() => {
-        return normalizePhaseWithMovements(data?.phase, data?.class_nature, data?.movements);
-    }, [data?.phase, data?.class_nature, data?.movements]);
+        return normalizePhaseWithMovements(activeData?.phase, activeData?.class_nature, activeData?.movements);
+    }, [activeData?.phase, activeData?.class_nature, activeData?.movements]);
 
     const filteredMovements = useMemo(() => {
-        if (!data?.movements) return [];
+        if (!activeData?.movements) return [];
 
-        let filtered = data.movements;
+        let filtered = activeData.movements;
 
         // Apply Document Type Filter (Multi-select OR logic)
         if (selectedDocTypes.length > 0) {
@@ -56,7 +66,7 @@ function ProcessDetails({ data }) {
         }
 
         return filtered;
-    }, [data?.movements, searchTerm, selectedDocTypes, DOC_TYPES]);
+    }, [activeData?.movements, searchTerm, selectedDocTypes, DOC_TYPES]);
 
     const toggleFilter = (type) => {
         if (type === 'Todos') {
@@ -74,14 +84,30 @@ function ProcessDetails({ data }) {
         setShowAll(false);
     };
 
+    const handleInstanceChange = async (instanceMeta) => {
+        if (!instanceMeta || typeof instanceMeta.index === 'undefined') return;
+
+        setLoadingInstance(true);
+        try {
+            const newInstanceData = await getProcessInstance(activeData.number, instanceMeta.index);
+            setActiveData(newInstanceData);
+            toast.success(`Visualizando ${instanceMeta.grau || 'Instância selecionada'}`);
+        } catch (error) {
+            console.error("Erro ao trocar instância:", error);
+            toast.error("Erro ao carregar instância");
+        } finally {
+            setLoadingInstance(false);
+        }
+    };
+
     const handleDownloadJson = () => {
-        if (!data.raw_data) return;
-        const jsonString = JSON.stringify(data.raw_data, null, 2);
+        if (!activeData.raw_data) return;
+        const jsonString = JSON.stringify(activeData.raw_data, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `processo-${data.number}.json`;
+        link.download = `processo-${activeData.number}.json`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -107,24 +133,37 @@ function ProcessDetails({ data }) {
         return null;
     };
 
-    if (!data) return null;
+    if (!activeData) return null;
 
     const displayedMovements = showAll ? filteredMovements : filteredMovements.slice(0, 20);
     const hasMore = filteredMovements.length > 20;
 
     return (
-        <article className="max-w-4xl mx-auto p-4 space-y-6" aria-labelledby="process-title">
+        <article className={`max-w-4xl mx-auto p-4 space-y-6 ${loadingInstance ? 'opacity-50 pointer-events-none' : ''}`} aria-labelledby="process-title">
+            {loadingInstance && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-[1px]">
+                    <div className="bg-white p-4 rounded-full shadow-lg">
+                        <RefreshCw className="h-8 w-8 text-indigo-600 animate-spin" />
+                    </div>
+                </div>
+            )}
+
             {/* Instance Selector - Shows when multiple instances exist */}
-            <InstanceSelector processNumber={data.number} meta={data?.raw_data?.__meta__} />
+            <InstanceSelector
+                key={activeData.number}
+                processNumber={activeData.number}
+                meta={activeData?.raw_data?.__meta__}
+                onInstanceChange={handleInstanceChange}
+            />
 
             {/* Header Card */}
             <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" aria-label="Informações do processo">
                 <header className="bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white flex justify-between items-start">
                     <div>
-                        <h1 id="process-title" className="text-2xl font-bold font-mono tracking-wide">{data.number}</h1>
-                        <p className="opacity-90 mt-1">{data.subject || 'Assunto não informado'}</p>
+                        <h1 id="process-title" className="text-2xl font-bold font-mono tracking-wide">{activeData.number}</h1>
+                        <p className="opacity-90 mt-1">{activeData.subject || 'Assunto não informado'}</p>
                     </div>
-                    {data.raw_data && (
+                    {activeData.raw_data && (
                         <div className="flex space-x-2">
                             <button
                                 onClick={() => setShowJson(!showJson)}
@@ -148,14 +187,14 @@ function ProcessDetails({ data }) {
                         <Gavel className="h-5 w-5 text-indigo-500 mt-1" />
                         <div>
                             <p className="text-xs text-gray-500 uppercase font-semibold">Classe</p>
-                            <p className="text-sm font-medium text-gray-900 leading-tight">{data.class_nature || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 leading-tight">{activeData.class_nature || 'N/A'}</p>
                         </div>
                     </div>
                     <div className="flex items-start space-x-3">
                         <Building2 className="h-5 w-5 text-indigo-500 mt-1" />
                         <div>
                             <p className="text-xs text-gray-500 uppercase font-semibold">Tribunal / Vara</p>
-                            <p className="text-sm font-medium text-gray-900 leading-tight">{data.court || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 leading-tight">{activeData.court || 'N/A'}</p>
                         </div>
                     </div>
                     <div className="flex items-start space-x-3">
@@ -174,7 +213,7 @@ function ProcessDetails({ data }) {
                         <div>
                             <p className="text-xs text-gray-500 uppercase font-semibold">Fase Atual</p>
                             <div className="mt-1">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPhaseColorClasses(correctedPhase, data.class_nature)}`}>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPhaseColorClasses(correctedPhase, activeData.class_nature)}`}>
                                     {correctedPhase}
                                 </span>
                             </div>
@@ -306,7 +345,7 @@ function ProcessDetails({ data }) {
             </section>
 
             {/* JSON Modal */}
-            {showJson && data.raw_data && (
+            {showJson && activeData.raw_data && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
                         <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50">
@@ -332,7 +371,7 @@ function ProcessDetails({ data }) {
                         </div>
                         <div className="flex-1 overflow-auto p-6 bg-gray-900">
                             <pre className="font-mono text-sm text-green-400 overflow-x-auto">
-                                <code>{JSON.stringify(data.raw_data, null, 2)}</code>
+                                <code>{JSON.stringify(activeData.raw_data, null, 2)}</code>
                             </pre>
                         </div>
                     </div>

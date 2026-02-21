@@ -13,13 +13,23 @@ from . import schemas
 from .config import settings
 from .error_handlers import register_exception_handlers
 from .exceptions import ProcessNotFoundException
+from . import models
+from .database import engine
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create tables on startup
+    models.Base.metadata.create_all(bind=engine)
+    yield
 
 load_dotenv()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    debug=settings.DEBUG
+    debug=settings.DEBUG,
+    lifespan=lifespan
 )
 
 # Register custom exception handlers
@@ -59,6 +69,14 @@ async def get_process_instances(number: str, db: Session = Depends(get_db)):
     """
     service = ProcessService(db)
     return await service.get_all_instances(number)
+
+@app.get("/processes/{number}/instances/{index}", response_model=schemas.ProcessResponse)
+async def get_process_instance_detail(number: str, index: int, db: Session = Depends(get_db)):
+    """
+    Retrieve a specific instance of a process from the stored raw data.
+    """
+    service = ProcessService(db)
+    return await service.get_process_instance(number, index)
 
 
 @app.post("/processes/bulk", response_model=schemas.BulkProcessResponse)

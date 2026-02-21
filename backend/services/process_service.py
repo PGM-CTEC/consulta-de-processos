@@ -164,6 +164,20 @@ class ProcessService:
             data.get("grau", "G1")
         )
 
+        raw_payload = dict(data)
+        meta = raw_payload.get("__meta__")
+        if isinstance(meta, dict):
+            selected_index = meta.get("selected_index", 0)
+            source_grau = None
+            instances = meta.get("instances") or []
+            if isinstance(selected_index, int) and 0 <= selected_index < len(instances):
+                source_grau = (instances[selected_index] or {}).get("grau")
+            if not source_grau:
+                source_grau = raw_payload.get("grau")
+            meta["phase_source_instance_index"] = selected_index
+            meta["phase_source_grau"] = source_grau
+            raw_payload["__meta__"] = meta
+
         return {
             "class_nature": class_name,
             "subject": subject_name,
@@ -173,7 +187,7 @@ class ProcessService:
             "district": str((root_orgao or {}).get("codigoMunicipioIBGE", "")),
             "distribution_date": dist_date,
             "phase": phase,
-            "raw_data": data
+            "raw_data": raw_payload
         }
 
     def _get_latest_movement_orgao(self, movements_data: list) -> Optional[dict]:
@@ -203,13 +217,22 @@ class ProcessService:
 
     def _parse_datajud_date(self, date_str: str, field_name: str) -> Optional[datetime]:
         """
-        Parse DataJud date format (YYYYMMDDHHMMSS) with proper error handling.
+        Parse DataJud date format (YYYYMMDDHHMMSS or ISO 8601) with proper error handling.
         """
         if not date_str:
             return None
 
         try:
-            return datetime.strptime(date_str[:14], "%Y%m%d%H%M%S")
+            # Try DataJud specific format first: YYYYMMDDHHMMSS
+            if len(date_str) >= 14 and date_str[:14].isdigit():
+                 return datetime.strptime(date_str[:14], "%Y%m%d%H%M%S")
+            
+            # Try ISO 8601 (e.g., 2014-09-11T10:02:00.000Z)
+            # Replace Z with +00:00 for fromisoformat compatibility in older python versions if needed,
+            # though Python 3.11+ handles Z correctly.
+            clean_str = date_str.replace("Z", "+00:00")
+            return datetime.fromisoformat(clean_str)
+
         except ValueError as e:
             logger.warning(f"Failed to parse {field_name}: '{date_str}' - {str(e)}")
             return None
@@ -258,6 +281,91 @@ class ProcessService:
             )
             self.db.add(new_mov)
 
+    def _parse_movements_list(self, movements_data: list) -> list:
+        """
+        Parse movements data into a list of dictionaries (for in-memory use).
+        """
+        # Sort movements desc (Newest first)
+        sorted_movements = sorted(
+            movements_data,
+            key=lambda x: x.get("dataHora", ""),
+            reverse=True
+        )
+
+        parsed_movements = []
+        for mov in sorted_movements:
+            # Parse movement date
+            mov_date = None
+            if "dataHora" in mov:
+                try:
+                    t_str = mov["dataHora"].replace("Z", "+00:00")
+                    mov_date = datetime.fromisoformat(t_str)
+                except (ValueError, AttributeError):
+                    pass
+
+            # Build description
+            main_name = mov.get("nome", "Movimentação")
+            comps = mov.get("complementosTabelados", [])
+            comp_details = [c.get("nome", "") for c in comps if c.get("nome")]
+
+            full_description = main_name
+            if comp_details:
+                full_description += f" ({' | '.join(comp_details)})"
+
+            parsed_movements.append({
+                "id": 0, # Temporary ID for non-persisted movements
+                "description": full_description,
+                "code": str(mov.get("codigo", "")),
+                "date": mov_date or datetime.now()
+            })
+            
+        return parsed_movements
+
+    async def get_process_instance(self, process_number: str, instance_index: int) -> dict:
+        """
+        Retrieve a specific instance of the process from the stored raw_data.
+        Does NOT update the main database record, just returns the parsed view.
+        """
+        process = self.get_from_db(process_number)
+        if not process or not process.raw_data:
+            raise ProcessNotFoundException(process_number)
+
+        raw_data = process.raw_data
+        meta = raw_data.get("__meta__", {})
+        all_hits = meta.get("all_hits") or meta.get("hits") or [raw_data] # Fallback to self if no meta
+
+        # If the DB cache does not contain the requested instance, refresh from DataJud.
+        if instance_index >= len(all_hits):
+            selected, fresh_meta = await self.client.get_process_instances(process_number)
+            if selected and fresh_meta:
+                selected["__meta__"] = fresh_meta
+                process = self._save_process_data(process_number, selected)
+                raw_data = process.raw_data or {}
+                meta = raw_data.get("__meta__", {})
+                all_hits = meta.get("all_hits") or meta.get("hits") or [raw_data]
+
+        if instance_index < 0 or instance_index >= len(all_hits):
+            raise ProcessNotFoundException(f"{process_number} (Instância {instance_index} não encontrada)")
+
+        target_instance = all_hits[instance_index]
+        
+        # Parse this specific instance
+        parsed_data = self._parse_datajud_response(target_instance)
+        
+        # Parse movements for this instance
+        movements_list = self._parse_movements_list(target_instance.get("movimentos", []))
+        
+        # Construct response compatible with ProcessResponse
+        # We use the main process ID for compatibility, but this is a transient view
+        return {
+            "id": process.id,
+            "number": process.number,
+            "last_update": process.last_update,
+            "raw_data": process.raw_data, # Return full raw data so UI keeps context
+            "movements": movements_list,
+            **parsed_data
+        }
+
     async def get_bulk_processes(self, numbers: list) -> dict:
         """
         Executes multiple lookups.
@@ -291,12 +399,21 @@ class ProcessService:
             if not api_data:
                 raise ProcessNotFoundException(process_number)
 
+            meta = meta or {}
+            diagnostic = {
+                "aliases_queried": meta.get("aliases_queried"),
+                "missing_expected_instances": meta.get("missing_expected_instances"),
+                "source_limited": meta.get("source_limited"),
+                "diagnostic_note": meta.get("diagnostic_note"),
+            }
+
             if not meta or meta.get("instances_count", 1) <= 1:
                 # Apenas uma instância, retornar dados atuais
                 return {
                     "process_number": process_number,
                     "instances_count": 1,
-                    "instances": [self._parse_instance_summary(api_data, 0)]
+                    "instances": [self._parse_single_instance_summary(api_data, 0)],
+                    **diagnostic,
                 }
 
             # Múltiplas instâncias - retornar metadados
@@ -307,7 +424,8 @@ class ProcessService:
                 "instances": [
                     self._parse_instance_summary(inst, idx)
                     for idx, inst in enumerate(meta.get("instances", []))
-                ]
+                ],
+                **diagnostic,
             }
 
         except DataJudAPIException as e:
@@ -325,4 +443,19 @@ class ProcessService:
             "orgao_julgador": instance_data.get("orgao_julgador", "N/A"),
             "latest_movement_at": instance_data.get("latest_movement_at"),
             "updated_at": instance_data.get("updated_at")
+        }
+
+    def _parse_single_instance_summary(self, instance_data: dict, index: int) -> dict:
+        """
+        Build instance summary when the payload is raw DataJud hit (_source shape),
+        not the pre-summarized metadata shape.
+        """
+        summarized = self.client._summarize_instance(instance_data)
+        return {
+            "index": index,
+            "grau": summarized.get("grau", "N/A"),
+            "tribunal": summarized.get("tribunal", "N/A"),
+            "orgao_julgador": summarized.get("orgao_julgador", "N/A"),
+            "latest_movement_at": summarized.get("latest_movement_at"),
+            "updated_at": summarized.get("updated_at"),
         }

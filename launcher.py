@@ -12,7 +12,7 @@ import socket
 from pathlib import Path
 
 # Configurações
-DEFAULT_BACKEND_PORT = 8010
+DEFAULT_BACKEND_PORT = 8011
 DEFAULT_FRONTEND_PORT = 5173
 
 class ConsultaProcessualLauncher:
@@ -74,8 +74,8 @@ class ConsultaProcessualLauncher:
         """Verifica se Python esta instalado"""
         print("[1/6] Verificando Python...")
         candidates = [
-            (["python"], "python"),
             (["py", "-3"], "py -3"),
+            (["python"], "python"),
         ]
         for cmd, label in candidates:
             try:
@@ -86,8 +86,21 @@ class ConsultaProcessualLauncher:
                     check=True
                 )
                 version = (result.stdout or result.stderr).strip()
-                print(f"[OK] Python {version} encontrado ({label})")
-                self.python_cmd = cmd
+
+                # Resolve executable path to avoid PATH/alias ambiguity on Windows.
+                exe_result = subprocess.run(
+                    cmd + ["-c", "import sys; print(sys.executable)"],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                resolved_exe = (exe_result.stdout or "").strip()
+                if resolved_exe and os.path.exists(resolved_exe):
+                    self.python_cmd = [resolved_exe]
+                    print(f"[OK] Python {version} encontrado ({label}) -> {resolved_exe}")
+                else:
+                    self.python_cmd = cmd
+                    print(f"[OK] Python {version} encontrado ({label})")
                 return True
             except (subprocess.CalledProcessError, FileNotFoundError):
                 continue

@@ -23,7 +23,7 @@ const BulkSearch = () => {
         try {
             const data = await bulkSearch(processList);
             setResults(data);
-        } catch (err) {
+        } catch {
             setError('Falha ao processar a busca em lote.');
         } finally {
             setLoading(false);
@@ -78,7 +78,7 @@ const BulkSearch = () => {
                 } else {
                     setError('Nenhum número de processo detectado no arquivo.');
                 }
-            } catch (err) {
+            } catch {
                 setError('Erro ao ler o arquivo. Verifique o formato.');
             }
         };
@@ -216,7 +216,7 @@ const BulkSearch = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {results.results.map((p, idx) => (
+                                {results.results.map((p) => (
                                     <tr key={p.number} className="hover:bg-gray-50/50 transition-colors">
                                         <td className="px-6 py-4 font-mono font-bold text-gray-900 text-sm whitespace-nowrap">
                                             {p.number}
@@ -239,7 +239,7 @@ const BulkSearch = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {results.failures.map((num, idx) => (
+                                {results.failures.map((num) => (
                                     <tr key={`failure-${num}`} className="bg-red-50/20">
                                         <td className="px-6 py-4 font-mono text-sm text-red-700 font-bold">{num}</td>
                                         <td colSpan="3" className="px-6 py-4 text-xs text-red-500 italic font-medium">

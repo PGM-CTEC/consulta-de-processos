@@ -1,5 +1,7 @@
+import asyncio
 import httpx
 import logging
+import copy
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple
 
@@ -137,23 +139,25 @@ class DataJudClient:
 
     def _select_latest_instance(
         self, hits: List[Dict[str, Any]]
-    ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         sources = [h.get("_source", h) for h in hits if isinstance(h, dict)]
         if not sources:
-            return {}, None
+            return {}, {}
 
-        if len(sources) == 1:
-            return sources[0], None
-
-        selected_index = max(range(len(sources)), key=lambda i: self._instance_sort_key(sources[i]))
+        # Default to index 0 if only one source
+        selected_index = 0
+        if len(sources) > 1:
+            selected_index = max(range(len(sources)), key=lambda i: self._instance_sort_key(sources[i]))
+        
         selected = sources[selected_index]
         meta = {
             "instances_count": len(sources),
-            "selected_by": "latest_movement_or_timestamp",
+            "selected_by": "latest_movement_or_timestamp" if len(sources) > 1 else "single_hit",
             "selected_index": selected_index,
             "instances": [self._summarize_instance(s) for s in sources],
+            "all_hits": [copy.deepcopy(s) for s in sources] # Copy to avoid circularity
         }
-        return selected, meta
+        return copy.deepcopy(selected), meta
 
     async def _search_index(self, alias: str, clean_number: str) -> List[Dict[str, Any]]:
         url = f"{self.base_url}/{alias}/_search"
@@ -208,6 +212,9 @@ class DataJudClient:
                     f"Erro ao consultar DataJud (código {response.status_code})"
                 )
 
+            # Force UTF-8 encoding as DataJud often omits charset or sends mixed signals
+            response.encoding = "utf-8"
+
             try:
                 data = response.json()
             except Exception as e:
@@ -244,44 +251,76 @@ class DataJudClient:
                 merged[key] = src
         return list(merged.values())
 
+    @staticmethod
+    def _diagnose_missing_instances(hits: List[Dict[str, Any]]) -> List[str]:
+        graus_present = {
+            (h or {}).get("grau")
+            for h in hits
+            if isinstance(h, dict) and (h or {}).get("grau")
+        }
+        missing: List[str] = []
+        # If second instance exists but first instance doesn't, make this explicit.
+        if "G2" in graus_present and "G1" not in graus_present:
+            missing.append("G1")
+        return missing
+
+    @staticmethod
+    def _dedupe_aliases(aliases: List[str]) -> List[str]:
+        unique: List[str] = []
+        seen = set()
+        for alias in aliases:
+            if alias and alias not in seen:
+                unique.append(alias)
+                seen.add(alias)
+        return unique
+
+    def _expand_aliases_for_instances(self, alias: str) -> List[str]:
+        """
+        Expands a tribunal alias to include 1º/2º grau indexes when applicable.
+        Some tribunals expose instance-specific indexes (e.g. _1g, _2g).
+        """
+        aliases = [alias]
+        if alias.startswith("api_publica_tj") or alias.startswith("api_publica_trf") or alias.startswith("api_publica_trt"):
+            aliases.extend([f"{alias}_1g", f"{alias}_2g"])
+        return self._dedupe_aliases(aliases)
+
+    @staticmethod
+    def _has_second_instance(hits: List[Dict[str, Any]]) -> bool:
+        return any((h or {}).get("grau") == "G2" for h in hits if isinstance(h, dict))
+
+    async def _search_aliases(self, aliases: List[str], clean_number: str) -> List[Dict[str, Any]]:
+        deduped = self._dedupe_aliases(aliases)
+        if not deduped:
+            return []
+
+        tasks = [self._search_index(alias, clean_number) for alias in deduped]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        merged_hits: List[Dict[str, Any]] = []
+        for alias, result in zip(deduped, results):
+            if isinstance(result, Exception):
+                if isinstance(result, DataJudAPIException):
+                    raise result
+                logger.warning(f"Unexpected error querying alias {alias}: {type(result).__name__}: {result}")
+                continue
+            merged_hits = self._merge_sources(merged_hits, result)
+
+        return merged_hits
+
     async def get_process(self, process_number: str) -> Optional[Dict[str, Any]]:
         """
-        Fetches detailed process data from DataJud API using the correct tribunal index.
-
-        Args:
-            process_number: CNJ format process number
-
-        Returns:
-            Dict with process data from DataJud API, or None if not found
-
-        Raises:
-            InvalidProcessNumberException: If number format is invalid
-            DataJudAPIException: If API returns an error
+        Fetches detailed process data from DataJud API.
+        Attempts to find all instances across tribunal and CNJ indexes.
         """
-        # Get tribunal alias (validates format)
-        try:
-            alias = self._get_tribunal_alias(process_number)
-        except (InvalidProcessNumberException, DataJudAPIException):
-            raise
-        except Exception as e:
-            raise DataJudAPIException(f"Erro ao determinar tribunal: {str(e)}") from e
-        clean_number = "".join(filter(str.isdigit, process_number))
-        hits = await self._search_index(alias, clean_number)
-
-        if hits:
-            logger.info(f"Process {process_number} found in {alias}")
-            selected, meta = self._select_latest_instance(hits)
-            if meta:
-                selected["__meta__"] = meta
-                logger.info(
-                    "Multiple instances found for %s (count=%s). Selected most recent.",
-                    process_number,
-                    meta.get("instances_count"),
-                )
-            return selected
-
-        logger.info(f"Process {process_number} not found in {alias} (no hits)")
-        return None
+        selected, meta = await self.get_process_instances(process_number)
+        
+        if not selected:
+            return None
+            
+        if meta:
+            selected["__meta__"] = meta
+            
+        return selected
 
     async def get_process_instances(
         self, process_number: str
@@ -298,14 +337,47 @@ class DataJudClient:
             raise DataJudAPIException(f"Erro ao determinar tribunal: {str(e)}") from e
 
         clean_number = "".join(filter(str.isdigit, process_number))
-        hits = await self._search_index(alias, clean_number)
+        queried_aliases = self._expand_aliases_for_instances(alias)
+        hits = await self._search_aliases(queried_aliases, clean_number)
+        cnj_queried = False
+
+        if not hits and alias != "api_publica_cnj":
+            cnj_alias = "api_publica_cnj"
+            queried_aliases.append(cnj_alias)
+            hits = await self._search_aliases([cnj_alias], clean_number)
+            cnj_queried = True
+
         if not hits:
             return None, None
 
-        if len(hits) <= 1 and alias != "api_publica_cnj":
-            cnj_hits = await self._search_index("api_publica_cnj", clean_number)
+        if len(hits) <= 1 and alias != "api_publica_cnj" and not cnj_queried:
+            cnj_alias = "api_publica_cnj"
+            queried_aliases.append(cnj_alias)
+            cnj_hits = await self._search_aliases([cnj_alias], clean_number)
             if cnj_hits:
                 hits = self._merge_sources(hits, cnj_hits)
 
+        # If second instance is present, also inspect superior courts that may carry
+        # the same CNJ number in a 3rd-instance path.
+        if self._has_second_instance(hits):
+            superior_aliases = ["api_publica_tst", "api_publica_stj", "api_publica_stf"]
+            queried_aliases.extend(superior_aliases)
+            superior_hits = await self._search_aliases(superior_aliases, clean_number)
+            if superior_hits:
+                hits = self._merge_sources(hits, superior_hits)
+
         selected, meta = self._select_latest_instance(hits)
+        if meta:
+            meta["aliases_queried"] = self._dedupe_aliases(queried_aliases)
+            meta["total_hits_after_merge"] = len(meta.get("all_hits", []))
+            missing_expected = self._diagnose_missing_instances(meta.get("all_hits", []))
+            meta["missing_expected_instances"] = missing_expected
+            meta["source_limited"] = bool(missing_expected)
+            if missing_expected:
+                meta["diagnostic_note"] = (
+                    "Fonte DataJud não retornou todas as instâncias esperadas "
+                    f"({', '.join(missing_expected)}) nos aliases consultados."
+                )
+            else:
+                meta["diagnostic_note"] = "Cobertura de instâncias consistente com os dados retornados pela fonte."
         return selected, meta

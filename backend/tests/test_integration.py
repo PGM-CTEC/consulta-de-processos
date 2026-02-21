@@ -1,16 +1,11 @@
 import asyncio
-import sys
-import os
 from dotenv import load_dotenv
-
-# Ensure backend path is in sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 load_dotenv()
 
-from services.datajud import DataJudClient
+from backend.services.datajud import DataJudClient
 
-async def test_integration():
+async def _run_test_integration():
     client = DataJudClient()
     print(f"API Key from env: {client.api_key}")
     
@@ -26,5 +21,8 @@ async def test_integration():
     except Exception as e:
         print(f"Integration Test Failed: {e}")
 
+def test_integration():
+    asyncio.run(_run_test_integration())
+
 if __name__ == "__main__":
-    asyncio.run(test_integration())
+    asyncio.run(_run_test_integration())

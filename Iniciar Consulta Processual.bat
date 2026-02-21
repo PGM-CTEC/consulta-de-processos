@@ -8,6 +8,11 @@ REM Muda para o diretorio do script
 cd /d "%~dp0"
 
 REM Executa o launcher Python
-python launcher.py
+where py >nul 2>&1
+if %errorlevel%==0 (
+    py -3 launcher.py
+) else (
+    python launcher.py
+)
 
 pause

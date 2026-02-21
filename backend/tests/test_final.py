@@ -1,20 +1,15 @@
 import asyncio
-import sys
-import os
 from dotenv import load_dotenv
 import logging
-
-# Ensure backend path is in sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 load_dotenv()
 
 # Set up logging to console
 logging.basicConfig(level=logging.INFO)
 
-from services.datajud import DataJudClient
+from backend.services.datajud import DataJudClient
 
-async def test_final():
+async def _run_test_final():
     client = DataJudClient()
     number = "0001745-93.1989.8.19.0002"
     print(f"Testing client logic for: {number}")
@@ -28,5 +23,8 @@ async def test_final():
     except Exception as e:
         print(f"EXCEPTION: {e}")
 
+def test_final():
+    asyncio.run(_run_test_final())
+
 if __name__ == "__main__":
-    asyncio.run(test_final())
+    asyncio.run(_run_test_final())

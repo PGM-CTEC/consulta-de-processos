@@ -1,0 +1,10 @@
+Searching for 0435756-80.2012.8.19.0001 across ALL api_publica_* indexes...
+Total hits found: 1
+
+Hit 0:
+  Index: api_publica_tjrj
+  Grau: G2
+  Classe: ApelaþÒo / Remessa Necessßria
+  Tribunal: TJRJ
+  Ajuizamento: 2014-09-11T10:02:00.000Z
+  ID: TJRJ_1728_G2_16611_04357568020128190001
