@@ -19,7 +19,9 @@
       "Bash(git commit:*)",
       "Bash(node --version:*)",
       "Bash(sqlite3:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(pip cache:*)",
+      "Bash(pip show:*)"
     ]
   },
   "hooks": {
