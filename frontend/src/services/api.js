@@ -79,16 +79,6 @@ export const importFromSQL = async (config) => {
     return response.data;
 };
 
-export const getAISettings = async () => {
-    const response = await api.get('/settings/ai');
-    return response.data;
-};
-
-export const updateAISettings = async (settings) => {
-    const response = await api.post('/settings/ai', settings);
-    return response.data;
-};
-
 export const getHistory = async () => {
     const response = await api.get('/history');
     return response.data;

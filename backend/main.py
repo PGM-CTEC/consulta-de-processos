@@ -6,6 +6,9 @@ from typing import List
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 from .database import get_db
 from .services.process_service import ProcessService
@@ -38,6 +41,11 @@ app = FastAPI(
     debug=settings.DEBUG,
     lifespan=lifespan
 )
+
+# Initialize rate limiter (Story: REM-004 DB-002)
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Register custom exception handlers
 register_exception_handlers(app)
@@ -89,7 +97,8 @@ async def receive_logs(logs: List[dict]):
     return {"received": len(logs)}
 
 @app.get("/processes/{number}", response_model=schemas.ProcessResponse)
-async def get_process(number: str, db: Session = Depends(get_db)):
+@limiter.limit("100/minute")
+async def get_process(number: str, request: Request, db: Session = Depends(get_db)):
     """
     Retrieve a single process by its CNJ number.
     Fetches from DataJud API and stores in local database.
@@ -120,8 +129,9 @@ async def get_process_instance_detail(number: str, index: int, db: Session = Dep
 
 
 @app.post("/processes/bulk", response_model=schemas.BulkProcessResponse)
+@limiter.limit("50/minute")
 async def get_processes_bulk(
-    request: schemas.BulkProcessRequest, db: Session = Depends(get_db)
+    http_request: Request, request: schemas.BulkProcessRequest, db: Session = Depends(get_db)
 ):
     """
     Retrieve multiple processes by their CNJ numbers.
@@ -165,62 +175,6 @@ async def import_from_sql(request: schemas.SQLImportRequest, db: Session = Depen
     process_service = ProcessService(db)
     return await process_service.get_bulk_processes(numbers)
 
-@app.get("/settings/ai", response_model=schemas.AISettingsResponse)
-async def get_ai_settings():
-    """Returns the current AI settings with a masked API key."""
-    key = settings.OPENROUTER_API_KEY
-    masked = f"{key[:4]}...{key[-4:]}" if len(key) > 8 else "****"
-    return schemas.AISettingsResponse(
-        success=True,
-        message="Configurações recuperadas",
-        masked_key=masked if key else "Não configurada"
-    )
-
-@app.post("/settings/ai", response_model=schemas.AISettingsResponse)
-async def update_ai_settings(config: schemas.AISettingsUpdate):
-    """Updates the AI API key and persists it to .env."""
-    try:
-        # Update in-memory settings
-        settings.OPENROUTER_API_KEY = config.api_key
-        settings.AI_MODEL = config.model or settings.AI_MODEL
-        
-        # Persist to .env
-        env_path = ".env"
-        lines = []
-        if os.path.exists(env_path):
-            with open(env_path, "r") as f:
-                lines = f.readlines()
-        
-        # Update or add OPENROUTER_API_KEY
-        key_found = False
-        model_found = False
-        new_lines = []
-        for line in lines:
-            if line.startswith("OPENROUTER_API_KEY="):
-                new_lines.append(f"OPENROUTER_API_KEY={config.api_key}\n")
-                key_found = True
-            elif line.startswith("AI_MODEL="):
-                new_lines.append(f"AI_MODEL={config.model}\n")
-                model_found = True
-            else:
-                new_lines.append(line)
-        
-        if not key_found:
-            new_lines.append(f"OPENROUTER_API_KEY={config.api_key}\n")
-        if not model_found and config.model:
-            new_lines.append(f"AI_MODEL={config.model}\n")
-            
-        with open(env_path, "w") as f:
-            f.writelines(new_lines)
-            
-        masked = f"{config.api_key[:4]}...{config.api_key[-4:]}" if len(config.api_key) > 8 else "****"
-        return schemas.AISettingsResponse(
-            success=True,
-            message="Configuração salva com sucesso no .env!",
-            masked_key=masked
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/history", response_model=List[schemas.HistoryResponse])
 async def get_search_history(db: Session = Depends(get_db)):

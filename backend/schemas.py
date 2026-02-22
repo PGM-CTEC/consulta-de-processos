@@ -105,12 +105,3 @@ class SQLConnectionTestResponse(BaseModel):
 
 class SQLImportRequest(SQLConnectionConfig):
     pass
-
-class AISettingsUpdate(BaseModel):
-    api_key: str = Field(..., description="OpenRouter API Key")
-    model: Optional[str] = "google/gemini-2.0-flash-001"
-
-class AISettingsResponse(BaseModel):
-    success: bool
-    message: str
-    masked_key: str

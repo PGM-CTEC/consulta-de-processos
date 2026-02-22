@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Cpu, Save, Loader2, Play, CheckCircle2, AlertCircle, Eye, EyeOff, Database } from 'lucide-react';
-import { testSQLConnection, importFromSQL, getAISettings, updateAISettings } from '../services/api';
+import { Settings, Save, Loader2, Play, CheckCircle2, AlertCircle, Eye, EyeOff, Database } from 'lucide-react';
+import { testSQLConnection, importFromSQL } from '../services/api';
 import { toast } from 'react-hot-toast';
 
 const SettingsComponent = () => {
@@ -16,24 +16,6 @@ const SettingsComponent = () => {
     const [testing, setTesting] = useState(false);
     const [importing, setImporting] = useState(false);
     const [showConfig, setShowConfig] = useState(true);
-    const [aiConfig, setAiConfig] = useState({ api_key: '', model: 'google/gemini-2.0-flash-001' });
-    const [maskedKey, setMaskedKey] = useState('');
-    const [savingAi, setSavingAi] = useState(false);
-    const [showKeyContent, setShowKeyContent] = useState(false);
-    const [showAiConfig, setShowAiConfig] = useState(true);
-
-    useEffect(() => {
-        loadAiSettings();
-    }, []);
-
-    const loadAiSettings = async () => {
-        try {
-            const result = await getAISettings();
-            setMaskedKey(result.masked_key);
-        } catch {
-            // Error already logged or handled
-        }
-    };
 
     const handleConfigChange = (e) => {
         const { name, value } = e.target;
@@ -41,11 +23,6 @@ const SettingsComponent = () => {
             ...prev,
             [name]: name === 'port' ? parseInt(value) || 0 : value
         }));
-    };
-
-    const handleAiConfigChange = (e) => {
-        const { name, value } = e.target;
-        setAiConfig(prev => ({ ...prev, [name]: value }));
     };
 
     const handleTestConnection = async () => {
@@ -79,27 +56,6 @@ const SettingsComponent = () => {
         }
     };
 
-    const handleSaveAiConfig = async () => {
-        if (!aiConfig.api_key) {
-            toast.error('Informe a chave API');
-            return;
-        }
-        setSavingAi(true);
-        try {
-            const result = await updateAISettings(aiConfig);
-            if (result.success) {
-                toast.success(result.message);
-                setMaskedKey(result.masked_key);
-                setAiConfig(prev => ({ ...prev, api_key: '' }));
-                setShowKeyContent(false);
-            }
-        } catch {
-            toast.error('Erro ao salvar configuração de IA');
-        } finally {
-            setSavingAi(false);
-        }
-    };
-
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="text-center space-y-2">
@@ -126,8 +82,9 @@ const SettingsComponent = () => {
                     <div className="p-6 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Driver / Banco</label>
+                                <label htmlFor="sql-driver" className="text-xs font-bold text-gray-500 uppercase tracking-wide">Driver / Banco</label>
                                 <select
+                                    id="sql-driver"
                                     name="driver"
                                     value={config.driver}
                                     onChange={handleConfigChange}
@@ -140,8 +97,9 @@ const SettingsComponent = () => {
                                 </select>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Host</label>
+                                <label htmlFor="sql-host" className="text-xs font-bold text-gray-500 uppercase tracking-wide">Host</label>
                                 <input
+                                    id="sql-host"
                                     type="text"
                                     name="host"
                                     value={config.host}
@@ -151,8 +109,9 @@ const SettingsComponent = () => {
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Porta</label>
+                                <label htmlFor="sql-port" className="text-xs font-bold text-gray-500 uppercase tracking-wide">Porta</label>
                                 <input
+                                    id="sql-port"
                                     type="number"
                                     name="port"
                                     value={config.port}
@@ -164,8 +123,9 @@ const SettingsComponent = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Usuário</label>
+                                <label htmlFor="sql-user" className="text-xs font-bold text-gray-500 uppercase tracking-wide">Usuário</label>
                                 <input
+                                    id="sql-user"
                                     type="text"
                                     name="user"
                                     value={config.user}
@@ -174,8 +134,9 @@ const SettingsComponent = () => {
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Senha</label>
+                                <label htmlFor="sql-password" className="text-xs font-bold text-gray-500 uppercase tracking-wide">Senha</label>
                                 <input
+                                    id="sql-password"
                                     type="password"
                                     name="password"
                                     value={config.password}
@@ -184,8 +145,9 @@ const SettingsComponent = () => {
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Banco de Dados</label>
+                                <label htmlFor="sql-database" className="text-xs font-bold text-gray-500 uppercase tracking-wide">Banco de Dados</label>
                                 <input
+                                    id="sql-database"
                                     type="text"
                                     name="database"
                                     value={config.database}
@@ -196,8 +158,9 @@ const SettingsComponent = () => {
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Query SQL</label>
+                            <label htmlFor="sql-query" className="text-xs font-bold text-gray-500 uppercase tracking-wide">Query SQL</label>
                             <textarea
+                                id="sql-query"
                                 name="query"
                                 value={config.query}
                                 onChange={handleConfigChange}
@@ -223,84 +186,6 @@ const SettingsComponent = () => {
                             >
                                 {importing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
                                 <span>Iniciar Importação</span>
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* AI Integration Configuration */}
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                <div
-                    className="p-4 bg-indigo-50 border-b border-indigo-100 flex justify-between items-center cursor-pointer hover:bg-indigo-100 transition-colors"
-                    onClick={() => setShowAiConfig(!showAiConfig)}
-                >
-                    <div className="flex items-center space-x-2">
-                        <Cpu className="h-5 w-5 text-indigo-600" />
-                        <h3 className="font-bold text-indigo-700">Inteligência Artificial (OpenRouter)</h3>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                        {maskedKey && (
-                            <span className="text-[10px] bg-indigo-200 text-indigo-700 px-2 py-0.5 rounded font-bold uppercase">
-                                Ativa: {maskedKey}
-                            </span>
-                        )}
-                        <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">
-                            {showAiConfig ? 'Recolher' : 'Expandir'}
-                        </span>
-                    </div>
-                </div>
-
-                {showAiConfig && (
-                    <div className="p-6 space-y-6">
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start space-x-3">
-                            <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
-                            <p className="text-sm text-amber-800">
-                                A chave API é salva de forma segura e nunca exibida integralmente.
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">OpenRouter API Key</label>
-                                <div className="relative">
-                                    <input
-                                        type={showKeyContent ? "text" : "password"}
-                                        name="api_key"
-                                        value={aiConfig.api_key}
-                                        onChange={handleAiConfigChange}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none pr-12"
-                                        placeholder="sk-or-v1-..."
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowKeyContent(!showKeyContent)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-indigo-600"
-                                    >
-                                        {showKeyContent ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Modelo de IA</label>
-                                <input
-                                    type="text"
-                                    name="model"
-                                    value={aiConfig.model}
-                                    onChange={handleAiConfigChange}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end">
-                            <button
-                                onClick={handleSaveAiConfig}
-                                disabled={savingAi}
-                                className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center space-x-2 disabled:opacity-50"
-                            >
-                                {savingAi ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                                <span>Salvar Configuração</span>
                             </button>
                         </div>
                     </div>

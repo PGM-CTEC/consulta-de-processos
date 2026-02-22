@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.pool import StaticPool
 from typing import Generator
 from contextlib import contextmanager
 from sqlalchemy.exc import IntegrityError
@@ -8,14 +9,18 @@ from .config import settings, is_sqlite_db
 
 # Configure database engine with conditional SQLite args
 connect_args = {}
+engine_kwargs = {"echo": settings.DATABASE_ECHO}
+
 if is_sqlite_db():
-    # SQLite-specific: allow multiple threads to access the same connection
+    # SQLite-specific: Static pool + allow multiple threads to access the same connection
+    # Story: REM-010 (DB-011) - Connection Pooling
+    engine_kwargs["poolclass"] = StaticPool
     connect_args["check_same_thread"] = False
 
 engine = create_engine(
     settings.DATABASE_URL,
     connect_args=connect_args,
-    echo=settings.DATABASE_ECHO
+    **engine_kwargs
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

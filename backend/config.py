@@ -4,7 +4,6 @@ All environment variables and application settings are defined here.
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
-import os
 
 
 class Settings(BaseSettings):
@@ -31,10 +30,6 @@ class Settings(BaseSettings):
     DATAJUD_API_KEY: str = "cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=="
     DATAJUD_TIMEOUT: int = 30
     DATAJUD_BASE_URL: str = "https://api-publica.datajud.cnj.jus.br"
-
-    # AI Integration (OpenRouter)
-    OPENROUTER_API_KEY: str = ""
-    AI_MODEL: str = "google/gemini-2.0-flash-001"
 
     # Logging
     LOG_LEVEL: str = "INFO"

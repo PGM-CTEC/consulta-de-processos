@@ -132,10 +132,14 @@ const BulkSearch = () => {
                     </div>
 
                     <div className="relative">
-                        <div className="absolute top-3 left-4 flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest bg-white pr-2">
+                        <label
+                            htmlFor="bulk-numbers-textarea"
+                            className="absolute top-3 left-4 flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest bg-white pr-2"
+                        >
                             Listagem de Números
-                        </div>
+                        </label>
                         <textarea
+                            id="bulk-numbers-textarea"
                             className="w-full h-48 p-6 pt-10 border rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent font-mono text-sm leading-relaxed"
                             placeholder="Um número por linha..."
                             value={numbers}
