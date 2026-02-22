@@ -1,6 +1,12 @@
 """
 Centralized configuration management using Pydantic Settings.
 All environment variables and application settings are defined here.
+
+SECURITY NOTE: Sensitive values are now managed via SecretsManager.
+- Secrets are loaded from environment variables via python-dotenv
+- Never hardcode secrets in this file
+- All sensitive values should be in .env (git-ignored)
+- See backend/secrets_manager.py for secrets access patterns
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
@@ -22,17 +28,17 @@ class Settings(BaseSettings):
         """Convert comma-separated origins to list."""
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
 
-    # Database
+    # Database (loaded from secrets manager)
     DATABASE_URL: str = "sqlite:///./consulta_processual.db"
     DATABASE_ECHO: bool = False
 
-    # DataJud Integration
-    DATAJUD_API_KEY: str = "cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=="
+    # DataJud Integration (secrets loaded via SecretsManager)
+    DATAJUD_API_KEY: str = ""  # Will be loaded from secrets manager
     DATAJUD_TIMEOUT: int = 30
     DATAJUD_BASE_URL: str = "https://api-publica.datajud.cnj.jus.br"
 
     # Error Monitoring - Sentry (Story: ERROR-ARCH-002)
-    SENTRY_DSN: str = ""  # Sentry DSN for error tracking (empty to disable)
+    SENTRY_DSN: str = ""  # Will be loaded from secrets manager if available
 
     # Logging
     LOG_LEVEL: str = "INFO"
