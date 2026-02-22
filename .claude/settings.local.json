@@ -22,7 +22,11 @@
       "Bash(git push:*)",
       "Bash(pip cache:*)",
       "Bash(pip show:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(cd:*)",
+      "Bash(grep:*)"
     ]
   },
   "hooks": {

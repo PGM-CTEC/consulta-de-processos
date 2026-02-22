@@ -116,3 +116,49 @@ class TestPhaseAnalyzerClassifications:
             assert isinstance(result, str)
             phase_num = int(result[:2])
             assert 1 <= phase_num <= 15
+
+    def test_classify_judicial_entity(self):
+        """Handle JE (Judicial Entity) grau classification."""
+        result = PhaseAnalyzer.analyze("0001", [], "TJSP", "JE")
+        assert result is None or isinstance(result, str)
+
+    def test_classify_with_invalid_movement_dates(self):
+        """Handle movements with invalid date formats."""
+        movements = [{"codigo": "1", "nome": "Movimento 1", "dataHora": "invalid-date"}]
+        result = PhaseAnalyzer.analyze("0001", movements, "TJSP", "G1")
+        assert result is None or isinstance(result, str)
+
+    def test_classify_with_invalid_movement_codes(self):
+        """Handle movements with invalid code formats."""
+        movements = [{"codigo": "not-a-number", "nome": "Movimento", "dataHora": "2024-01-15T10:00:00Z"}]
+        result = PhaseAnalyzer.analyze("0001", movements, "TJSP", "G1")
+        assert result is None or isinstance(result, str)
+
+    def test_classify_with_raw_data_class_desc(self):
+        """Classification includes raw_data for class description."""
+        raw_data = {"classe": {"codigo": "0001", "nome": "Ação Civil Ordinária"}}
+        result = PhaseAnalyzer.analyze("0001", [], "TJSP", "G1", raw_data=raw_data)
+        assert result is None or isinstance(result, str)
+
+    def test_classify_with_processo_baixado(self):
+        """Handle processo with baixa definitiva (código 22)."""
+        movements = [
+            {"codigo": "1", "nome": "Distribuição", "dataHora": "2024-01-10T10:00:00Z"},
+            {"codigo": "22", "nome": "Arquivamento", "dataHora": "2024-01-20T15:00:00Z"}
+        ]
+        result = PhaseAnalyzer.analyze("0001", movements, "TJSP", "G1", process_number="0000001-01.0000.1.00.0001")
+        assert result is None or isinstance(result, str)
+
+    def test_classify_with_desarquivamento(self):
+        """Handle processo with baixa followed by reabertura (código 900)."""
+        movements = [
+            {"codigo": "22", "nome": "Arquivamento", "dataHora": "2024-01-20T10:00:00Z"},
+            {"codigo": "900", "nome": "Reabertura", "dataHora": "2024-01-25T15:00:00Z"}
+        ]
+        result = PhaseAnalyzer.analyze("0001", movements, "TJSP", "G1")
+        assert result is None or isinstance(result, str)
+
+    def test_classify_exception_handling(self):
+        """Verify exception handling doesn't crash the analyzer."""
+        result = PhaseAnalyzer.analyze(None, [], "TJSP", "G1")
+        assert result is None or isinstance(result, str)

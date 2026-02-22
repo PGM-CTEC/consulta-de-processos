@@ -37,9 +37,6 @@ class Settings(BaseSettings):
     DATAJUD_TIMEOUT: int = 30
     DATAJUD_BASE_URL: str = "https://api-publica.datajud.cnj.jus.br"
 
-    # Error Monitoring - Sentry (Story: ERROR-ARCH-002)
-    SENTRY_DSN: str = ""  # Will be loaded from secrets manager if available
-
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_API_KEYS: bool = False  # NEVER log API keys in production

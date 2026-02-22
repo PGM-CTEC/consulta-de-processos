@@ -24,14 +24,6 @@ from .utils.logger import setup_logger
 from .utils.redact import redact_dict
 from contextlib import asynccontextmanager
 
-# Story: ERROR-ARCH-002 - Sentry Integration for Error Monitoring
-try:
-    import sentry_sdk
-    from sentry_sdk.integrations.fastapi import FastApiIntegration
-    SENTRY_AVAILABLE = True
-except ImportError:
-    SENTRY_AVAILABLE = False
-
 # Initialize logger
 logger = setup_logger()
 
@@ -42,22 +34,6 @@ async def lifespan(app: FastAPI):
     yield
 
 load_dotenv()
-
-# Initialize Sentry for error monitoring (Story: ERROR-ARCH-002)
-if SENTRY_AVAILABLE and settings.SENTRY_DSN:
-    sentry_sdk.init(
-        dsn=settings.SENTRY_DSN,
-        integrations=[FastApiIntegration()],
-        traces_sample_rate=0.1,
-        environment=settings.ENVIRONMENT,
-        debug=settings.DEBUG
-    )
-    logger.info(f"Sentry initialized for environment: {settings.ENVIRONMENT}")
-else:
-    if not SENTRY_AVAILABLE:
-        logger.warning("sentry_sdk not installed. Install with: pip install sentry-sdk[fastapi]")
-    elif not settings.SENTRY_DSN:
-        logger.info("SENTRY_DSN not configured. Error monitoring disabled.")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
