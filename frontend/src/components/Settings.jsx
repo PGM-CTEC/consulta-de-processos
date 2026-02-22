@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Settings, Save, Loader2, Play, CheckCircle2, AlertCircle, Eye, EyeOff, Database } from 'lucide-react';
 import { testSQLConnection, importFromSQL } from '../services/api';
 import { toast } from 'react-hot-toast';
