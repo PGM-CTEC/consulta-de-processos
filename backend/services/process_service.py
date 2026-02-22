@@ -6,6 +6,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from .datajud import DataJudClient
+from .phase_analyzer import PhaseAnalyzer
 from .. import models, schemas
 from ..database import transaction_scope
 from ..exceptions import DataJudAPIException, ProcessNotFoundException
@@ -13,9 +14,28 @@ from ..exceptions import DataJudAPIException, ProcessNotFoundException
 logger = logging.getLogger(__name__)
 
 class ProcessService:
-    def __init__(self, db: Session):
+    def __init__(
+        self,
+        db: Session,
+        client: Optional[DataJudClient] = None,
+        phase_analyzer: Optional[PhaseAnalyzer] = None
+    ):
+        """
+        Initialize ProcessService with dependency injection.
+
+        Args:
+            db: SQLAlchemy database session
+            client: DataJudClient instance (optional, defaults to DataJudClient())
+            phase_analyzer: PhaseAnalyzer instance (optional, defaults to PhaseAnalyzer)
+
+        This enables:
+        - Testing with mock clients
+        - Swapping implementations
+        - Reduced coupling to external services
+        """
         self.db = db
-        self.client = DataJudClient()
+        self.client = client or DataJudClient()
+        self.phase_analyzer = phase_analyzer or PhaseAnalyzer
 
     async def get_or_update_process(self, process_number: str) -> Optional[models.Process]:
         """
@@ -154,11 +174,9 @@ class ProcessService:
             "distribution date"
         )
 
-        # Phase Analysis
+        # Phase Analysis - using injected dependency
         class_code = class_node.get("codigo")
-        
-        from .phase_analyzer import PhaseAnalyzer
-        phase = PhaseAnalyzer.analyze(
+        phase = self.phase_analyzer.analyze(
             class_code,
             movements_data,
             tribunal,
