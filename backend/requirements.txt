@@ -6,6 +6,9 @@ pydantic
 pydantic-settings
 python-dotenv
 python-json-logger
+sentry-sdk[fastapi]
+slowapi
+tenacity
 
 # Testing
 pytest==8.0.0
