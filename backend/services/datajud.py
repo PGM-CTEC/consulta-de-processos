@@ -5,6 +5,13 @@ import copy
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple
 
+# Story: BE-ARCH-002 - Retry Logic for Transient Failures
+try:
+    from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+    RETRY_AVAILABLE = True
+except ImportError:
+    RETRY_AVAILABLE = False
+
 from ..config import settings
 from ..exceptions import DataJudAPIException, InvalidProcessNumberException
 
@@ -172,20 +179,41 @@ class DataJudClient:
             "size": 50,
         }
 
-        async def _post(trust_env: bool) -> httpx.Response:
-            async with httpx.AsyncClient(trust_env=trust_env) as client:
-                return await client.post(
-                    url,
-                    json=payload,
-                    headers=headers,
-                    timeout=float(self.timeout)
-                )
+        # Story: BE-ARCH-002 - Retry logic with exponential backoff
+        if RETRY_AVAILABLE:
+            @retry(
+                stop=stop_after_attempt(3),
+                wait=wait_exponential(multiplier=1, min=1, max=10),
+                retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
+                reraise=True
+            )
+            async def _post_with_retry(trust_env: bool) -> httpx.Response:
+                async with httpx.AsyncClient(trust_env=trust_env) as client:
+                    return await client.post(
+                        url,
+                        json=payload,
+                        headers=headers,
+                        timeout=float(self.timeout)
+                    )
+        else:
+            async def _post_with_retry(trust_env: bool) -> httpx.Response:
+                async with httpx.AsyncClient(trust_env=trust_env) as client:
+                    return await client.post(
+                        url,
+                        json=payload,
+                        headers=headers,
+                        timeout=float(self.timeout)
+                    )
 
         try:
-            response = await _post(trust_env=True)
+            response = await _post_with_retry(trust_env=True)
         except httpx.RequestError as e:
-            logger.warning(f"Network error connecting to DataJud with env proxy: {str(e)}")
-            response = await _post(trust_env=False)
+            logger.warning(f"Network error connecting to DataJud with env proxy after retries: {str(e)}")
+            try:
+                response = await _post_with_retry(trust_env=False)
+            except Exception as e:
+                logger.error(f"Network error with both proxy modes after retries: {str(e)}")
+                raise
 
         try:
             if response.status_code == 404:
