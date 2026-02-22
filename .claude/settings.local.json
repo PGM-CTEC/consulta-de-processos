@@ -18,7 +18,8 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(node --version:*)",
-      "Bash(sqlite3:*)"
+      "Bash(sqlite3:*)",
+      "Bash(git push:*)"
     ]
   },
   "hooks": {

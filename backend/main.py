@@ -134,11 +134,17 @@ async def get_processes_bulk(
     http_request: Request, request: schemas.BulkProcessRequest, db: Session = Depends(get_db)
 ):
     """
-    Retrieve multiple processes by their CNJ numbers.
+    Retrieve multiple processes by their CNJ numbers in parallel.
+    Uses asyncio.gather() with configurable concurrency limit.
     Returns both successful results and failed process numbers.
+
+    Story: PERF-ARCH-001 - Async Bulk Processing
     """
     service = ProcessService(db)
-    return await service.get_bulk_processes(request.numbers)
+    return await service.get_bulk_processes(
+        request.numbers,
+        max_concurrent=settings.BULK_MAX_CONCURRENT
+    )
 
 @app.get("/stats", response_model=schemas.DatabaseStats)
 async def get_database_stats(db: Session = Depends(get_db)):
@@ -165,15 +171,19 @@ async def test_sql_connection(config: schemas.SQLConnectionConfig):
 async def import_from_sql(request: schemas.SQLImportRequest, db: Session = Depends(get_db)):
     """
     Fetch process numbers from external SQL and trigger bulk search/update.
+    Uses async parallel processing with configurable concurrency.
     """
     sql_service = SQLIntegrationService(request)
     numbers = sql_service.get_process_numbers()
-    
+
     if not numbers:
         return schemas.BulkProcessResponse(results=[], failures=["Nenhum processo encontrado na consulta SQL"])
-        
+
     process_service = ProcessService(db)
-    return await process_service.get_bulk_processes(numbers)
+    return await process_service.get_bulk_processes(
+        numbers,
+        max_concurrent=settings.BULK_MAX_CONCURRENT
+    )
 
 
 @app.get("/history", response_model=List[schemas.HistoryResponse])

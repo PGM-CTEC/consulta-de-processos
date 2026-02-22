@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime
 from typing import Optional
@@ -366,25 +367,52 @@ class ProcessService:
             **parsed_data
         }
 
-    async def get_bulk_processes(self, numbers: list) -> dict:
+    async def get_bulk_processes(self, numbers: list, max_concurrent: int = 10) -> dict:
         """
-        Executes multiple lookups.
+        Executes multiple process lookups in parallel using asyncio.gather().
+
+        Args:
+            numbers: List of CNJ process numbers to fetch
+            max_concurrent: Maximum concurrent requests (default: 10)
+
+        Returns:
+            dict with 'results' (successful processes) and 'failures' (error numbers)
+
+        Story: PERF-ARCH-001 - Async Bulk Processing
+        Target: 50 items in <30s (vs 2-5 min sequential)
         """
+        # Create semaphore to limit concurrent requests
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def fetch_with_semaphore(number: str):
+            """Fetch process with semaphore to limit concurrency."""
+            async with semaphore:
+                try:
+                    process = await self.get_or_update_process(number)
+                    return ("success", number, process)
+                except Exception as e:
+                    logger.error(f"Error fetching process {number}: {e}")
+                    return ("failure", number, None)
+
+        # Create tasks for all numbers
+        tasks = [fetch_with_semaphore(number) for number in numbers]
+
+        # Execute all tasks concurrently (respecting semaphore limit)
+        results_list = await asyncio.gather(*tasks, return_exceptions=False)
+
+        # Separate results and failures
         results = []
         failures = []
 
-        # Simple async loop (can be optimized with semaphore if needed)
-        for number in numbers:
-            try:
-                # Reuse existing logic
-                process = await self.get_or_update_process(number)
-                if process:
-                    results.append(process)
-                else:
-                    failures.append(number)
-            except Exception as e:
-                logger.error(f"Error in bulk processing for {number}: {e}")
+        for status, number, process in results_list:
+            if status == "success" and process:
+                results.append(process)
+            else:
                 failures.append(number)
+
+        logger.info(
+            f"Bulk processing completed: {len(results)} successful, {len(failures)} failed out of {len(numbers)} total"
+        )
 
         return {"results": results, "failures": failures}
 

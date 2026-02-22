@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = False
     RATE_LIMIT_PER_MINUTE: int = 60
 
+    # Bulk Processing (Story: PERF-ARCH-001)
+    BULK_MAX_CONCURRENT: int = 10  # Max concurrent DataJud API calls
+
     # Authentication (optional, disabled by default for development)
     REQUIRE_AUTH: bool = False
     VALID_API_KEYS: str = ""  # Comma-separated API keys for simple auth
