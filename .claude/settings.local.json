@@ -21,7 +21,8 @@
       "Bash(sqlite3:*)",
       "Bash(git push:*)",
       "Bash(pip cache:*)",
-      "Bash(pip show:*)"
+      "Bash(pip show:*)",
+      "Bash(git reset:*)"
     ]
   },
   "hooks": {
