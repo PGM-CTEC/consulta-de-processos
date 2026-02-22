@@ -102,9 +102,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/health")
-async def health_check():
-    return {"status": "ok", "service": "Consulta Processual API"}
+@app.get("/health", tags=["health"])
+async def health_check(db: Session = Depends(get_db)):
+    """
+    Health check endpoint for monitoring tools and load balancers.
+    Verifies database connectivity and API readiness.
+
+    Story: DEPLOY-ARCH-004 - Health Checks
+    """
+    try:
+        # Verify database connectivity
+        db.execute("SELECT 1")
+
+        return {
+            "status": "healthy",
+            "service": "Consulta Processual API",
+            "database": "connected",
+            "environment": settings.ENVIRONMENT,
+            "version": settings.VERSION
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return {
+            "status": "unhealthy",
+            "error": "Database connection failed"
+        }, 503
+
+
+@app.get("/ready", tags=["health"])
+async def readiness_check(db: Session = Depends(get_db)):
+    """
+    Readiness probe for Kubernetes and container orchestration.
+    Indicates if service is ready to accept traffic.
+
+    Story: DEPLOY-ARCH-004 - Health Checks
+    """
+    try:
+        # Verify database connectivity
+        db.execute("SELECT 1")
+        return {"ready": True, "version": settings.VERSION}
+    except Exception as e:
+        logger.error(f"Readiness check failed: {str(e)}")
+        return {"ready": False, "error": str(e)}, 503
 
 
 @app.post("/api/logs")
