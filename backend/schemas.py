@@ -105,3 +105,30 @@ class SQLConnectionTestResponse(BaseModel):
 
 class SQLImportRequest(SQLConnectionConfig):
     pass
+
+
+class MetricSnapshotResponse(BaseModel):
+    """Current performance metrics snapshot."""
+    timestamp: datetime
+    latency_p50: float
+    latency_p95: float
+    latency_p99: float
+    throughput: float
+    error_rate: float
+    db_query_time: float
+    cache_hit_ratio: float
+
+
+class MetricsResponse(BaseModel):
+    """Performance metrics response."""
+    current: Optional[MetricSnapshotResponse] = None
+    history: List[MetricSnapshotResponse] = []
+    alerts: List[dict] = []
+
+
+class AlertResponse(BaseModel):
+    """Performance alert."""
+    type: str
+    message: str
+    severity: str
+    timestamp: str

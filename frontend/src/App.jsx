@@ -5,6 +5,7 @@ import SearchProcess from './components/SearchProcess';
 import ProcessDetails from './components/ProcessDetails';
 import BulkSearch from './components/BulkSearch';
 import Dashboard from './components/Dashboard';
+import PerformanceDashboard from './components/PerformanceDashboard';
 import SettingsComponent from './components/Settings';
 import { searchProcess } from './services/api';
 import { useLabels } from './hooks/useLabels';
@@ -13,7 +14,7 @@ import HistoryTab from './components/HistoryTab';
 function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('single'); // 'single', 'bulk', 'analytics', 'history' or 'settings'
+  const [activeTab, setActiveTab] = useState('single'); // 'single', 'bulk', 'analytics', 'performance', 'history' or 'settings'
   const { labels, loading: labelsLoading } = useLabels();
 
   if (labelsLoading) {
@@ -121,6 +122,19 @@ function App() {
               <span>{labels.nav.history}</span>
             </button>
             <button
+              onClick={() => setActiveTab('performance')}
+              role="tab"
+              aria-selected={activeTab === 'performance'}
+              aria-controls="tab-panel-performance"
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${activeTab === 'performance'
+                ? 'bg-white text-indigo-600 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+                }`}
+            >
+              <BarChart3 className="h-4 w-4" aria-hidden="true" />
+              <span>Performance</span>
+            </button>
+            <button
               onClick={() => setActiveTab('settings')}
               role="tab"
               aria-selected={activeTab === 'settings'}
@@ -196,6 +210,17 @@ function App() {
               className="animate-in fade-in slide-in-from-bottom-4 duration-700"
             >
               <HistoryTab labels={labels} />
+            </div>
+          )}
+
+          {activeTab === 'performance' && (
+            <div
+              id="tab-panel-performance"
+              role="tabpanel"
+              aria-labelledby="tab-performance"
+              className="animate-in fade-in slide-in-from-bottom-4 duration-700"
+            >
+              <PerformanceDashboard />
             </div>
           )}
 

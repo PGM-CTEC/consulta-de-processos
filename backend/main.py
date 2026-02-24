@@ -14,6 +14,7 @@ from .database import get_db
 from .services.process_service import ProcessService
 from .services.stats_service import StatsService
 from .services.sql_integration_service import SQLIntegrationService
+from .services.metrics_service import get_metrics_service
 from . import schemas
 from .config import settings
 from .error_handlers import register_exception_handlers
@@ -236,3 +237,25 @@ async def clear_search_history(db: Session = Depends(get_db)):
     db.query(models.SearchHistory).delete()
     db.commit()
     return {"message": "Histórico limpo"}
+
+
+@app.get("/metrics", response_model=schemas.MetricsResponse, tags=["metrics"])
+async def get_metrics(hours: int = 24):
+    """Get current performance metrics and historical data."""
+    metrics_service = get_metrics_service()
+    current = metrics_service.get_current_metrics()
+    history = metrics_service.get_history(hours=hours)
+    alerts = metrics_service.get_alerts()
+
+    return schemas.MetricsResponse(
+        current=current,
+        history=history,
+        alerts=alerts
+    )
+
+
+@app.get("/metrics/alerts", response_model=List[schemas.AlertResponse], tags=["metrics"])
+async def get_alerts(limit: int = 20):
+    """Get recent performance alerts."""
+    metrics_service = get_metrics_service()
+    return metrics_service.get_alerts(limit=limit)

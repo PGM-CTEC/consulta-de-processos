@@ -89,4 +89,18 @@ export const clearHistory = async () => {
     return response.data;
 };
 
+export const getMetrics = async (hours = 24) => {
+    const response = await api.get('/metrics', {
+        params: { hours }
+    });
+    return response.data;
+};
+
+export const getAlerts = async (limit = 20) => {
+    const response = await api.get('/metrics/alerts', {
+        params: { limit }
+    });
+    return response.data;
+};
+
 export default api;
