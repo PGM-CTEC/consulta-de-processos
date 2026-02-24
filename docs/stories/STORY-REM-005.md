@@ -1,36 +1,31 @@
 # STORY-REM-005: Add CORS Whitelist Configuration
 
 **Epic:** EPIC-BROWNFIELD-REMEDIATION
-**Debit ID:** SEC-ARCH-004
-**Type:** Security
-**Complexity:** 2 pts (XS - 30 min)
-**Priority:** MEDIUM
-**Assignee:** Backend Developer
-**Status:** Ready
-**Sprint:** Sprint 1
+**Sprint:** Sprint 6 | **Complexity:** 2 pts (XS - 30min) | **Priority:** MEDIUM
+**Assignee:** Backend Developer | **Status:** Ready
+
+---
 
 ## Description
 
-Audit and restrict CORS configuration to whitelist only trusted origins (prevent XSS from malicious domains).
+Restrict CORS to whitelisted origins only (prevent XSS from malicious domains).
 
 ## Acceptance Criteria
 
-- [x] CORS middleware configured with explicit allow_origins list
-- [x] Localhost allowed for development (http://localhost:5173)
-- [x] allow_origins=["*"] removed (security risk) - VERIFIED
-- [x] CORS middleware uses settings.allowed_origins_list (whitelist pattern)
-- [x] Configuration: backend/config.py ALLOWED_ORIGINS property
+- [ ] CORS middleware configured with explicit allow_origins list
+- [ ] Production domain whitelisted
+- [ ] Localhost allowed for dev
+- [ ] allow_origins=["*"] removed
 
-## Technical Notes
+## Implementation
 
 ```python
-# backend/main.py
 from fastapi.middleware.cors import CORSMiddleware
 
 ALLOWED_ORIGINS = [
-    "https://consulta-processo.example.com",  # Production
-    "http://localhost:5173",  # Dev frontend
-    "http://localhost:3000",  # Alternative dev port
+    "https://consulta-processo.example.com",
+    "http://localhost:5173",
+    "http://localhost:3000",
 ]
 
 app.add_middleware(
@@ -42,24 +37,6 @@ app.add_middleware(
 )
 ```
 
-## Dependencies
+## Files
 
-None
-
-## Definition of Done
-
-- [ ] Code complete and peer-reviewed
-- [ ] Unit tests written (if applicable)
-- [ ] Acceptance criteria met (all checkboxes ✅)
-- [ ] Documentation updated (README, comments)
-- [ ] Merged to `main` branch
-
-## File List
-
-_To be updated during development_
-
-## Change Log
-
-| Date | Author | Change |
-|------|--------|--------|
-| 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |
+- `backend/main.py` (modified)

@@ -1,30 +1,35 @@
 # STORY-REM-007: Add Label HTML Associations (Accessibility)
 
 **Epic:** EPIC-BROWNFIELD-REMEDIATION
-**Debit ID:** FE-001
-**Type:** Accessibility
-**Complexity:** 2 pts (XS - 30 min)
-**Priority:** MEDIUM
-**Status:** READY (Frontend task - requires React component updates)
+**Sprint:** Sprint 6 | **Complexity:** 2 pts (XS - 30min) | **Priority:** MEDIUM
+**Assignee:** Frontend Developer | **Status:** Ready
+
+---
 
 ## Description
 
-Add htmlFor associations to form labels for accessibility compliance.
+Add htmlFor attribute to all form labels (15+ fields) for WCAG 1.3.1 compliance.
 
 ## Acceptance Criteria
 
-- [ ] BulkSearch textarea has label with htmlFor
-- [ ] Settings form fields have labels with htmlFor
-- [ ] All form inputs properly associated with labels
+- [ ] BulkSearch.jsx textarea has htmlFor="bulk-numbers-textarea"
+- [ ] Settings.jsx: All 15+ fields have htmlFor associations
 - [ ] Axe accessibility audit passes
-- [ ] Screen reader test: labels announced
+- [ ] Screen reader test: Labels announced on focus
 
-## Implementation Status
+## Implementation
 
-PENDING - Requires frontend React component updates
+```jsx
+// BEFORE
+<label>Listagem de Números</label>
+<textarea />
 
-## Change Log
+// AFTER
+<label htmlFor="bulk-numbers-textarea">Listagem de Números</label>
+<textarea id="bulk-numbers-textarea" />
+```
 
-| Date | Author | Change |
-|------|--------|--------|
-| 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |
+## Files
+
+- `frontend/src/components/BulkSearch.jsx` (modified)
+- `frontend/src/components/Settings.jsx` (modified)
