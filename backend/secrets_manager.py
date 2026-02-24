@@ -1,166 +1,174 @@
 """
-Secrets Manager Module
+Secrets Management Module
 
-Provides secure access to secrets with support for multiple backends:
-- Local environment variables (.env file)
-- AWS Secrets Manager (future)
-- dotenv-vault (future)
+This module provides a centralized interface for accessing secrets.
+Supports multiple backends:
+- Environment variables (development)
+- .env file with dotenv (development)
+- AWS Secrets Manager (production)
+- dotenv-vault (production)
 
-This abstraction allows seamless migration between secret backends.
+SECURITY GUIDELINES:
+1. Never hardcode secrets in code
+2. Never log secrets (use masked values)
+3. Always use this module to access secrets
+4. Rotate secrets regularly
 """
 
 import os
-import logging
-from typing import Optional, Dict, Any
+import json
+from typing import Dict, Optional
 from dotenv import load_dotenv
-
-logger = logging.getLogger(__name__)
-
-# Load .env file
-load_dotenv()
 
 
 class SecretsManager:
-    """
-    Centralized secrets management with backend abstraction.
+    """Centralized secrets management interface."""
 
-    Supports multiple backends for storing secrets:
-    - Environment variables (current)
-    - AWS Secrets Manager (planned)
-    - HashiCorp Vault (planned)
-    - dotenv-vault (planned)
-    """
+    def __init__(self):
+        """Initialize secrets manager."""
+        # Load .env file if it exists (development)
+        if os.path.exists('.env'):
+            load_dotenv('.env')
 
-    def __init__(self, backend: str = "env"):
+    def get_secret(self, key: str, default: Optional[str] = None) -> str:
         """
-        Initialize secrets manager.
+        Get a secret value.
+
+        Priority order:
+        1. Environment variable (highest priority)
+        2. AWS Secrets Manager (if AWS_REGION set)
+        3. dotenv-vault (if DOTENV_KEY set)
+        4. Default value
+        5. Raise KeyError (if no default)
 
         Args:
-            backend: Backend type ('env', 'aws', 'vault', 'dotenv-vault')
-        """
-        self.backend = backend
-        self._cache: Dict[str, Any] = {}
-
-    def get_secret(self, key: str, default: Optional[str] = None) -> Optional[str]:
-        """
-        Get secret from configured backend.
-
-        Args:
-            key: Secret key/name
+            key: Secret key name
             default: Default value if secret not found
 
         Returns:
-            Secret value or default
+            Secret value
+
+        Raises:
+            KeyError: If secret not found and no default provided
         """
-        if self.backend == "env":
-            return self._get_from_env(key, default)
-        elif self.backend == "aws":
-            return self._get_from_aws_secrets(key, default)
-        else:
-            logger.warning(f"Unsupported backend: {self.backend}. Falling back to env.")
-            return self._get_from_env(key, default)
+        # Try environment variable first (always takes priority)
+        if key in os.environ:
+            return os.environ[key]
 
-    def _get_from_env(self, key: str, default: Optional[str] = None) -> Optional[str]:
-        """Get secret from environment variables."""
-        return os.getenv(key, default)
+        # Try AWS Secrets Manager
+        if os.getenv('AWS_REGION'):
+            try:
+                return self._get_aws_secret(key)
+            except Exception:
+                pass  # Fall through to next option
 
-    def _get_from_aws_secrets(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        # Try dotenv-vault
+        if os.getenv('DOTENV_KEY'):
+            try:
+                return self._get_vault_secret(key)
+            except Exception:
+                pass  # Fall through to next option
+
+        # Return default or raise error
+        if default is not None:
+            return default
+        raise KeyError(f"Secret '{key}' not found")
+
+    def _get_aws_secret(self, key: str) -> str:
         """
         Get secret from AWS Secrets Manager.
 
-        Requires:
-        - boto3 installed
-        - AWS credentials configured
-        - Secret exists in AWS Secrets Manager
+        Implementation requires: boto3
+
+        Args:
+            key: Secret key name (maps to secret id in AWS)
+
+        Returns:
+            Secret value
         """
         try:
             import boto3
-            import json
+        except ImportError:
+            raise ImportError("boto3 required for AWS Secrets Manager")
 
-            client = boto3.client('secretsmanager', region_name='us-east-1')
-            response = client.get_secret_value(SecretId=f'consulta-processo/{key}')
+        client = boto3.client(
+            'secretsmanager',
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
+        )
 
-            # Parse JSON secret if applicable
-            try:
+        try:
+            response = client.get_secret_value(SecretId=key)
+            if 'SecretString' in response:
                 secret = json.loads(response['SecretString'])
-                return secret.get(key, default)
-            except json.JSONDecodeError:
-                return response['SecretString']
+                if isinstance(secret, dict):
+                    return secret.get('value', secret)
+                return secret
+            else:
+                return response['SecretBinary'].decode('utf-8')
+        except client.exceptions.ResourceNotFoundException:
+            raise KeyError(f"Secret '{key}' not found in AWS Secrets Manager")
 
-        except Exception as e:
-            logger.error(f"Failed to get secret {key} from AWS: {e}")
-            logger.info("Falling back to environment variable")
-            return os.getenv(key, default)
-
-    def list_secrets_keys(self) -> list:
-        """Get list of all secret keys (for audit purposes)."""
-        required_keys = [
-            'DATAJUD_APIKEY',
-            'DATABASE_URL',
-            'SENTRY_DSN'
-        ]
-        found_keys = [key for key in required_keys if os.getenv(key)]
-        return found_keys
-
-    def validate_secrets(self) -> Dict[str, bool]:
+    def _get_vault_secret(self, key: str) -> str:
         """
-        Validate that all required secrets are configured.
+        Get secret from dotenv-vault.
+
+        Implementation requires: dotenv-vault
+
+        Args:
+            key: Secret key name
 
         Returns:
-            Dict with validation status for each secret
+            Secret value
         """
-        required_secrets = {
-            'DATAJUD_APIKEY': 'DataJud API Key',
-            'DATABASE_URL': 'Database connection URL',
-            'SENTRY_DSN': 'Sentry DSN (optional)'
-        }
+        try:
+            from dotenv_vault import load_dotenv as vault_load_dotenv
+        except ImportError:
+            raise ImportError("dotenv-vault required")
 
-        validation = {}
-        for key, description in required_secrets.items():
-            is_set = bool(os.getenv(key))
-            validation[key] = is_set
-            status = "✓" if is_set else "✗"
-            logger.info(f"{status} {key}: {description}")
+        # Load from .env.vault
+        vault_load_dotenv('.env.vault')
+        return os.getenv(key)
 
-        return validation
+    def get_secrets_dict(self, keys: list[str]) -> Dict[str, str]:
+        """
+        Get multiple secrets as dictionary.
 
+        Args:
+            keys: List of secret key names
 
-# Global instance
-_secrets_manager = None
-
-
-def get_secrets_manager(backend: str = "env") -> SecretsManager:
-    """Get or create global secrets manager instance."""
-    global _secrets_manager
-    if _secrets_manager is None:
-        _secrets_manager = SecretsManager(backend=backend)
-    return _secrets_manager
+        Returns:
+            Dictionary with key -> secret mappings
+        """
+        return {key: self.get_secret(key) for key in keys}
 
 
-# Convenience functions
-def get_secret(key: str, default: Optional[str] = None) -> Optional[str]:
-    """Get secret value."""
-    manager = get_secrets_manager()
-    return manager.get_secret(key, default)
+# Global secrets manager instance
+secrets = SecretsManager()
 
 
-def validate_all_secrets() -> Dict[str, bool]:
-    """Validate all required secrets are set."""
-    manager = get_secrets_manager()
-    return manager.validate_secrets()
+# Common secrets helper functions
+def get_database_url() -> str:
+    """Get database connection URL."""
+    return secrets.get_secret('DATABASE_URL', 'sqlite:///./consulta_processual.db')
 
 
-if __name__ == "__main__":
-    # Audit secrets configuration
-    logger.basicConfig(level=logging.INFO)
-    manager = get_secrets_manager()
+def get_datajud_api_key() -> str:
+    """Get DataJud API key."""
+    key = secrets.get_secret('DATAJUD_API_KEY', None)
+    if not key:
+        raise KeyError("DATAJUD_API_KEY not configured. Set it in .env file.")
+    return key
 
-    print("\n=== SECRETS CONFIGURATION AUDIT ===\n")
-    validation = manager.validate_secrets()
 
-    found = sum(1 for v in validation.values() if v)
-    total = len(validation)
+def get_sentry_dsn() -> Optional[str]:
+    """Get Sentry DSN for error tracking (optional)."""
+    return secrets.get_secret('SENTRY_DSN', None)
 
-    print(f"\nSecrets found: {found}/{total}")
-    print(f"\nBackend: {manager.backend}")
-    print(f"Status: {'READY' if found >= 2 else 'INCOMPLETE'}")
+
+def is_secrets_configured() -> bool:
+    """Check if secrets are properly configured."""
+    try:
+        get_datajud_api_key()
+        return True
+    except KeyError:
+        return False

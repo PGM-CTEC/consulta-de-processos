@@ -26,7 +26,11 @@
       "Bash(git checkout:*)",
       "Bash(git merge:*)",
       "Bash(cd:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npm run test:*)",
+      "Bash(npx playwright:*)",
+      "Bash(test:*)",
+      "Bash(gh auth:*)"
     ]
   },
   "hooks": {

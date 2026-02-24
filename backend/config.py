@@ -10,6 +10,10 @@ SECURITY NOTE: Sensitive values are now managed via SecretsManager.
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv('.env')
 
 
 class Settings(BaseSettings):
