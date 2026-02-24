@@ -39,8 +39,34 @@ load_dotenv()
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
+    description="API for querying and analyzing judicial processes from DataJud (Conselho Nacional de Justiça).",
     debug=settings.DEBUG,
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    openapi_tags=[
+        {
+            "name": "health",
+            "description": "Health check and readiness endpoints",
+        },
+        {
+            "name": "processes",
+            "description": "Query and retrieve legal process information",
+        },
+        {
+            "name": "metrics",
+            "description": "Performance metrics and monitoring",
+        },
+        {
+            "name": "stats",
+            "description": "Database statistics and analytics",
+        },
+        {
+            "name": "history",
+            "description": "Search history management",
+        },
+    ],
 )
 
 # Initialize rate limiter (Story: REM-004 DB-002)
