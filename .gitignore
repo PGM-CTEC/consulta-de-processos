@@ -39,11 +39,13 @@ Thumbs.db
 .vscode/
 .idea/
 
-# INCLUDED FILES (Explicitly allowed per user request)
-# .env
-# .env.local
-# *.db
-# *.sqlite3
+# Test artifacts
+playwright-report/
+test-results/
+
+# Generated scripts
+PULL_REQUEST_SUMMARY.md
+create_pr.py
 
 # Environment & Secrets (AIOS)
 .env
