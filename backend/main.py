@@ -21,12 +21,14 @@ from .error_handlers import register_exception_handlers
 from .exceptions import ProcessNotFoundException
 from . import models
 from .database import engine
-from .utils.logger import setup_logger
+from .utils.logger import setup_logger, setup_access_logger
 from .utils.redact import redact_dict
+from .middleware import CorrelationIdMiddleware, RequestLoggerMiddleware
 from contextlib import asynccontextmanager
 
-# Initialize logger
+# Initialize loggers (Story: REM-016 — Centralized Logging Local)
 logger = setup_logger()
+setup_access_logger()  # Initializes "access" logger used by RequestLoggerMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -95,6 +97,11 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": "Internal server error"}
     )
+
+# Observability middlewares — Story: REM-016 (Centralized Logging Local)
+# Order matters: CorrelationId must run before RequestLogger so the ID is available.
+app.add_middleware(RequestLoggerMiddleware)
+app.add_middleware(CorrelationIdMiddleware)
 
 # Configure CORS with environment variables
 app.add_middleware(

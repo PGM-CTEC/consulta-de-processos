@@ -15,6 +15,13 @@ def test_logger_setup():
     assert logger.name == "test_logger"
 
 
+def _close_logger(logger):
+    """Close all file handlers (needed on Windows to release the file lock)."""
+    for handler in list(logger.handlers):
+        handler.close()
+        logger.removeHandler(handler)
+
+
 def test_logger_writes_json():
     """Test that logger writes valid JSON to file."""
     log_file = "logs/test_json.log"
@@ -32,7 +39,8 @@ def test_logger_writes_json():
         assert log_entry['message'] == 'Test message'
         assert log_entry['process_number'] == '123'
 
-    # Cleanup
+    # Close handlers before cleanup (required on Windows)
+    _close_logger(logger)
     Path(log_file).unlink()
 
 
@@ -54,9 +62,10 @@ def test_logger_rotation():
 
     # Should have created rotated files
     assert Path(log_file).exists()
-    # Cleanup
+    # Close handlers before cleanup (required on Windows)
+    _close_logger(logger)
     for f in Path("logs").glob("test_rotation.log*"):
-        f.unlink()
+        f.unlink(missing_ok=True)
 
 
 def test_redact_cpf():
