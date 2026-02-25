@@ -292,3 +292,10 @@ async def get_alerts(limit: int = 20):
     """Get recent performance alerts."""
     metrics_service = get_metrics_service()
     return metrics_service.get_alerts(limit=limit)
+
+
+@app.get("/circuit-breaker/status", tags=["health"])
+async def get_circuit_breaker_status():
+    """Get status of all registered circuit breakers."""
+    from .patterns.circuit_breaker import get_registry
+    return get_registry().get_status()

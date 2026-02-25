@@ -97,6 +97,18 @@ class CircuitBreaker:
         """Check if circuit is half-open."""
         return self._state == CircuitState.HALF_OPEN
 
+    def allow_request(self) -> bool:
+        """
+        Check if a new request should be allowed through.
+        Handles OPEN -> HALF_OPEN transition automatically.
+        Returns True if request can proceed, False if blocked.
+        """
+        if self._should_attempt_reset():
+            logger.info(f"Circuit '{self.name}': Attempting recovery (half-open state)")
+            self._state = CircuitState.HALF_OPEN
+            self._failure_count = 0
+        return self._state != CircuitState.OPEN
+
     def _should_attempt_reset(self) -> bool:
         """Check if it's time to attempt recovery from open state."""
         if self._state != CircuitState.OPEN:

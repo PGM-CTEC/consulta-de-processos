@@ -14,6 +14,7 @@ except ImportError:
 
 from ..config import settings
 from ..exceptions import DataJudAPIException, InvalidProcessNumberException
+from ..patterns.circuit_breaker import CircuitBreaker, get_registry
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,12 @@ class DataJudClient:
         self.api_key = settings.DATAJUD_API_KEY
         self.base_url = settings.DATAJUD_BASE_URL
         self.timeout = settings.DATAJUD_TIMEOUT
+        self._breaker = get_registry().create(
+            name="datajud-api",
+            failure_threshold=5,
+            recovery_timeout=60,
+            expected_exception=httpx.HTTPError,
+        )
         
     def _get_tribunal_alias(self, process_number: str) -> str:
         """
@@ -167,6 +174,11 @@ class DataJudClient:
         return copy.deepcopy(selected), meta
 
     async def _search_index(self, alias: str, clean_number: str) -> List[Dict[str, Any]]:
+        if not self._breaker.allow_request():
+            raise DataJudAPIException(
+                "DataJud temporariamente indisponível (circuit breaker OPEN). Tente novamente em instantes."
+            )
+
         url = f"{self.base_url}/{alias}/_search"
         logger.info(f"Requesting DataJud API: {alias}/_search for process {clean_number}")
 
@@ -213,6 +225,7 @@ class DataJudClient:
                 response = await _post_with_retry(trust_env=False)
             except Exception as e:
                 logger.error(f"Network error with both proxy modes after retries: {str(e)}")
+                self._breaker.record_failure()
                 raise
 
         try:
@@ -231,6 +244,7 @@ class DataJudClient:
                 )
             if response.status_code >= 500:
                 logger.error(f"DataJud server error {response.status_code}: {response.text[:200]}")
+                self._breaker.record_failure()
                 raise DataJudAPIException(
                     "Serviço DataJud temporariamente indisponível. Tente novamente."
                 )
@@ -250,15 +264,19 @@ class DataJudClient:
                 raise DataJudAPIException("Resposta inválida da API DataJud") from e
 
             hits = data.get("hits", {}).get("hits", [])
-            return [h.get("_source", h) for h in hits if isinstance(h, dict)]
+            result = [h.get("_source", h) for h in hits if isinstance(h, dict)]
+            self._breaker.record_success()
+            return result
 
         except httpx.TimeoutException:
             logger.error(f"Timeout connecting to DataJud API: {url}")
+            self._breaker.record_failure()
             raise DataJudAPIException(
                 f"Timeout ao consultar DataJud (limite: {self.timeout}s)"
             )
         except httpx.RequestError as e:
             logger.error(f"Network error connecting to DataJud: {str(e)}")
+            self._breaker.record_failure()
             raise DataJudAPIException(
                 "Erro de conexão com DataJud. Verifique sua conexão de internet."
             ) from e

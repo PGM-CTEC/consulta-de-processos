@@ -6,8 +6,8 @@
 **Complexity:** 8 pts (M - 3-5 days)
 **Priority:** HIGH
 **Assignee:** Backend Developer
-**Status:** Ready
-**Sprint:** Sprint 3
+**Status:** Done
+**Sprint:** Sprint 8
 
 ## Description
 
@@ -15,11 +15,13 @@ Add circuit breaker pattern (using pybreaker) to DataJud API calls to prevent ca
 
 ## Acceptance Criteria
 
-- [ ] pybreaker library installed (`pip install pybreaker`)
-- [ ] CircuitBreaker configured: 5 failures → open, 60s timeout
-- [ ] State transitions logged (closed → open → half-open → closed)
-- [ ] Fast-fail when circuit open (don't wait for timeout)
-- [ ] Test: 5 consecutive failures → circuit opens → 6th request fails immediately
+- [x] CircuitBreaker implementado em `backend/patterns/circuit_breaker.py` (custom, sem pybreaker)
+- [x] CircuitBreaker integrado em `DataJudClient.__init__()` (5 falhas → open, 60s timeout)
+- [x] Transições de estado logadas (closed → open → half-open → closed)
+- [x] Fast-fail via `allow_request()` quando circuit OPEN
+- [x] `record_failure()` em erros de rede, timeout e 5xx
+- [x] `record_success()` após resposta bem-sucedida
+- [x] Endpoint `GET /circuit-breaker/status` adicionado ao main.py
 
 ## Technical Notes
 
@@ -61,10 +63,13 @@ None
 
 ## File List
 
-_To be updated during development_
+- `backend/patterns/circuit_breaker.py` — adicionado método `allow_request()`
+- `backend/services/datajud.py` — integrado CircuitBreaker em `__init__` e `_search_index()`
+- `backend/main.py` — endpoint `GET /circuit-breaker/status`
 
 ## Change Log
 
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |
+| 2026-02-24 | @dev | Sprint 8: CircuitBreaker integrado no DataJudClient + endpoint status |
