@@ -129,13 +129,13 @@ const BulkSearch = () => {
                         />
                         <FileUp className={`h-10 w-10 mb-3 ${dragging ? 'text-violet-500' : 'text-gray-400'}`} />
                         <p className="text-sm font-semibold text-gray-700">Clique ou arraste um arquivo para importar</p>
-                        <p className="text-xs text-gray-400 mt-1">Suporta .txt, .csv e .xlsx</p>
+                        <p className="text-xs text-gray-600 mt-1">Suporta .txt, .csv e .xlsx</p>
                     </div>
 
                     <div className="relative">
                         <label
                             htmlFor="bulk-numbers-textarea"
-                            className="absolute top-3 left-4 flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest bg-white pr-2"
+                            className="absolute top-3 left-4 flex items-center text-xs font-bold text-gray-600 uppercase tracking-widest bg-white pr-2"
                         >
                             Listagem de Números
                         </label>
@@ -213,11 +213,11 @@ const BulkSearch = () => {
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-gray-50 border-b border-gray-100">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Processo Judicial</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Tribunal</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Órgão Judicial / Vara</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Fase Atual</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-widest">Processo Judicial</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-widest">Tribunal</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-widest">Órgão Judicial / Vara</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-widest">Fase Atual</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-widest">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">

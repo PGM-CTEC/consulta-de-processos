@@ -145,7 +145,7 @@ const Dashboard = () => {
                             </div>
                         ))}
                         {stats.tribunals.length === 0 && (
-                            <p className="text-gray-400 text-sm italic">Nenhum dado disponível</p>
+                            <p className="text-gray-600 text-sm italic">Nenhum dado disponível</p>
                         )}
                     </div>
                 </div>
@@ -173,7 +173,7 @@ const Dashboard = () => {
                             </div>
                         ))}
                         {stats.phases.length === 0 && (
-                            <p className="text-gray-400 text-sm italic">Nenhum dado disponível</p>
+                            <p className="text-gray-600 text-sm italic">Nenhum dado disponível</p>
                         )}
                     </div>
                 </div>
@@ -196,7 +196,7 @@ const Dashboard = () => {
                                             title={`${item.month}: ${item.count} processos`}
                                         />
                                     </div>
-                                    <span className="text-xs text-gray-500 font-semibold mt-2 transform -rotate-45 origin-top-left">
+                                    <span className="text-xs text-gray-600 font-semibold mt-2 transform -rotate-45 origin-top-left">
                                         {item.month}
                                     </span>
                                 </div>
