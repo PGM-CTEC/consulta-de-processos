@@ -6,8 +6,8 @@
 **Complexity:** 5 pts (M - 2-3 days)
 **Priority:** MEDIUM
 **Assignee:** Backend Developer
-**Status:** Ready
-**Sprint:** Sprint 4
+**Status:** Done
+**Sprint:** Sprint 9
 
 ## Description
 
@@ -15,12 +15,12 @@ Evaluate need for authentication (JWT, OAuth, etc.) and document decision (yes/n
 
 ## Acceptance Criteria
 
-- [ ] Requirements gathered (public vs private app)
-- [ ] Decision documented: YES (implement auth) or NO (defer)
-- [ ] If YES: Auth library selected (FastAPI-Users, Authlib, custom JWT)
-- [ ] If YES: User model designed (username, email, password_hash)
-- [ ] If NO: Rationale documented (e.g., internal tool, VPN-protected)
-- [ ] Security implications documented
+- [x] Requirements gathered (internal tool, 1-50 users, VPN-protected)
+- [x] Decision documented: NO-GO (defer authentication)
+- [ ] If YES: Auth library selected (N/A — NO-GO)
+- [ ] If YES: User model designed (N/A — NO-GO)
+- [x] If NO: Rationale documented (internal tool behind VPN, AuditLog user_id prepared for future)
+- [x] Security implications documented (IP whitelist, VPN, rate limiting)
 
 ## Technical Notes
 
@@ -63,10 +63,11 @@ None
 
 ## File List
 
-_To be updated during development_
+- `docs/decisions/auth-decision.md` — Decision document (NO-GO, defer)
 
 ## Change Log
 
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |
+| 2026-02-27 | @dev | Documented authentication decision — NO-GO (internal tool/VPN) [Sprint 9] |

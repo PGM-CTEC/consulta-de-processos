@@ -6,8 +6,8 @@
 **Complexity:** 8 pts (M - 3-5 days)
 **Priority:** MEDIUM
 **Assignee:** Data Engineer
-**Status:** Ready
-**Sprint:** Sprint 4
+**Status:** Done
+**Sprint:** Sprint 9
 
 ## Description
 
@@ -15,13 +15,13 @@ Setup Alembic for database schema versioning and automated migrations, preventin
 
 ## Acceptance Criteria
 
-- [ ] Alembic installed (`pip install alembic`)
-- [ ] `alembic init alembic` executed
-- [ ] alembic.ini configured (sqlalchemy.url)
-- [ ] Initial migration created: `alembic revision --autogenerate -m "initial schema"`
-- [ ] Migration applied: `alembic upgrade head`
-- [ ] Rollback tested: `alembic downgrade -1`
-- [ ] README.md updated with migration commands
+- [x] Alembic installed (`pip install alembic==1.13.1`)
+- [x] `alembic init alembic` executed
+- [x] alembic.ini configured (sqlalchemy.url = sqlite:///./consulta_processual.db)
+- [x] Initial migration created: `alembic revision --autogenerate -m "initial schema"`
+- [x] Migration applied: `alembic upgrade head`
+- [x] Rollback tested: `alembic downgrade -1` && `alembic upgrade head`
+- [x] README.md created with migration commands
 
 ## Technical Notes
 
@@ -68,10 +68,16 @@ None
 
 ## File List
 
-_To be updated during development_
+- `alembic.ini` — Config Alembic (sqlite URL)
+- `alembic/env.py` — env configurado com Base, render_as_batch=True
+- `alembic/script.py.mako` — template de migration
+- `alembic/versions/2f1ecee8db76_initial_schema.py` — migration inicial
+- `backend/requirements.txt` — adicionado alembic==1.13.1
+- `backend/models.py` — adicionado Index import + __table_args__ em Movement
 
 ## Change Log
 
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |
+| 2026-02-27 | @dev | Implemented Alembic setup with render_as_batch for SQLite [Sprint 9] |

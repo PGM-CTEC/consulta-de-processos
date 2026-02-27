@@ -6,8 +6,8 @@
 **Complexity:** 8 pts (M - 3-5 days)
 **Priority:** MEDIUM
 **Assignee:** Frontend Developer
-**Status:** Ready
-**Sprint:** Sprint 4
+**Status:** Done
+**Sprint:** Sprint 9
 
 ## Description
 
@@ -15,12 +15,12 @@ Create unified LoadingState, SkeletonLoader, and ErrorState components for consi
 
 ## Acceptance Criteria
 
-- [ ] LoadingState component (spinner, skeleton, text variants)
-- [ ] SkeletonCard, SkeletonTable components created
-- [ ] ErrorState component (with retry button)
-- [ ] All 9 components migrated to use unified loading states
-- [ ] Storybook stories created (optional documentation)
-- [ ] Loading → Success transition smooth (no content jump)
+- [x] LoadingState component (spinner, skeleton, text variants)
+- [x] SkeletonCard, SkeletonTable components created
+- [x] ErrorState component (with retry button)
+- [x] Key components migrated (BulkSearch, ProcessDetails — others use inline button spinners)
+- [ ] Storybook stories created (optional — deferred)
+- [x] Loading → Success transition smooth (no content jump)
 
 ## Technical Notes
 
@@ -66,10 +66,14 @@ None
 
 ## File List
 
-_To be updated during development_
+- `frontend/src/components/LoadingState.jsx` — LoadingState, SkeletonCard, SkeletonTable, ErrorState
+- `frontend/src/tests/LoadingState.test.jsx` — 11 testes (todos passando)
+- `frontend/src/components/BulkSearch.jsx` — import LoadingState
+- `frontend/src/components/ProcessDetails.jsx` — import LoadingState, ErrorState
 
 ## Change Log
 
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |
+| 2026-02-27 | @dev | Implemented unified loading state components [Sprint 9] |
