@@ -1,0 +1,73 @@
+/* Design Tokens — REM-033
+ * CSS Custom Properties para o sistema de design do Consulta Processo
+ * Compatível com Tailwind CSS 3.4 e Shadcn/UI
+ */
+
+:root {
+  /* ── Brand Colors ─────────────────────────── */
+  --color-brand:          #4f46e5; /* indigo-600 */
+  --color-brand-hover:    #4338ca; /* indigo-700 */
+  --color-brand-light:    #e0e7ff; /* indigo-100 */
+  --color-brand-fg:       #ffffff; /* text on brand bg */
+
+  --color-accent:         #7c3aed; /* violet-600 */
+  --color-accent-hover:   #6d28d9; /* violet-700 */
+
+  /* ── Neutral Palette ─────────────────────── */
+  --color-surface:        #ffffff;
+  --color-surface-alt:    #f9fafb; /* gray-50 */
+  --color-surface-muted:  #f3f4f6; /* gray-100 */
+  --color-border:         #e5e7eb; /* gray-200 */
+  --color-border-strong:  #d1d5db; /* gray-300 */
+
+  /* ── Text Colors ─────────────────────────── */
+  --color-text-primary:   #111827; /* gray-900 */
+  --color-text-secondary: #374151; /* gray-700 */
+  --color-text-muted:     #4b5563; /* gray-600 — WCAG AA 7.0:1 */
+  --color-text-disabled:  #9ca3af; /* gray-400 — decorative only */
+
+  /* ── Semantic Colors ─────────────────────── */
+  --color-success:        #059669; /* emerald-600 */
+  --color-success-bg:     #d1fae5; /* emerald-100 */
+  --color-error:          #dc2626; /* red-600 */
+  --color-error-bg:       #fee2e2; /* red-100 */
+  --color-warning:        #d97706; /* amber-600 */
+  --color-warning-bg:     #fef3c7; /* amber-100 */
+  --color-info:           #2563eb; /* blue-600 */
+  --color-info-bg:        #dbeafe; /* blue-100 */
+
+  /* ── Spacing Scale ───────────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+
+  /* ── Typography ──────────────────────────── */
+  --font-size-xs:   0.75rem;
+  --font-size-sm:   0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg:   1.125rem;
+  --font-size-xl:   1.25rem;
+  --font-size-2xl:  1.5rem;
+
+  --font-weight-normal:    400;
+  --font-weight-medium:    500;
+  --font-weight-semibold:  600;
+  --font-weight-bold:      700;
+  --font-weight-extrabold: 800;
+
+  /* ── Shadows ─────────────────────────────── */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  /* ── Border Radius ───────────────────────── */
+  --radius-sm:   0.375rem;
+  --radius-md:   0.5rem;
+  --radius-lg:   0.75rem;
+  --radius-xl:   1rem;
+  --radius-full: 9999px;
+}
