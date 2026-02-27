@@ -99,9 +99,9 @@ const BulkSearch = () => {
 
     return (
         <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+            <section className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100" aria-labelledby="bulk-search-title">
                 <div className="p-6 bg-gradient-to-r from-violet-600 to-indigo-600">
-                    <h2 className="text-xl font-bold text-white flex items-center">
+                    <h2 id="bulk-search-title" className="text-xl font-bold text-white flex items-center">
                         <Upload className="mr-2 h-6 w-6" />
                         Busca em Lote (Milhares de Processos)
                     </h2>
@@ -110,7 +110,7 @@ const BulkSearch = () => {
                     </p>
                 </div>
 
-                <div className="p-6 space-y-4">
+                <form className="p-6 space-y-4">
                     {/* Drag and Drop Zone */}
                     <div
                         onDragOver={handleDragOver}
@@ -168,14 +168,14 @@ const BulkSearch = () => {
                             {error}
                         </div>
                     )}
-                </div>
-            </div>
+                </form>
+            </section>
 
             {results && (
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500" aria-labelledby="results-title">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center relative">
                         <div>
-                            <h3 className="text-lg font-bold text-gray-900">Resultados da Consulta</h3>
+                            <h2 id="results-title" className="text-lg font-bold text-gray-900">Resultados da Consulta</h2>
                             <p className="text-sm text-gray-500">
                                 {results.results.length} processados | {results.failures.length} falhas
                             </p>
@@ -259,7 +259,7 @@ const BulkSearch = () => {
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </section>
             )}
         </div>
     );

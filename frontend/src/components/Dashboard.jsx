@@ -127,8 +127,8 @@ const Dashboard = () => {
             {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Tribunals Chart */}
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Processos por Tribunal</h3>
+                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="tribunals-title">
+                    <h2 id="tribunals-title" className="text-lg font-bold text-gray-900 mb-4">Processos por Tribunal</h2>
                     <div className="space-y-3">
                         {stats.tribunals.map((tribunal, idx) => (
                             <div key={idx} className="space-y-1">
@@ -148,11 +148,11 @@ const Dashboard = () => {
                             <p className="text-gray-600 text-sm italic">Nenhum dado disponível</p>
                         )}
                     </div>
-                </div>
+                </section>
 
                 {/* Phases Chart */}
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Processos por Fase</h3>
+                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="phases-title">
+                    <h2 id="phases-title" className="text-lg font-bold text-gray-900 mb-4">Processos por Fase</h2>
                     <div className="space-y-3">
                         {stats.phases.map((phase, idx) => (
                             <div key={idx} className="space-y-1">
@@ -176,13 +176,13 @@ const Dashboard = () => {
                             <p className="text-gray-600 text-sm italic">Nenhum dado disponível</p>
                         )}
                     </div>
-                </div>
+                </section>
             </div>
 
             {/* Timeline Chart */}
             {stats.timeline && stats.timeline.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Distribuição Temporal (Últimos 12 meses)</h3>
+                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="timeline-title">
+                    <h2 id="timeline-title" className="text-lg font-bold text-gray-900 mb-4">Distribuição Temporal (Últimos 12 meses)</h2>
                     <div className="flex items-end justify-between space-x-2 h-64">
                         {stats.timeline.map((item, idx) => {
                             const height = (item.count / maxTimelineCount) * 100;
@@ -203,7 +203,7 @@ const Dashboard = () => {
                             );
                         })}
                     </div>
-                </div>
+                </section>
             )}
         </div>
     );
