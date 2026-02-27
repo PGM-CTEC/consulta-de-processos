@@ -1,5 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON, Index
+import json as _json
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON, Index, event
 from sqlalchemy.orm import relationship
+from sqlalchemy.inspection import inspect as sa_inspect
 from sqlalchemy.sql import func
 from .database import Base
 
@@ -53,3 +56,86 @@ class SearchHistory(Base):
     number = Column(String, index=True, nullable=False)
     court = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AuditLog(Base):
+    __tablename__ = 'audit_log'
+
+    id = Column(Integer, primary_key=True, index=True)
+    table_name = Column(String(50), nullable=False)
+    record_id = Column(Integer, nullable=True)
+    action = Column(String(10), nullable=False)  # INSERT, UPDATE, DELETE
+    old_values = Column(Text, nullable=True)     # JSON serializado
+    new_values = Column(Text, nullable=True)     # JSON serializado
+    user_id = Column(String, nullable=True)      # Futuro: sistema de auth
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f"<AuditLog {self.action} on {self.table_name}#{self.record_id}>"
+
+
+def _serialize(obj):
+    """Serializa um model SQLAlchemy para dict JSON-safe."""
+    if obj is None:
+        return None
+    result = {}
+    for col in obj.__table__.columns:
+        val = getattr(obj, col.name, None)
+        if isinstance(val, datetime):
+            val = val.isoformat()
+        result[col.name] = val
+    return _json.dumps(result)
+
+
+@event.listens_for(Process, 'after_insert')
+def _audit_process_insert(mapper, connection, target):
+    connection.execute(
+        AuditLog.__table__.insert(),
+        {
+            "table_name": "processes",
+            "record_id": target.id,
+            "action": "INSERT",
+            "old_values": None,
+            "new_values": _serialize(target),
+            "timestamp": datetime.utcnow(),
+        }
+    )
+
+
+@event.listens_for(Process, 'after_update')
+def _audit_process_update(mapper, connection, target):
+    state = sa_inspect(target)
+    old = {}
+    for attr in state.attrs:
+        hist = attr.history
+        if hist.has_changes() and hist.deleted:
+            old[attr.key] = hist.deleted[0]
+    connection.execute(
+        AuditLog.__table__.insert(),
+        {
+            "table_name": "processes",
+            "record_id": target.id,
+            "action": "UPDATE",
+            "old_values": _json.dumps({
+                k: str(v) if not isinstance(v, (str, int, float, bool, type(None))) else v
+                for k, v in old.items()
+            }),
+            "new_values": _serialize(target),
+            "timestamp": datetime.utcnow(),
+        }
+    )
+
+
+@event.listens_for(Process, 'after_delete')
+def _audit_process_delete(mapper, connection, target):
+    connection.execute(
+        AuditLog.__table__.insert(),
+        {
+            "table_name": "processes",
+            "record_id": target.id,
+            "action": "DELETE",
+            "old_values": _serialize(target),
+            "new_values": None,
+            "timestamp": datetime.utcnow(),
+        }
+    )
