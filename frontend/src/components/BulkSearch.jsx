@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, ChevronDown, FileUp, AlertCircle } from 'lucide-react';
+import { LoadingState } from './LoadingState';
 import { bulkSearch } from '../services/api';
 import * as XLSX from 'xlsx';
 import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
