@@ -5,6 +5,9 @@ import { bulkSearch } from '../services/api';
 import * as XLSX from 'xlsx';
 import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
 import { exporters } from '../utils/exportHelpers';
+import { Button } from './ui/button';
+import { Card, CardContent } from './ui/card';
+import { Input } from './ui/input';
 
 const BulkSearch = () => {
     const [numbers, setNumbers] = useState('');
@@ -107,7 +110,7 @@ const BulkSearch = () => {
 
     return (
         <div className="space-y-6">
-            <section className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100" aria-labelledby="bulk-search-title">
+            <Card className="overflow-hidden">
                 <div className="p-6 bg-gradient-to-r from-violet-600 to-indigo-600">
                     <h2 id="bulk-search-title" className="text-xl font-bold text-white flex items-center">
                         <Upload className="mr-2 h-6 w-6" />
@@ -118,7 +121,7 @@ const BulkSearch = () => {
                     </p>
                 </div>
 
-                <form className="p-6 space-y-4">
+                <form className="p-6 space-y-4" aria-labelledby="bulk-search-title">
                     <fieldset className="space-y-4 border-b border-gray-200 pb-4">
                         <legend className="text-sm font-bold text-gray-600 uppercase tracking-widest mb-4">Importar Arquivo</legend>
                         {/* Drag and Drop Zone */}
@@ -163,10 +166,10 @@ const BulkSearch = () => {
                         </div>
                     </fieldset>
 
-                    <button
+                    <Button
                         onClick={handleSearch}
                         disabled={loading || !numbers.trim()}
-                        className={`w-full flex items-center justify-center p-4 rounded-xl font-bold text-white transition-all ${loading ? 'bg-gray-400' : 'bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-200'
+                        className={`w-full flex items-center justify-center p-4 font-bold text-white transition-all ${loading ? 'bg-gray-400' : 'bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-200'
                             }`}
                     >
                         {loading ? (
@@ -175,7 +178,7 @@ const BulkSearch = () => {
                             <Search className="mr-2 h-5 w-5" />
                         )}
                         {loading ? 'Processando Lote...' : 'Iniciar Consulta em Lote'}
-                    </button>
+                    </Button>
                     {error && (
                         <div className="flex items-center text-red-500 bg-red-50 p-3 rounded-lg text-sm font-medium">
                             <AlertCircle className="h-4 w-4 mr-2" />
@@ -183,11 +186,11 @@ const BulkSearch = () => {
                         </div>
                     )}
                 </form>
-            </section>
+            </Card>
 
             {results && (
-                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500" aria-labelledby="results-title">
-                    <div className="p-6 border-b border-gray-100 flex justify-between items-center relative">
+                <Card className="overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <CardContent className="p-6 border-b border-gray-100 flex justify-between items-center relative">
                         <div>
                             <h2 id="results-title" className="text-lg font-bold text-gray-900">Resultados da Consulta</h2>
                             <p className="text-sm text-gray-500">
@@ -196,36 +199,37 @@ const BulkSearch = () => {
                         </div>
 
                         <div className="relative">
-                            <button
+                            <Button
                                 onClick={() => setShowExportMenu(!showExportMenu)}
+                                variant="default"
                                 aria-expanded={showExportMenu}
                                 aria-haspopup="menu"
                                 aria-label="Exportar Relatório"
-                                className="flex items-center space-x-2 bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+                                className="flex items-center space-x-2 bg-emerald-600 text-white px-4 py-2 font-bold hover:bg-emerald-700 transition-colors shadow-sm"
                             >
                                 <Download className="h-5 w-5" />
                                 <span>Exportar Relatório</span>
                                 <ChevronDown className={`h-4 w-4 transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
-                            </button>
+                            </Button>
 
                             {showExportMenu && (
                                 <div role="menu" aria-label="Opções de exportação" className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                    <button role="menuitem" onClick={() => { handleExportCSV(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
+                                    <Button role="menuitem" variant="ghost" onClick={() => { handleExportCSV(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center rounded-none">
                                         <FileText className="mr-2 h-4 w-4 text-emerald-500" aria-hidden="true" /> Excel / CSV (.csv)
-                                    </button>
-                                    <button role="menuitem" onClick={() => { handleExportXLSX(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
+                                    </Button>
+                                    <Button role="menuitem" variant="ghost" onClick={() => { handleExportXLSX(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center rounded-none">
                                         <FileText className="mr-2 h-4 w-4 text-green-600" aria-hidden="true" /> Planilha Excel (.xlsx)
-                                    </button>
-                                    <button role="menuitem" onClick={() => { handleExportTXT(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
+                                    </Button>
+                                    <Button role="menuitem" variant="ghost" onClick={() => { handleExportTXT(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center rounded-none">
                                         <FileText className="mr-2 h-4 w-4 text-gray-600" aria-hidden="true" /> Texto Puro (.txt)
-                                    </button>
-                                    <button role="menuitem" onClick={() => { handleExportMD(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium flex items-center">
+                                    </Button>
+                                    <Button role="menuitem" variant="ghost" onClick={() => { handleExportMD(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium flex items-center rounded-none">
                                         <FileText className="mr-2 h-4 w-4 text-blue-600" aria-hidden="true" /> Markdown (.md)
-                                    </button>
+                                    </Button>
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </CardContent>
 
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
@@ -276,7 +280,7 @@ const BulkSearch = () => {
                             </tbody>
                         </table>
                     </div>
-                </section>
+                </Card>
             )}
         </div>
     );

@@ -9,6 +9,8 @@ import { normalizePhaseWithMovements } from '../constants/phases';
 import InstanceSelector from './InstanceSelector';
 import { getProcessInstance } from '../services/api';
 import { toast } from 'react-hot-toast';
+import { Button } from './ui/button';
+import { Card, CardContent } from './ui/card';
 
 function ProcessDetails({ data }) {
     const [activeData, setActiveData] = useState(data);
@@ -205,28 +207,30 @@ function ProcessDetails({ data }) {
             />
 
             {/* Header Card */}
-            <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" aria-label="Informações do processo">
-                <header className="bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white flex justify-between items-start">
+            <Card className="overflow-hidden" aria-label="Informações do processo">
+                <header className="bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white flex justify-between items-start rounded-t-2xl">
                     <div>
                         <h1 id="process-title" className="text-2xl font-bold font-mono tracking-wide">{activeData.number}</h1>
                         <p className="opacity-90 mt-1">{activeData.subject || 'Assunto não informado'}</p>
                     </div>
                     {activeData.raw_data && (
                         <div className="flex space-x-2">
-                            <button
+                            <Button
                                 onClick={() => setShowJson(!showJson)}
+                                variant="ghost"
                                 className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors"
                                 title="Ver JSON Bruto"
                             >
                                 <FileJson className="h-5 w-5" />
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 onClick={handleDownloadJson}
+                                variant="ghost"
                                 className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors"
                                 title="Baixar JSON"
                             >
                                 <Download className="h-5 w-5" />
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </header>
@@ -268,10 +272,11 @@ function ProcessDetails({ data }) {
                         </div>
                     </div>
                 </div>
-            </section>
+            </Card>
 
             {/* Timeline */}
-            <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" aria-labelledby="movements-heading">
+            <Card className="p-0">
+            <CardContent className="p-6" aria-labelledby="movements-heading">
                 <div className="flex flex-col space-y-4 mb-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <h2 id="movements-heading" className="text-lg font-bold text-gray-900 flex items-center mb-0">
@@ -372,8 +377,9 @@ function ProcessDetails({ data }) {
                 {/* Show More Button */}
                 {hasMore && (
                     <div className="mt-8 flex justify-center">
-                        <button
+                        <Button
                             onClick={() => setShowAll(!showAll)}
+                            variant="outline"
                             className="flex items-center space-x-2 px-6 py-2.5 bg-indigo-50 text-indigo-700 rounded-full font-bold text-sm hover:bg-indigo-100 transition-all border border-indigo-100 shadow-sm"
                         >
                             {showAll ? (
@@ -387,10 +393,11 @@ function ProcessDetails({ data }) {
                                     <span>Ver mais {filteredMovements.length - 20} movimentos</span>
                                 </>
                             )}
-                        </button>
+                        </Button>
                     </div>
                 )}
-            </section>
+            </CardContent>
+            </Card>
 
             {/* JSON Modal */}
             {showJson && activeData.raw_data && (
@@ -412,19 +419,20 @@ function ProcessDetails({ data }) {
                                 Dados Brutos (DataJud)
                             </h3>
                             <div className="flex items-center space-x-2">
-                                <button
+                                <Button
                                     onClick={handleDownloadJson}
                                     className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors"
                                 >
                                     <Download className="mr-2 h-4 w-4" />
                                     Baixar JSON
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                     onClick={() => setShowJson(false)}
+                                    variant="ghost"
                                     className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                                 >
                                     <X className="h-5 w-5" />
-                                </button>
+                                </Button>
                             </div>
                         </div>
                         <div className="flex-1 overflow-auto p-6 bg-gray-900">

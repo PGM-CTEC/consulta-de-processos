@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Database, Calendar, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
 import { getStats } from '../services/api';
 import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 const Dashboard = () => {
     const [stats, setStats] = useState(null);
@@ -65,8 +67,8 @@ const Dashboard = () => {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-                <div className="p-6 bg-gradient-to-r from-indigo-600 to-violet-600 flex justify-between items-center">
+            <Card className="overflow-hidden">
+                <div className="p-6 bg-gradient-to-r from-indigo-600 to-violet-600 flex justify-between items-center rounded-t-2xl">
                     <div>
                         <h2 className="text-xl font-bold text-white flex items-center">
                             <BarChart3 className="mr-2 h-6 w-6" />
@@ -76,17 +78,18 @@ const Dashboard = () => {
                             Estatísticas do banco de dados local
                         </p>
                     </div>
-                    <button
+                    <Button
                         onClick={loadStats}
-                        className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-bold transition-colors flex items-center space-x-2"
+                        variant="ghost"
+                        className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 font-bold flex items-center space-x-2"
                     >
                         <RefreshCw className="h-4 w-4" />
                         <span>Atualizar</span>
-                    </button>
+                    </Button>
                 </div>
 
                 {/* Key Metrics */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
                     <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
                         <div className="flex items-center justify-between">
                             <div>
@@ -121,8 +124,8 @@ const Dashboard = () => {
                             <Calendar className="h-12 w-12 text-purple-400" />
                         </div>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
             {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
