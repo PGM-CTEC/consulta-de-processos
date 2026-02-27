@@ -13,17 +13,26 @@ import { toast } from 'react-hot-toast';
 function ProcessDetails({ data }) {
     const [activeData, setActiveData] = useState(data);
     const [loadingInstance, setLoadingInstance] = useState(false);
+    const [showJson, setShowJson] = useState(false);
 
     // Sync local state when props change
     useEffect(() => {
         setActiveData(data);
     }, [data]);
 
+    // ESC key closes JSON modal — REM-029
+    useEffect(() => {
+        if (!showJson) return;
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') setShowJson(false);
+        };
+        document.addEventListener('keydown', handleEsc);
+        return () => document.removeEventListener('keydown', handleEsc);
+    }, [showJson]);
+
     const [showAll, setShowAll] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDocTypes, setSelectedDocTypes] = useState([]); // Empty array means 'Todos'
-
-    const [showJson, setShowJson] = useState(false);
 
     const DOC_TYPES = useMemo(() => ({
         'Decisões': ['3', '193', '246', '80', '81'],
@@ -142,9 +151,13 @@ function ProcessDetails({ data }) {
     return (
         <article className={`max-w-4xl mx-auto p-4 space-y-6 ${loadingInstance ? 'opacity-50 pointer-events-none' : ''}`} aria-labelledby="process-title">
             {loadingInstance && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-[1px]">
+                <div
+                    role="status"
+                    aria-label="Carregando instância do processo"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-[1px]"
+                >
                     <div className="bg-white p-4 rounded-full shadow-lg">
-                        <RefreshCw className="h-8 w-8 text-indigo-600 animate-spin" />
+                        <RefreshCw className="h-8 w-8 text-indigo-600 animate-spin" aria-hidden="true" />
                     </div>
                 </div>
             )}
@@ -347,10 +360,19 @@ function ProcessDetails({ data }) {
 
             {/* JSON Modal */}
             {showJson && activeData.raw_data && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+                    role="presentation"
+                    onClick={(e) => { if (e.target === e.currentTarget) setShowJson(false); }}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="json-modal-title"
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+                    >
                         <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50">
-                            <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                            <h3 id="json-modal-title" className="text-lg font-bold text-gray-900 flex items-center">
                                 <FileJson className="mr-2 h-5 w-5 text-indigo-600" />
                                 Dados Brutos (DataJud)
                             </h3>
