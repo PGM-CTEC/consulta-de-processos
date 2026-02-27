@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import ProcessDetails from '../components/ProcessDetails';
 
 // Mock das dependências
@@ -100,5 +100,68 @@ describe('ProcessDetails Component', () => {
     const { container } = render(<ProcessDetails data={mockProcessData} />);
 
     expect(container.textContent).toContain('1ª Vara Cível');
+  });
+});
+
+describe('Modal Dialog ARIA — REM-029', () => {
+  it('loading overlay is absent on initial render (loadingInstance starts false)', () => {
+    // loadingInstance is internal state triggered by instance-switching.
+    // On initial render it is false, so no role="status" overlay should be present.
+    const { container } = render(<ProcessDetails data={mockProcessData} />);
+    const statusEl = container.querySelector('[role="status"]');
+    // Must be null — a spurious status role would indicate an unintended overlay
+    expect(statusEl).toBeNull();
+  });
+
+  it('JSON modal is absent on initial render (showJson starts false)', () => {
+    // The modal is hidden until the user clicks "Ver JSON Bruto".
+    // Verifies the default closed state has no dialog or aria-modal in the DOM.
+    const { container } = render(<ProcessDetails data={mockProcessData} />);
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(container.querySelector('[aria-modal="true"]')).toBeNull();
+  });
+
+  it('JSON modal renders with correct ARIA attributes when raw_data is present and button is clicked', async () => {
+    const dataWithRaw = {
+      ...mockProcessData,
+      raw_data: { test: 'value' },
+    };
+    const { container } = render(<ProcessDetails data={dataWithRaw} />);
+
+    // The toggle button carries title="Ver JSON Bruto"
+    const jsonButton = container.querySelector('button[title="Ver JSON Bruto"]');
+    // raw_data is present so the button MUST be rendered — fail clearly if missing
+    expect(jsonButton).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.click(jsonButton);
+    });
+
+    const dialog = container.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-labelledby')).toBe('json-modal-title');
+    expect(container.querySelector('#json-modal-title')).not.toBeNull();
+  });
+
+  it('JSON modal closes when ESC key is pressed', async () => {
+    const dataWithRaw = {
+      ...mockProcessData,
+      raw_data: { test: 'value' },
+    };
+    const { container } = render(<ProcessDetails data={dataWithRaw} />);
+
+    const jsonButton = container.querySelector('button[title="Ver JSON Bruto"]');
+    expect(jsonButton).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.click(jsonButton);
+    });
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    });
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
 });

@@ -127,83 +127,158 @@ const Dashboard = () => {
             {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Tribunals Chart */}
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Processos por Tribunal</h3>
-                    <div className="space-y-3">
-                        {stats.tribunals.map((tribunal, idx) => (
-                            <div key={idx} className="space-y-1">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="font-semibold text-gray-700 truncate mr-2">{tribunal.tribunal_name}</span>
-                                    <span className="font-bold text-indigo-600">{tribunal.count.toLocaleString()}</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                                    <div
-                                        className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-3 rounded-full transition-all duration-500"
-                                        style={{ width: `${(tribunal.count / maxTribunalCount) * 100}%` }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                        {stats.tribunals.length === 0 && (
-                            <p className="text-gray-400 text-sm italic">Nenhum dado disponível</p>
-                        )}
-                    </div>
-                </div>
+                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="tribunals-title">
+                    <h2 id="tribunals-title" className="text-lg font-bold text-gray-900 mb-4">Processos por Tribunal</h2>
+                    {stats.tribunals.length > 0 ? (
+                        <figure aria-label="Gráfico: Distribuição de Processos por Tribunal">
+                            <ul className="space-y-3 list-none p-0">
+                                {stats.tribunals.map((tribunal, idx) => (
+                                    <li key={idx} className="space-y-1">
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="font-semibold text-gray-700 truncate mr-2">{tribunal.tribunal_name}</span>
+                                            <span className="font-bold text-indigo-600">{tribunal.count.toLocaleString()}</span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                            <div
+                                                role="meter"
+                                                aria-label={`${tribunal.tribunal_name}: ${tribunal.count} processos`}
+                                                aria-valuenow={tribunal.count}
+                                                aria-valuemin={0}
+                                                aria-valuemax={maxTribunalCount}
+                                                className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-3 rounded-full transition-all duration-500"
+                                                style={{ width: `${(tribunal.count / maxTribunalCount) * 100}%` }}
+                                            />
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                            <table className="sr-only">
+                                <caption>Distribuição de Processos por Tribunal</caption>
+                                <thead>
+                                    <tr>
+                                        <th>Tribunal</th>
+                                        <th>Quantidade</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {stats.tribunals.map((tribunal, idx) => (
+                                        <tr key={idx}>
+                                            <td>{tribunal.tribunal_name}</td>
+                                            <td>{tribunal.count}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </figure>
+                    ) : (
+                        <p className="text-gray-600 text-sm italic">Nenhum dado disponível</p>
+                    )}
+                </section>
 
                 {/* Phases Chart */}
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Processos por Fase</h3>
-                    <div className="space-y-3">
-                        {stats.phases.map((phase, idx) => (
-                            <div key={idx} className="space-y-1">
-                                <div className="flex justify-between items-center text-sm">
-                                    <div className="flex items-center space-x-2">
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getPhaseColorClasses(phase.phase, phase.class_nature)}`}>
-                                            {getPhaseDisplayName(phase.phase, phase.class_nature)}
-                                        </span>
-                                    </div>
-                                    <span className="font-bold text-indigo-600">{phase.count.toLocaleString()}</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                                    <div
-                                        className="bg-gradient-to-r from-violet-500 to-violet-600 h-3 rounded-full transition-all duration-500"
-                                        style={{ width: `${(phase.count / maxPhaseCount) * 100}%` }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                        {stats.phases.length === 0 && (
-                            <p className="text-gray-400 text-sm italic">Nenhum dado disponível</p>
-                        )}
-                    </div>
-                </div>
+                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="phases-title">
+                    <h2 id="phases-title" className="text-lg font-bold text-gray-900 mb-4">Processos por Fase</h2>
+                    {stats.phases.length > 0 ? (
+                        <figure aria-label="Gráfico: Distribuição de Processos por Fase">
+                            <ul className="space-y-3 list-none p-0">
+                                {stats.phases.map((phase, idx) => (
+                                    <li key={idx} className="space-y-1">
+                                        <div className="flex justify-between items-center text-sm">
+                                            <div className="flex items-center space-x-2">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getPhaseColorClasses(phase.phase, phase.class_nature)}`}>
+                                                    {getPhaseDisplayName(phase.phase, phase.class_nature)}
+                                                </span>
+                                            </div>
+                                            <span className="font-bold text-indigo-600">{phase.count.toLocaleString()}</span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                            <div
+                                                role="meter"
+                                                aria-label={`Fase ${phase.phase} (${phase.class_nature}): ${phase.count} processos`}
+                                                aria-valuenow={phase.count}
+                                                aria-valuemin={0}
+                                                aria-valuemax={maxPhaseCount}
+                                                className="bg-gradient-to-r from-violet-500 to-violet-600 h-3 rounded-full transition-all duration-500"
+                                                style={{ width: `${(phase.count / maxPhaseCount) * 100}%` }}
+                                            />
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                            <table className="sr-only">
+                                <caption>Distribuição de Processos por Fase</caption>
+                                <thead>
+                                    <tr>
+                                        <th>Fase</th>
+                                        <th>Natureza da Classe</th>
+                                        <th>Quantidade</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {stats.phases.map((phase, idx) => (
+                                        <tr key={idx}>
+                                            <td>Fase {phase.phase}</td>
+                                            <td>{phase.class_nature}</td>
+                                            <td>{phase.count}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </figure>
+                    ) : (
+                        <p className="text-gray-600 text-sm italic">Nenhum dado disponível</p>
+                    )}
+                </section>
             </div>
 
             {/* Timeline Chart */}
             {stats.timeline && stats.timeline.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Distribuição Temporal (Últimos 12 meses)</h3>
-                    <div className="flex items-end justify-between space-x-2 h-64">
-                        {stats.timeline.map((item, idx) => {
-                            const height = (item.count / maxTimelineCount) * 100;
-                            return (
-                                <div key={idx} className="flex-1 flex flex-col items-center">
-                                    <div className="w-full flex flex-col items-center justify-end h-full pb-2">
-                                        <span className="text-xs font-bold text-indigo-600 mb-1">{item.count}</span>
-                                        <div
-                                            className="w-full bg-gradient-to-t from-indigo-500 to-indigo-400 rounded-t-lg hover:from-indigo-600 hover:to-indigo-500 transition-all cursor-pointer"
-                                            style={{ height: `${height}%` }}
-                                            title={`${item.month}: ${item.count} processos`}
-                                        />
+                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="timeline-title">
+                    <h2 id="timeline-title" className="text-lg font-bold text-gray-900 mb-4">Distribuição Temporal (Últimos 12 meses)</h2>
+                    <figure aria-label="Gráfico: Distribuição Temporal dos últimos 12 meses">
+                        <div className="flex items-end justify-between space-x-2 h-64">
+                            {stats.timeline.map((item, idx) => {
+                                const height = (item.count / maxTimelineCount) * 100;
+                                return (
+                                    <div key={idx} className="flex-1 flex flex-col items-center">
+                                        <div className="w-full flex flex-col items-center justify-end h-full pb-2">
+                                            <span className="text-xs font-bold text-indigo-600 mb-1">{item.count}</span>
+                                            <div
+                                                role="meter"
+                                                aria-label={`${item.month}: ${item.count} processos`}
+                                                aria-valuenow={item.count}
+                                                aria-valuemin={0}
+                                                aria-valuemax={maxTimelineCount}
+                                                className="w-full bg-gradient-to-t from-indigo-500 to-indigo-400 rounded-t-lg hover:from-indigo-600 hover:to-indigo-500 transition-all cursor-pointer"
+                                                style={{ height: `${height}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-xs text-gray-600 font-semibold mt-2 transform -rotate-45 origin-top-left">
+                                            {item.month}
+                                        </span>
                                     </div>
-                                    <span className="text-xs text-gray-500 font-semibold mt-2 transform -rotate-45 origin-top-left">
-                                        {item.month}
-                                    </span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
+                                );
+                            })}
+                        </div>
+                        <table className="sr-only">
+                            <caption>Distribuição Temporal (Últimos 12 meses)</caption>
+                            <thead>
+                                <tr>
+                                    <th>Mês</th>
+                                    <th>Quantidade</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stats.timeline.map((item, idx) => (
+                                    <tr key={idx}>
+                                        <td>{item.month}</td>
+                                        <td>{item.count}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </figure>
+                </section>
             )}
         </div>
     );
