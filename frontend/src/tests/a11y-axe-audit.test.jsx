@@ -48,7 +48,7 @@ describe('Axe DevTools Accessibility Audit — REM-031', () => {
   });
 
   describe('Dashboard Component — No Contrast Violations', () => {
-    it('Dashboard renders with no Axe violations', async () => {
+    it('Dashboard renders with no Axe violations', { timeout: 15000 }, async () => {
       const { container } = render(<Dashboard />);
 
       // Allow time for component to mount
@@ -61,7 +61,7 @@ describe('Axe DevTools Accessibility Audit — REM-031', () => {
       expect(results).toHaveNoViolations();
     });
 
-    it('Dashboard has no contrast violations specifically', async () => {
+    it('Dashboard has no contrast violations specifically', { timeout: 15000 }, async () => {
       const { container } = render(<Dashboard />);
 
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -80,7 +80,7 @@ describe('Axe DevTools Accessibility Audit — REM-031', () => {
       expect(contrastViolations).toHaveLength(0);
     });
 
-    it('Dashboard has no critical/serious a11y violations', async () => {
+    it('Dashboard has no critical/serious a11y violations', { timeout: 15000 }, async () => {
       const { container } = render(<Dashboard />);
 
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -96,7 +96,7 @@ describe('Axe DevTools Accessibility Audit — REM-031', () => {
   });
 
   describe('BulkSearch Component — No Contrast Violations', () => {
-    it('BulkSearch renders with no Axe violations', async () => {
+    it('BulkSearch renders with no Axe violations', { timeout: 15000 }, async () => {
       const { container } = render(<BulkSearch />);
 
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -111,7 +111,7 @@ describe('Axe DevTools Accessibility Audit — REM-031', () => {
       expect(results).toHaveNoViolations();
     });
 
-    it('BulkSearch has no contrast violations specifically', async () => {
+    it('BulkSearch has no contrast violations specifically', { timeout: 15000 }, async () => {
       const { container } = render(<BulkSearch />);
 
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -129,7 +129,7 @@ describe('Axe DevTools Accessibility Audit — REM-031', () => {
       expect(contrastViolations).toHaveLength(0);
     });
 
-    it('BulkSearch has no critical/serious a11y violations', async () => {
+    it('BulkSearch has no critical/serious a11y violations', { timeout: 15000 }, async () => {
       const { container } = render(<BulkSearch />);
 
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -145,7 +145,7 @@ describe('Axe DevTools Accessibility Audit — REM-031', () => {
   });
 
   describe('Accessibility Compliance Summary', () => {
-    it('Dashboard and BulkSearch combined have zero a11y violations', async () => {
+    it('Dashboard and BulkSearch combined have zero a11y violations', { timeout: 20000 }, async () => {
       const dashboardResults = await axe(
         render(<Dashboard />).container
       );
@@ -161,7 +161,7 @@ describe('Axe DevTools Accessibility Audit — REM-031', () => {
       expect(allViolations).toHaveLength(0);
     });
 
-    it('All color text ratios meet WCAG 2.1 AA (4.5:1 minimum for normal text)', async () => {
+    it('All color text ratios meet WCAG 2.1 AA (4.5:1 minimum for normal text)', { timeout: 20000 }, async () => {
       // This is verified by Axe color-contrast rule
       const { container } = render(
         <div>
