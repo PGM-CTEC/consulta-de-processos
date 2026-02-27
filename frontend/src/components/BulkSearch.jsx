@@ -126,6 +126,7 @@ const BulkSearch = () => {
                             onChange={handleFileChange}
                             accept=".txt,.csv,.xlsx"
                             className="hidden"
+                            aria-label="Importar arquivo com números de processo"
                         />
                         <FileUp className={`h-10 w-10 mb-3 ${dragging ? 'text-violet-500' : 'text-gray-400'}`} />
                         <p className="text-sm font-semibold text-gray-700">Clique ou arraste um arquivo para importar</p>
