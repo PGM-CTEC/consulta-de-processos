@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, ChevronDown, FileUp, AlertCircle } from 'lucide-react';
 import { LoadingState } from './LoadingState';
 import { bulkSearch } from '../services/api';
@@ -14,6 +14,14 @@ const BulkSearch = () => {
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [dragging, setDragging] = useState(false);
     const fileInputRef = useRef(null);
+
+    // Fechar export menu no ESC — REM-030
+    useEffect(() => {
+        if (!showExportMenu) return;
+        const handleEsc = (e) => { if (e.key === 'Escape') setShowExportMenu(false); };
+        document.addEventListener('keydown', handleEsc);
+        return () => document.removeEventListener('keydown', handleEsc);
+    }, [showExportMenu]);
 
     const handleSearch = async () => {
         const processList = numbers.split('\n').map(n => n.trim()).filter(n => n.length > 0);
@@ -190,6 +198,9 @@ const BulkSearch = () => {
                         <div className="relative">
                             <button
                                 onClick={() => setShowExportMenu(!showExportMenu)}
+                                aria-expanded={showExportMenu}
+                                aria-haspopup="menu"
+                                aria-label="Exportar Relatório"
                                 className="flex items-center space-x-2 bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-colors shadow-sm"
                             >
                                 <Download className="h-5 w-5" />
@@ -198,17 +209,17 @@ const BulkSearch = () => {
                             </button>
 
                             {showExportMenu && (
-                                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                    <button onClick={() => { handleExportCSV(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
+                                <div role="menu" aria-label="Opções de exportação" className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                    <button role="menuitem" onClick={() => { handleExportCSV(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
                                         <FileText className="mr-2 h-4 w-4 text-emerald-500" aria-hidden="true" /> Excel / CSV (.csv)
                                     </button>
-                                    <button onClick={() => { handleExportXLSX(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
+                                    <button role="menuitem" onClick={() => { handleExportXLSX(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
                                         <FileText className="mr-2 h-4 w-4 text-green-600" aria-hidden="true" /> Planilha Excel (.xlsx)
                                     </button>
-                                    <button onClick={() => { handleExportTXT(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
+                                    <button role="menuitem" onClick={() => { handleExportTXT(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center">
                                         <FileText className="mr-2 h-4 w-4 text-gray-600" aria-hidden="true" /> Texto Puro (.txt)
                                     </button>
-                                    <button onClick={() => { handleExportMD(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium flex items-center">
+                                    <button role="menuitem" onClick={() => { handleExportMD(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium flex items-center">
                                         <FileText className="mr-2 h-4 w-4 text-blue-600" aria-hidden="true" /> Markdown (.md)
                                     </button>
                                 </div>
