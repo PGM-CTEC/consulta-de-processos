@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -39,6 +39,12 @@ class Movement(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     process = relationship("Process", back_populates="movements")
+
+    __table_args__ = (
+        Index('idx_movement_code', 'code'),
+        Index('idx_movement_date', 'date'),
+        Index('idx_movement_process_date', 'process_id', 'date'),
+    )
 
 class SearchHistory(Base):
     __tablename__ = "search_history"
