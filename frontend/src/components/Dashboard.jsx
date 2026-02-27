@@ -129,53 +129,55 @@ const Dashboard = () => {
                 {/* Tribunals Chart */}
                 <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="tribunals-title">
                     <h2 id="tribunals-title" className="text-lg font-bold text-gray-900 mb-4">Processos por Tribunal</h2>
-                    <div className="space-y-3">
-                        {stats.tribunals.map((tribunal, idx) => (
-                            <div key={idx} className="space-y-1">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="font-semibold text-gray-700 truncate mr-2">{tribunal.tribunal_name}</span>
-                                    <span className="font-bold text-indigo-600">{tribunal.count.toLocaleString()}</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                                    <div
-                                        className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-3 rounded-full transition-all duration-500"
-                                        style={{ width: `${(tribunal.count / maxTribunalCount) * 100}%` }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                        {stats.tribunals.length === 0 && (
-                            <p className="text-gray-600 text-sm italic">Nenhum dado disponível</p>
-                        )}
-                    </div>
+                    {stats.tribunals.length > 0 ? (
+                        <ul className="space-y-3 list-none p-0">
+                            {stats.tribunals.map((tribunal, idx) => (
+                                <li key={idx} className="space-y-1">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="font-semibold text-gray-700 truncate mr-2">{tribunal.tribunal_name}</span>
+                                        <span className="font-bold text-indigo-600">{tribunal.count.toLocaleString()}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                        <div
+                                            className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-3 rounded-full transition-all duration-500"
+                                            style={{ width: `${(tribunal.count / maxTribunalCount) * 100}%` }}
+                                        />
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-gray-600 text-sm italic">Nenhum dado disponível</p>
+                    )}
                 </section>
 
                 {/* Phases Chart */}
                 <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="phases-title">
                     <h2 id="phases-title" className="text-lg font-bold text-gray-900 mb-4">Processos por Fase</h2>
-                    <div className="space-y-3">
-                        {stats.phases.map((phase, idx) => (
-                            <div key={idx} className="space-y-1">
-                                <div className="flex justify-between items-center text-sm">
-                                    <div className="flex items-center space-x-2">
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getPhaseColorClasses(phase.phase, phase.class_nature)}`}>
-                                            {getPhaseDisplayName(phase.phase, phase.class_nature)}
-                                        </span>
+                    {stats.phases.length > 0 ? (
+                        <ul className="space-y-3 list-none p-0">
+                            {stats.phases.map((phase, idx) => (
+                                <li key={idx} className="space-y-1">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <div className="flex items-center space-x-2">
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getPhaseColorClasses(phase.phase, phase.class_nature)}`}>
+                                                {getPhaseDisplayName(phase.phase, phase.class_nature)}
+                                            </span>
+                                        </div>
+                                        <span className="font-bold text-indigo-600">{phase.count.toLocaleString()}</span>
                                     </div>
-                                    <span className="font-bold text-indigo-600">{phase.count.toLocaleString()}</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                                    <div
-                                        className="bg-gradient-to-r from-violet-500 to-violet-600 h-3 rounded-full transition-all duration-500"
-                                        style={{ width: `${(phase.count / maxPhaseCount) * 100}%` }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                        {stats.phases.length === 0 && (
-                            <p className="text-gray-600 text-sm italic">Nenhum dado disponível</p>
-                        )}
-                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                        <div
+                                            className="bg-gradient-to-r from-violet-500 to-violet-600 h-3 rounded-full transition-all duration-500"
+                                            style={{ width: `${(phase.count / maxPhaseCount) * 100}%` }}
+                                        />
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-gray-600 text-sm italic">Nenhum dado disponível</p>
+                    )}
                 </section>
             </div>
 

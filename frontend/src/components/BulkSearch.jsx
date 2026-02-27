@@ -111,43 +111,49 @@ const BulkSearch = () => {
                 </div>
 
                 <form className="p-6 space-y-4">
-                    {/* Drag and Drop Zone */}
-                    <div
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                        onClick={() => fileInputRef.current.click()}
-                        className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all ${dragging ? 'border-violet-500 bg-violet-50' : 'border-gray-200 hover:border-violet-300 hover:bg-gray-50'
-                            }`}
-                    >
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleFileChange}
-                            accept=".txt,.csv,.xlsx"
-                            className="hidden"
-                            aria-label="Importar arquivo com números de processo"
-                        />
-                        <FileUp className={`h-10 w-10 mb-3 ${dragging ? 'text-violet-500' : 'text-gray-400'}`} />
-                        <p className="text-sm font-semibold text-gray-700">Clique ou arraste um arquivo para importar</p>
-                        <p className="text-xs text-gray-600 mt-1">Suporta .txt, .csv e .xlsx</p>
-                    </div>
-
-                    <div className="relative">
-                        <label
-                            htmlFor="bulk-numbers-textarea"
-                            className="absolute top-3 left-4 flex items-center text-xs font-bold text-gray-600 uppercase tracking-widest bg-white pr-2"
+                    <fieldset className="space-y-4 border-b border-gray-200 pb-4">
+                        <legend className="text-sm font-bold text-gray-600 uppercase tracking-widest mb-4">Importar Arquivo</legend>
+                        {/* Drag and Drop Zone */}
+                        <div
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            onClick={() => fileInputRef.current.click()}
+                            className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all ${dragging ? 'border-violet-500 bg-violet-50' : 'border-gray-200 hover:border-violet-300 hover:bg-gray-50'
+                                }`}
                         >
-                            Listagem de Números
-                        </label>
-                        <textarea
-                            id="bulk-numbers-textarea"
-                            className="w-full h-48 p-6 pt-10 border rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent font-mono text-sm leading-relaxed"
-                            placeholder="Um número por linha..."
-                            value={numbers}
-                            onChange={(e) => setNumbers(e.target.value)}
-                        />
-                    </div>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                accept=".txt,.csv,.xlsx"
+                                className="hidden"
+                                aria-label="Importar arquivo com números de processo"
+                            />
+                            <FileUp className={`h-10 w-10 mb-3 ${dragging ? 'text-violet-500' : 'text-gray-400'}`} />
+                            <p className="text-sm font-semibold text-gray-700">Clique ou arraste um arquivo para importar</p>
+                            <p className="text-xs text-gray-600 mt-1">Suporta .txt, .csv e .xlsx</p>
+                        </div>
+                    </fieldset>
+
+                    <fieldset className="space-y-4">
+                        <legend className="text-sm font-bold text-gray-600 uppercase tracking-widest mb-4">Listagem Manual</legend>
+                        <div className="relative">
+                            <label
+                                htmlFor="bulk-numbers-textarea"
+                                className="absolute top-3 left-4 flex items-center text-xs font-bold text-gray-600 uppercase tracking-widest bg-white pr-2"
+                            >
+                                Números de Processo
+                            </label>
+                            <textarea
+                                id="bulk-numbers-textarea"
+                                className="w-full h-48 p-6 pt-10 border rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent font-mono text-sm leading-relaxed"
+                                placeholder="Um número por linha..."
+                                value={numbers}
+                                onChange={(e) => setNumbers(e.target.value)}
+                            />
+                        </div>
+                    </fieldset>
 
                     <button
                         onClick={handleSearch}
