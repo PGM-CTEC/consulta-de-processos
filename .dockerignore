@@ -1,0 +1,16 @@
+# .dockerignore (raiz)
+.git
+.github
+*.md
+docs/
+node_modules/
+frontend/node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+.env
+*.env
+consulta_processual.db
