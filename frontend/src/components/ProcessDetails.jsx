@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { LoadingState, ErrorState } from './LoadingState';
 import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw } from 'lucide-react';
@@ -14,6 +14,7 @@ function ProcessDetails({ data }) {
     const [activeData, setActiveData] = useState(data);
     const [loadingInstance, setLoadingInstance] = useState(false);
     const [showJson, setShowJson] = useState(false);
+    const jsonDialogRef = useRef(null);
 
     // Sync local state when props change
     useEffect(() => {
@@ -28,6 +29,39 @@ function ProcessDetails({ data }) {
         };
         document.addEventListener('keydown', handleEsc);
         return () => document.removeEventListener('keydown', handleEsc);
+    }, [showJson]);
+
+    // Focus trap for JSON modal — REM-029
+    useEffect(() => {
+        if (!showJson || !jsonDialogRef.current) return;
+
+        const focusable = jsonDialogRef.current.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstEl = focusable[0];
+        const lastEl = focusable[focusable.length - 1];
+
+        if (firstEl) firstEl.focus();
+
+        const handleTab = (e) => {
+            if (e.key !== 'Tab') return;
+            if (focusable.length === 0) { e.preventDefault(); return; }
+
+            if (e.shiftKey) {
+                if (document.activeElement === firstEl) {
+                    e.preventDefault();
+                    lastEl.focus();
+                }
+            } else {
+                if (document.activeElement === lastEl) {
+                    e.preventDefault();
+                    firstEl.focus();
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleTab);
+        return () => document.removeEventListener('keydown', handleTab);
     }, [showJson]);
 
     const [showAll, setShowAll] = useState(false);
@@ -366,6 +400,7 @@ function ProcessDetails({ data }) {
                     onClick={(e) => { if (e.target === e.currentTarget) setShowJson(false); }}
                 >
                     <div
+                        ref={jsonDialogRef}
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="json-modal-title"

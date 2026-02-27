@@ -104,49 +104,64 @@ describe('ProcessDetails Component', () => {
 });
 
 describe('Modal Dialog ARIA — REM-029', () => {
-  it('loading overlay has role="status" when loadingInstance is true', () => {
-    // loadingInstance is internal state; we verify the attribute exists in the component source
-    // by rendering and checking that the component mounts without errors.
-    // The structural assertion is: role="status" is present in ProcessDetails.jsx loading overlay.
+  it('loading overlay is absent on initial render (loadingInstance starts false)', () => {
+    // loadingInstance is internal state triggered by instance-switching.
+    // On initial render it is false, so no role="status" overlay should be present.
     const { container } = render(<ProcessDetails data={mockProcessData} />);
-    expect(container).toBeTruthy();
-    // No loading overlay visible in initial render (loadingInstance starts false)
-    expect(container.querySelector('[role="status"]')).toBeNull();
+    const statusEl = container.querySelector('[role="status"]');
+    // Must be null — a spurious status role would indicate an unintended overlay
+    expect(statusEl).toBeNull();
   });
 
-  it('JSON modal has correct ARIA attributes when shown', () => {
-    // showJson + raw_data are required to show the modal.
-    // raw_data is not present in mockProcessData so modal is hidden initially.
-    // We verify the modal is NOT rendered in the default state (correct baseline).
+  it('JSON modal is absent on initial render (showJson starts false)', () => {
+    // The modal is hidden until the user clicks "Ver JSON Bruto".
+    // Verifies the default closed state has no dialog or aria-modal in the DOM.
     const { container } = render(<ProcessDetails data={mockProcessData} />);
     expect(container.querySelector('[role="dialog"]')).toBeNull();
     expect(container.querySelector('[aria-modal="true"]')).toBeNull();
   });
 
-  it('JSON modal renders with ARIA when raw_data is present and button is clicked', async () => {
+  it('JSON modal renders with correct ARIA attributes when raw_data is present and button is clicked', async () => {
     const dataWithRaw = {
       ...mockProcessData,
       raw_data: { test: 'value' },
     };
     const { container } = render(<ProcessDetails data={dataWithRaw} />);
 
-    // The toggle button has title="Ver JSON Bruto"
+    // The toggle button carries title="Ver JSON Bruto"
     const jsonButton = container.querySelector('button[title="Ver JSON Bruto"]');
+    // raw_data is present so the button MUST be rendered — fail clearly if missing
+    expect(jsonButton).not.toBeNull();
 
-    if (jsonButton) {
-      await act(async () => {
-        fireEvent.click(jsonButton);
-      });
-      // After click, dialog should appear with ARIA attributes
-      const dialog = container.querySelector('[role="dialog"]');
-      expect(dialog).not.toBeNull();
-      expect(dialog.getAttribute('aria-modal')).toBe('true');
-      expect(dialog.getAttribute('aria-labelledby')).toBe('json-modal-title');
-      const title = container.querySelector('#json-modal-title');
-      expect(title).not.toBeNull();
-    } else {
-      // Button not found means raw_data path not rendered; skip gracefully
-      expect(true).toBe(true);
-    }
+    await act(async () => {
+      fireEvent.click(jsonButton);
+    });
+
+    const dialog = container.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-labelledby')).toBe('json-modal-title');
+    expect(container.querySelector('#json-modal-title')).not.toBeNull();
+  });
+
+  it('JSON modal closes when ESC key is pressed', async () => {
+    const dataWithRaw = {
+      ...mockProcessData,
+      raw_data: { test: 'value' },
+    };
+    const { container } = render(<ProcessDetails data={dataWithRaw} />);
+
+    const jsonButton = container.querySelector('button[title="Ver JSON Bruto"]');
+    expect(jsonButton).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.click(jsonButton);
+    });
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    });
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
 });
