@@ -1,9 +1,0 @@
-INFO:     Will watch for changes in these directories: ['C:\\Projetos\\Consulta processo']
-INFO:     Uvicorn running on http://127.0.0.1:8088 (Press CTRL+C to quit)
-INFO:     Started reloader process [6068] using StatReload
-INFO:     Started server process [8404]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     127.0.0.1:63107 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63124 - "GET /processes/0435756-80.2012.8.19.0001 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63128 - "GET /processes/0435756-80.2012.8.19.0001/instances/0 HTTP/1.1" 200 OK

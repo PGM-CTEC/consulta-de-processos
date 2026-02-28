@@ -26,10 +26,30 @@ pnpm-debug.log*
 raw_data_debug.json
 nul
 null.txt
+debug_output*.txt
+full_json_output.txt
+verify_output.txt
+wildcard_output.txt
+probe_output.txt
+process_dump.json
 
-# Bundles / build artifacts
+# Windows launchers
+*.bat
+
+# Coverage reports
+htmlcov/
+backend/coverage_report/
+frontend/coverage/
+.coverage*
+
+# Storybook static build
+frontend/storybook-static/
+
+# PyInstaller output
 dist/
 build/
+
+# Bundles / build artifacts (covered above)
 
 # OS
 .DS_Store
