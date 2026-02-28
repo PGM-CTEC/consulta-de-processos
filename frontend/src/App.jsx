@@ -1,15 +1,19 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { Search, Database, Layers, BarChart3, Settings } from 'lucide-react';
 import SearchProcess from './components/SearchProcess';
-import ProcessDetails from './components/ProcessDetails';
-import BulkSearch from './components/BulkSearch';
-import Dashboard from './components/Dashboard';
-import PerformanceDashboard from './components/PerformanceDashboard';
-import SettingsComponent from './components/Settings';
+import LoadingFallback from './components/LoadingFallback';
 import { searchProcess } from './services/api';
 import { useLabels } from './hooks/useLabels';
-import HistoryTab from './components/HistoryTab';
+
+// Lazy-loaded tab components — loaded only when the user navigates to that tab.
+// This splits the bundle into separate chunks, reducing initial load time.
+const ProcessDetails = lazy(() => import('./components/ProcessDetails'));
+const BulkSearch = lazy(() => import('./components/BulkSearch'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const PerformanceDashboard = lazy(() => import('./components/PerformanceDashboard'));
+const SettingsComponent = lazy(() => import('./components/Settings'));
+const HistoryTab = lazy(() => import('./components/HistoryTab'));
 
 function App() {
   const [data, setData] = useState(null);
@@ -176,7 +180,11 @@ function App() {
 
               <SearchProcess onSearch={handleSearch} loading={loading} labels={labels} />
 
-              {data && <ProcessDetails data={data} />}
+              {data && (
+                <Suspense fallback={<LoadingFallback message="Carregando detalhes do processo..." />}>
+                  <ProcessDetails data={data} />
+                </Suspense>
+              )}
             </div>
           )}
 
@@ -187,7 +195,9 @@ function App() {
               aria-labelledby="tab-bulk"
               className="animate-in fade-in slide-in-from-bottom-4 duration-700"
             >
-              <BulkSearch />
+              <Suspense fallback={<LoadingFallback message="Carregando consulta em lote..." />}>
+                <BulkSearch />
+              </Suspense>
             </div>
           )}
 
@@ -198,7 +208,9 @@ function App() {
               aria-labelledby="tab-analytics"
               className="animate-in fade-in slide-in-from-bottom-4 duration-700"
             >
-              <Dashboard />
+              <Suspense fallback={<LoadingFallback message="Carregando dashboard..." />}>
+                <Dashboard />
+              </Suspense>
             </div>
           )}
 
@@ -209,7 +221,9 @@ function App() {
               aria-labelledby="tab-history"
               className="animate-in fade-in slide-in-from-bottom-4 duration-700"
             >
-              <HistoryTab labels={labels} />
+              <Suspense fallback={<LoadingFallback message="Carregando histórico..." />}>
+                <HistoryTab labels={labels} />
+              </Suspense>
             </div>
           )}
 
@@ -220,7 +234,9 @@ function App() {
               aria-labelledby="tab-performance"
               className="animate-in fade-in slide-in-from-bottom-4 duration-700"
             >
-              <PerformanceDashboard />
+              <Suspense fallback={<LoadingFallback message="Carregando métricas de performance..." />}>
+                <PerformanceDashboard />
+              </Suspense>
             </div>
           )}
 
@@ -231,7 +247,9 @@ function App() {
               aria-labelledby="tab-settings"
               className="animate-in fade-in slide-in-from-bottom-4 duration-700"
             >
-              <SettingsComponent />
+              <Suspense fallback={<LoadingFallback message="Carregando configurações..." />}>
+                <SettingsComponent />
+              </Suspense>
             </div>
           )}
 
