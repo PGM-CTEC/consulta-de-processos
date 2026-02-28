@@ -1,12 +1,32 @@
 import json as _json
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON, Index, event
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, declarative_mixin
 from sqlalchemy.inspection import inspect as sa_inspect
 from sqlalchemy.sql import func
 from .database import Base
 
-class Process(Base):
+
+@declarative_mixin
+class SoftDeleteMixin:
+    """Mixin providing soft delete functionality with deleted_at timestamp."""
+
+    deleted_at = Column(DateTime, nullable=True, index=True)
+
+    def soft_delete(self):
+        """Mark as deleted without removing from database."""
+        self.deleted_at = datetime.utcnow()
+
+    def restore(self):
+        """Restore a soft-deleted record."""
+        self.deleted_at = None
+
+    @property
+    def is_deleted(self):
+        """Check if record is soft-deleted."""
+        return self.deleted_at is not None
+
+class Process(Base, SoftDeleteMixin):
     __tablename__ = "processes"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -29,7 +49,7 @@ class Process(Base):
 
     movements = relationship("Movement", back_populates="process", cascade="all, delete-orphan")
 
-class Movement(Base):
+class Movement(Base, SoftDeleteMixin):
     __tablename__ = "movements"
 
     id = Column(Integer, primary_key=True, index=True)
