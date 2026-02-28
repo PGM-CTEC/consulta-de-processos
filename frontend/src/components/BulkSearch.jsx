@@ -12,6 +12,7 @@ import { Card, CardContent } from './ui/card';
 import Pagination from './Pagination';
 import { usePagination } from '../hooks/usePagination';
 import { bulkSearchSchema } from '../lib/validationSchemas';
+import { trackSearch, trackBulkUpload, trackExport } from '../lib/analytics';
 
 // Threshold above which virtual scrolling is activated
 const VIRTUAL_THRESHOLD = 100;
@@ -175,12 +176,14 @@ const BulkSearch = () => {
     const onSubmit = async (data) => {
         const processList = data.numbers.split('\n').map(n => n.trim()).filter(n => n.length > 0);
 
+        trackSearch('bulk', true);
         setLoading(true);
         setApiError(null);
         try {
             const result = await bulkSearch(processList);
             setResults(result);
         } catch {
+            trackSearch('bulk', false);
             setApiError('Falha ao processar a busca em lote.');
         } finally {
             setLoading(false);
@@ -230,12 +233,14 @@ const BulkSearch = () => {
                 }
 
                 if (detectedNumbers.length > 0) {
+                    trackBulkUpload(file.size, detectedNumbers.length, true);
                     setValue('numbers', detectedNumbers.join('\n'), { shouldValidate: true });
                     setApiError(null);
                 } else {
                     setApiError('Nenhum número de processo detectado no arquivo.');
                 }
             } catch {
+                trackBulkUpload(file.size, 0, false);
                 setApiError('Erro ao ler o arquivo. Verifique o formato.');
             }
         };
@@ -248,10 +253,22 @@ const BulkSearch = () => {
     };
 
     // Export functions now use centralized utilities
-    const handleExportCSV = () => exporters.csv(results.results);
-    const handleExportXLSX = () => exporters.xlsx(results.results);
-    const handleExportTXT = () => exporters.txt(results.results);
-    const handleExportMD = () => exporters.md(results.results);
+    const handleExportCSV = () => {
+        trackExport('CSV', results.results.length, true);
+        exporters.csv(results.results);
+    };
+    const handleExportXLSX = () => {
+        trackExport('XLSX', results.results.length, true);
+        exporters.xlsx(results.results);
+    };
+    const handleExportTXT = () => {
+        trackExport('TXT', results.results.length, true);
+        exporters.txt(results.results);
+    };
+    const handleExportMD = () => {
+        trackExport('MD', results.results.length, true);
+        exporters.md(results.results);
+    };
 
     // Decide whether to use virtual scrolling for the current page's items
     const useVirtual = paginatedItems.length > VIRTUAL_THRESHOLD;

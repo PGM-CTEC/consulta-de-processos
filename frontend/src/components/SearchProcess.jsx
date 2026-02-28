@@ -4,6 +4,7 @@ import { Search, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { searchProcessSchema } from '../lib/validationSchemas';
+import { trackSearch } from '../lib/analytics';
 
 function SearchProcess({ onSearch, loading, labels }) {
     const {
@@ -16,6 +17,7 @@ function SearchProcess({ onSearch, loading, labels }) {
     });
 
     const onSubmit = ({ number }) => {
+        trackSearch('single', true);
         onSearch(number.trim());
     };
 
