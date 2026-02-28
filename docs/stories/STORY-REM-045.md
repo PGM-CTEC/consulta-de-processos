@@ -62,3 +62,4 @@ _To be updated during development_
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |
+| 2026-02-28 | @dev | Deferido: Security audit completo (L-size 13pts) — deferido, requer ambiente dedicado |

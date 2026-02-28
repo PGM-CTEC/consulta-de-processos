@@ -5,6 +5,9 @@ import copy
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple
 
+# Story: REM-050 — External API Resilience (in-memory TTL cache)
+from ..utils.ttl_cache import process_cache
+
 # Story: BE-ARCH-002 - Retry Logic for Transient Failures
 try:
     from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -357,15 +360,26 @@ class DataJudClient:
         """
         Fetches detailed process data from DataJud API.
         Attempts to find all instances across tribunal and CNJ indexes.
+
+        Returns cached data (TTL=1h) when available to reduce API calls
+        and provide resilience during API outages. (REM-050)
         """
+        # Return from cache if available (TTL: 1 hour)
+        cached = process_cache.get(process_number)
+        if cached is not None:
+            logger.debug("cache_hit", extra={"process_number": process_number})
+            return cached
+
         selected, meta = await self.get_process_instances(process_number)
-        
+
         if not selected:
             return None
-            
+
         if meta:
             selected["__meta__"] = meta
-            
+
+        # Store result in cache for future requests
+        process_cache.set(process_number, selected)
         return selected
 
     async def get_process_instances(

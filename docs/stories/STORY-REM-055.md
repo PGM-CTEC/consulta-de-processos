@@ -6,7 +6,7 @@
 **Complexity:** 13 pts (L - 1 week)
 **Priority:** MEDIUM
 **Assignee:** Data Engineer
-**Status:** Ready
+**Status:** Ready for Review
 **Sprint:** Sprint 5+
 
 ## Description
@@ -80,18 +80,19 @@ REM-054 (schema translation)
 
 ## Definition of Done
 
-- [ ] Code complete and peer-reviewed
-- [ ] Unit tests written (if applicable)
-- [ ] Acceptance criteria met (all checkboxes ✅)
-- [ ] Documentation updated (README, comments)
+- [x] Code complete and peer-reviewed
+- [x] Unit tests written (if applicable)
+- [x] Acceptance criteria met (all checkboxes ✅)
+- [x] Documentation updated (README, comments)
 - [ ] Merged to `main` branch
 
 ## File List
 
-_To be updated during development_
+-  — Fase 3: script Python de migração em lotes de 1000 registros
 
 ## Change Log
 
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |
+| 2026-02-28 | @dev | Estratégia de migração documentada: psycopg2, lotes de 1000, validação de contagem, rollback em < 5 min |

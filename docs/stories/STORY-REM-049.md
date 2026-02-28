@@ -83,3 +83,4 @@ _To be updated during development_
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |
+| 2026-02-28 | @dev | Deferido: Test coverage improvement 80%→95% (L-size 13pts) — deferido, meta parcialmente atingida (78%) |

@@ -52,3 +52,4 @@ _To be updated during development_
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |
+| 2026-02-28 | @dev | Deferido: Security penetration testing (M-size 8pts) — deferido, requer ferramentas especializadas |

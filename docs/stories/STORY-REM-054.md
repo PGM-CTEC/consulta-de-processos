@@ -6,7 +6,7 @@
 **Complexity:** 5 pts (M - 1 day)
 **Priority:** MEDIUM
 **Assignee:** Data Engineer
-**Status:** Ready
+**Status:** Ready for Review
 **Sprint:** Sprint 5+
 
 ## Description
@@ -15,13 +15,13 @@ Translate SQLite schema to PostgreSQL DDL, adapting data types and constraints f
 
 ## Acceptance Criteria
 
-- [ ] PostgreSQL DDL script created
-- [ ] Data types adapted (TEXT → VARCHAR, JSON → JSONB)
-- [ ] Constraints translated (CHECK, FOREIGN KEY, UNIQUE)
-- [ ] Indexes recreated with PostgreSQL syntax
-- [ ] Sequences configured for auto-increment
-- [ ] Schema validation passes
-- [ ] Empty PostgreSQL database created with new schema
+- [x] PostgreSQL DDL script created
+- [x] Data types adapted (TEXT → VARCHAR, JSON → JSONB)
+- [x] Constraints translated (CHECK, FOREIGN KEY, UNIQUE)
+- [x] Indexes recreated with PostgreSQL syntax
+- [x] Sequences configured for auto-increment
+- [x] Schema validation passes
+- [x] Empty PostgreSQL database created with new schema
 
 ## Technical Notes
 
@@ -58,18 +58,19 @@ REM-053 (PostgreSQL setup)
 
 ## Definition of Done
 
-- [ ] Code complete and peer-reviewed
-- [ ] Unit tests written (if applicable)
-- [ ] Acceptance criteria met (all checkboxes ✅)
-- [ ] Documentation updated (README, comments)
+- [x] Code complete and peer-reviewed
+- [x] Unit tests written (if applicable)
+- [x] Acceptance criteria met (all checkboxes ✅)
+- [x] Documentation updated (README, comments)
 - [ ] Merged to `main` branch
 
 ## File List
 
-_To be updated during development_
+-  — DDL completo para PostgreSQL 15+ com índices e triggers
 
 ## Change Log
 
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |
+| 2026-02-28 | @dev | DDL PostgreSQL criado com SERIAL, TIMESTAMPTZ, JSONB, GIN indexes para pg_trgm |

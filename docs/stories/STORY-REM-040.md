@@ -72,3 +72,4 @@ None
 |------|--------|--------|
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |
 | 2026-02-28 | @dev | Implementação completa: instalação deps, schemas Zod, migração de 3 formulários, 24 testes — 437/437 passando |
+| 2026-02-28 | @dev | Deferido: Form validation react-hook-form + Zod — deferido para sprint dedicado (dependência: zustand integração) |
