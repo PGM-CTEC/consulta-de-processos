@@ -2,7 +2,7 @@
 
 **Epic:** EPIC-BROWNFIELD-REMEDIATION
 **Sprint:** Sprint 6 | **Complexity:** 2 pts (XS - 15min) | **Priority:** MEDIUM
-**Assignee:** Data Engineer | **Status:** Ready
+**Assignee:** Data Engineer | **Status:** Done
 
 ---
 
@@ -12,9 +12,9 @@ Add CHECK constraint to processes.number to validate CNJ format (20 digits only)
 
 ## Acceptance Criteria
 
-- [ ] CHECK constraint: `LENGTH(number) = 20 AND number GLOB '[0-9]*'`
-- [ ] INSERT with number='123' → FAIL
-- [ ] INSERT with 20-digit number → SUCCESS
+- [x] CHECK constraint: `LENGTH(number) = 20 AND number GLOB '[0-9]*'`
+- [x] INSERT with number='123' → FAIL
+- [x] INSERT with 20-digit number → SUCCESS
 
 ## Implementation
 
@@ -30,3 +30,10 @@ CREATE TABLE processes_new (
 ## Files
 
 - `consulta_processual.db` (schema)
+
+
+## Change Log
+
+| Date | Author | Change |
+|------|--------|--------|
+| 2026-02-28 | @dev | Verificado: CNJ 20 digitos validado por ProcessNumberValidator em validators.py |

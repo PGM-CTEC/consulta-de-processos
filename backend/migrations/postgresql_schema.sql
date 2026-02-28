@@ -34,6 +34,8 @@ CREATE INDEX IF NOT EXISTS ix_processes_tribunal    ON processes (tribunal_name)
 CREATE INDEX IF NOT EXISTS ix_processes_district    ON processes (district);
 -- GIN index for full-text search on subject/court
 CREATE INDEX IF NOT EXISTS ix_processes_subject_trgm ON processes USING GIN (subject gin_trgm_ops);
+-- GIN index for JSONB column (fast key/value queries inside raw_data) — REM-045
+CREATE INDEX IF NOT EXISTS ix_processes_raw_data_gin ON processes USING GIN (raw_data);
 
 -- ============================================================
 -- Table: movements

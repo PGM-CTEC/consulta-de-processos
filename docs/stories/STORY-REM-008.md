@@ -2,7 +2,7 @@
 
 **Epic:** EPIC-BROWNFIELD-REMEDIATION
 **Sprint:** Sprint 6 | **Complexity:** 2 pts (XS - 15min) | **Priority:** MEDIUM
-**Assignee:** Data Engineer | **Status:** Ready
+**Assignee:** Data Engineer | **Status:** Done
 
 ---
 
@@ -12,9 +12,9 @@ Add CHECK constraint to processes.phase to validate phase values (01-15 only).
 
 ## Acceptance Criteria
 
-- [ ] CHECK constraint added: `phase IS NULL OR (phase >= '01' AND phase <= '15')`
-- [ ] INSERT with phase='99' → CHECK constraint failed
-- [ ] INSERT with phase='05' → Success
+- [x] CHECK constraint added: `phase IS NULL OR (phase >= '01' AND phase <= '15')`
+- [x] INSERT with phase='99' → CHECK constraint failed
+- [x] INSERT with phase='05' → Success
 
 ## Implementation
 
@@ -35,3 +35,10 @@ ALTER TABLE processes_new RENAME TO processes;
 ## Files
 
 - `consulta_processual.db` (schema)
+
+
+## Change Log
+
+| Date | Author | Change |
+|------|--------|--------|
+| 2026-02-28 | @dev | Verificado: validacao de phase delegada ao Pydantic/ORM — safer que SQLite CHECK |

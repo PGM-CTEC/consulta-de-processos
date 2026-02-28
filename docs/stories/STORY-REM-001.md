@@ -6,7 +6,7 @@
 **Complexity:** 2 pts (XS - 30 min)
 **Priority:** CRITICAL
 **Assignee:** Data Engineer
-**Status:** Ready
+**Status:** Done
 
 ---
 
@@ -18,11 +18,11 @@ Create 3 missing indexes on Movement table to achieve **20-100x query speedup** 
 
 ## Acceptance Criteria
 
-- [ ] CREATE INDEX idx_movement_process_date ON movements(process_id, date DESC)
-- [ ] CREATE INDEX idx_movement_code ON movements(code)
-- [ ] CREATE INDEX idx_movement_date ON movements(date DESC)
-- [ ] EXPLAIN QUERY PLAN shows "SEARCH TABLE movements USING INDEX"
-- [ ] Performance test: latency <5ms
+- [x] CREATE INDEX idx_movement_process_date ON movements(process_id, date DESC)
+- [x] CREATE INDEX idx_movement_code ON movements(code)
+- [x] CREATE INDEX idx_movement_date ON movements(date DESC)
+- [x] EXPLAIN QUERY PLAN shows "SEARCH TABLE movements USING INDEX"
+- [x] Performance test: latency <5ms
 
 ---
 

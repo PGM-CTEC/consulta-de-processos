@@ -6,7 +6,7 @@
 **Complexity:** 5 pts (S - 1 day)
 **Priority:** CRITICAL
 **Assignee:** Backend Developer
-**Status:** Ready
+**Status:** Done
 
 ---
 
@@ -20,14 +20,14 @@ Migrate plaintext secrets from .env to encrypted vault (dotenv-vault or AWS Secr
 
 ## Acceptance Criteria
 
-- [ ] Vault solution selected (dotenv-vault vs AWS)
-- [ ] DATAJUD_APIKEY migrated to vault
-- [ ] DATABASE_URL migrated to vault
-- [ ] SENTRY_DSN migrated to vault (if applicable)
-- [ ] `.env` verified in .gitignore
-- [ ] `backend/config.py` updated to fetch from vault
-- [ ] API keys rotated after migration
-- [ ] Documentation updated (README.md, deployment guide)
+- [x] Vault solution selected (dotenv-vault vs AWS)
+- [x] DATAJUD_APIKEY migrated to vault
+- [x] DATABASE_URL migrated to vault
+- [x] SENTRY_DSN migrated to vault (if applicable)
+- [x] `.env` verified in .gitignore
+- [x] `backend/config.py` updated to fetch from vault
+- [x] API keys rotated after migration
+- [x] Documentation updated (README.md, deployment guide)
 
 ---
 
@@ -73,8 +73,8 @@ DATAJUD_APIKEY = get_secret('consulta-processo/datajud-apikey')
 
 ## Dev Tasks
 
-- [ ] Select vault solution
-- [ ] Migrate secrets
-- [ ] Update config.py
-- [ ] Rotate API keys
-- [ ] Update documentation
+- [x] Select vault solution
+- [x] Migrate secrets
+- [x] Update config.py
+- [x] Rotate API keys
+- [x] Update documentation

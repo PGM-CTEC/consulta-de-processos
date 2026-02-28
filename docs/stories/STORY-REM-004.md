@@ -2,7 +2,7 @@
 
 **Epic:** EPIC-BROWNFIELD-REMEDIATION
 **Sprint:** Sprint 6 | **Complexity:** 3 pts (S - 2h) | **Priority:** HIGH
-**Assignee:** Backend Developer | **Status:** Ready
+**Assignee:** Backend Developer | **Status:** Done
 
 ---
 
@@ -12,12 +12,12 @@ Implement SlowAPI rate limiter (100 requests/minute per IP) to prevent DoS attac
 
 ## Acceptance Criteria
 
-- [ ] SlowAPI installed (`pip install slowapi`)
-- [ ] Limiter configured (100/minute per IP)
-- [ ] Applied to /api/search endpoint
-- [ ] Applied to /api/bulk endpoint
-- [ ] 429 response on rate limit exceeded
-- [ ] Test: 101st request returns 429
+- [x] SlowAPI installed (`pip install slowapi`)
+- [x] Limiter configured (100/minute per IP)
+- [x] Applied to /api/search endpoint
+- [x] Applied to /api/bulk endpoint
+- [x] 429 response on rate limit exceeded
+- [x] Test: 101st request returns 429
 
 ## Implementation
 
@@ -37,3 +37,10 @@ async def search_process(cnj: str):
 ## Files
 
 - `backend/main.py` (modified)
+
+
+## Change Log
+
+| Date | Author | Change |
+|------|--------|--------|
+| 2026-02-28 | @dev | Verificado: slowapi ja implementado em main.py (100/minute por IP) |

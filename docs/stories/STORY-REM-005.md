@@ -2,7 +2,7 @@
 
 **Epic:** EPIC-BROWNFIELD-REMEDIATION
 **Sprint:** Sprint 6 | **Complexity:** 2 pts (XS - 30min) | **Priority:** MEDIUM
-**Assignee:** Backend Developer | **Status:** Ready
+**Assignee:** Backend Developer | **Status:** Done
 
 ---
 
@@ -12,10 +12,10 @@ Restrict CORS to whitelisted origins only (prevent XSS from malicious domains).
 
 ## Acceptance Criteria
 
-- [ ] CORS middleware configured with explicit allow_origins list
-- [ ] Production domain whitelisted
-- [ ] Localhost allowed for dev
-- [ ] allow_origins=["*"] removed
+- [x] CORS middleware configured with explicit allow_origins list
+- [x] Production domain whitelisted
+- [x] Localhost allowed for dev
+- [x] allow_origins=["*"] removed
 
 ## Implementation
 
@@ -40,3 +40,10 @@ app.add_middleware(
 ## Files
 
 - `backend/main.py` (modified)
+
+
+## Change Log
+
+| Date | Author | Change |
+|------|--------|--------|
+| 2026-02-28 | @dev | Verificado: CORS configurado com allowed_origins_list do settings.py |

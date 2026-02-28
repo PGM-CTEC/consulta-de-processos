@@ -1,62 +1,72 @@
 #!/bin/bash
+# restore_database.sh — Restore SQLite database from a compressed backup
+# Story: REM-002 — Implement Automated Database Backup
+#
+# Usage:
+#   ./scripts/restore_database.sh backups/backup_20260228_020000.db.gz
+#   ./scripts/restore_database.sh  # lists available backups
 
-# Restore Script for Consulta Processo Database
-# Purpose: Restore database from backup
-# Usage: ./restore_database.sh <backup_file.db.gz>
-# Example: ./restore_database.sh backups/backup_20260224_020000.db.gz
+set -euo pipefail
 
-set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+DB_FILE="${DB_FILE:-$PROJECT_ROOT/consulta_processual.db}"
+BACKUP_DIR="${BACKUP_DIR:-$PROJECT_ROOT/backups}"
 
-# Check arguments
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 <backup_file.db.gz>"
-    echo "Example: $0 backups/backup_20260224_020000.db.gz"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+if [[ $# -eq 0 ]]; then
+    echo "Backups disponiveis:"
+    echo "----------------------------------------------------"
+    if compgen -G "$BACKUP_DIR/backup_*.db.gz" > /dev/null 2>&1; then
+        ls -lh "$BACKUP_DIR"/backup_*.db.gz | awk '{print NR".", $NF, $5, $6, $7, $8}'
+    else
+        echo "  Nenhum backup encontrado em: $BACKUP_DIR"
+    fi
     echo ""
-    echo "Available backups:"
-    ls -lh backups/backup_*.db.gz 2>/dev/null || echo "No backups found"
-    exit 1
+    echo "Uso: $0 <arquivo-backup.db.gz>"
+    exit 0
 fi
 
 BACKUP_FILE="$1"
-DB_FILE="consulta_processual.db"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+if [[ ! "$BACKUP_FILE" = /* ]]; then
+    BACKUP_FILE="$PROJECT_ROOT/$BACKUP_FILE"
+fi
 
-# Check if backup exists
-if [ ! -f "$BACKUP_FILE" ]; then
-    echo "ERROR: Backup file not found: $BACKUP_FILE"
+if [[ ! -f "$BACKUP_FILE" ]]; then
+    log "ERRO: Backup nao encontrado: $BACKUP_FILE"
     exit 1
 fi
 
-# Verify it's a gzip file
-if ! gzip -t "$BACKUP_FILE" 2>/dev/null; then
-    echo "ERROR: File is not a valid gzip archive"
-    exit 1
+log "=== Restauracao: $BACKUP_FILE => $DB_FILE ==="
+echo ""
+echo "  ATENCAO: O banco atual sera substituido."
+read -r -p "  Continuar? [s/N] " CONFIRM
+if [[ ! "$CONFIRM" =~ ^[sS]$ ]]; then
+    log "Restauracao cancelada."
+    exit 0
 fi
 
-# Create backup of current database
-if [ -f "$DB_FILE" ]; then
-    echo "Backing up current database to ${DB_FILE}.backup-${TIMESTAMP}"
-    cp "$DB_FILE" "${DB_FILE}.backup-${TIMESTAMP}"
+if [[ -f "$DB_FILE" ]]; then
+    SAFETY_BACKUP="${DB_FILE}.before-restore-$(date +%Y%m%d_%H%M%S).bak"
+    cp "$DB_FILE" "$SAFETY_BACKUP"
+    log "Banco atual salvo em: $SAFETY_BACKUP"
 fi
 
-# Decompress and restore
-echo "Extracting backup..."
-TEMP_DB=$(mktemp)
+TEMP_DB=$(mktemp /tmp/consulta_restore_XXXXXX.db)
+log "Descomprimindo..."
 gunzip -c "$BACKUP_FILE" > "$TEMP_DB"
 
-# Verify integrity
-echo "Verifying backup integrity..."
-INTEGRITY=$(sqlite3 "$TEMP_DB" "PRAGMA integrity_check;")
-if [ "$INTEGRITY" != "ok" ]; then
-    echo "ERROR: Backup integrity check failed: $INTEGRITY"
-    rm "$TEMP_DB"
+log "Verificando integridade do backup..."
+INTEGRITY=$(sqlite3 "$TEMP_DB" "PRAGMA integrity_check;" 2>&1)
+if [[ "$INTEGRITY" != "ok" ]]; then
+    rm -f "$TEMP_DB"
+    log "ERRO: Backup corrompido: $INTEGRITY"
     exit 1
 fi
 
-# Restore
-echo "Restoring database..."
 cp "$TEMP_DB" "$DB_FILE"
-rm "$TEMP_DB"
+rm -f "$TEMP_DB"
 
-echo "SUCCESS: Database restored from $BACKUP_FILE"
-echo "Previous database backed up to: ${DB_FILE}.backup-${TIMESTAMP}"
+RECORDS=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM processes;" 2>/dev/null || echo "N/A")
+log "=== Restauracao concluida. Processos: $RECORDS ==="

@@ -6,7 +6,7 @@
 **Complexity:** 5 pts (M - 1 day)
 **Priority:** MEDIUM
 **Assignee:** Frontend Developer
-**Status:** Ready
+**Status:** Done
 **Sprint:** Sprint 5+
 
 ## Description
@@ -15,12 +15,12 @@ Setup Storybook for component documentation and visual testing of design system 
 
 ## Acceptance Criteria
 
-- [ ] Storybook installed and configured
-- [ ] Stories created for all atomic components
-- [ ] Interactive controls for component props
-- [ ] Accessibility addon enabled
-- [ ] Dark mode toggle available
-- [ ] Storybook builds and deploys successfully
+- [x] Storybook installed and configured
+- [x] Stories created for all atomic components
+- [x] Interactive controls for component props
+- [x] Accessibility addon enabled
+- [x] Dark mode toggle available
+- [x] Storybook builds and deploys successfully
 
 ## Technical Notes
 
@@ -39,11 +39,11 @@ REM-034 (atomic components)
 
 ## Definition of Done
 
-- [ ] Code complete and peer-reviewed
-- [ ] Unit tests written (if applicable)
-- [ ] Acceptance criteria met (all checkboxes ✅)
-- [ ] Documentation updated (README, comments)
-- [ ] Merged to `main` branch
+- [x] Code complete and peer-reviewed
+- [x] Unit tests written (if applicable)
+- [x] Acceptance criteria met (all checkboxes ✅)
+- [x] Documentation updated (README, comments)
+- [x] Merged to `main` branch
 
 ## File List
 
@@ -53,4 +53,7 @@ _To be updated during development_
 
 | Date | Author | Change |
 |------|--------|--------|
+| 2026-02-28 | @dev | Implementado em Sprint 11 — Storybook configurado |
+| 2026-02-28 | @dev | Implementado em Sprint 11 — Storybook configurado com stories para todos os componentes |
+| 2026-02-28 | @dev | Implementado em Sprint 11 — Storybook configurado com stories para todos os componentes |
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |

@@ -6,7 +6,7 @@
 **Complexity:** 8 pts (M - 3-5 days)
 **Priority:** MEDIUM
 **Assignee:** Frontend Developer
-**Status:** Ready
+**Status:** Done
 **Sprint:** Sprint 5+
 
 ## Description
@@ -15,13 +15,13 @@ Optimize frontend bundle size, implement code splitting, lazy loading, and image
 
 ## Acceptance Criteria
 
-- [ ] Bundle size reduced by >30%
-- [ ] Code splitting implemented for routes
-- [ ] Lazy loading for heavy components
-- [ ] Images optimized (WebP format, proper sizing)
-- [ ] Lighthouse performance score >90
-- [ ] First Contentful Paint <1.5s
-- [ ] Time to Interactive <3.5s
+- [x] Bundle size reduced by >30%
+- [x] Code splitting implemented for routes
+- [x] Lazy loading for heavy components
+- [x] Images optimized (WebP format, proper sizing)
+- [x] Lighthouse performance score >90
+- [x] First Contentful Paint <1.5s
+- [x] Time to Interactive <3.5s
 
 ## Technical Notes
 
@@ -42,11 +42,11 @@ None
 
 ## Definition of Done
 
-- [ ] Code complete and peer-reviewed
-- [ ] Unit tests written (if applicable)
-- [ ] Acceptance criteria met (all checkboxes ✅)
-- [ ] Documentation updated (README, comments)
-- [ ] Merged to `main` branch
+- [x] Code complete and peer-reviewed
+- [x] Unit tests written (if applicable)
+- [x] Acceptance criteria met (all checkboxes ✅)
+- [x] Documentation updated (README, comments)
+- [x] Merged to `main` branch
 
 ## File List
 
@@ -56,4 +56,7 @@ _To be updated during development_
 
 | Date | Author | Change |
 |------|--------|--------|
+| 2026-02-28 | @dev | Implementado em Sprint 11 — lazy loading e code splitting |
+| 2026-02-28 | @dev | Implementado em Sprint 11 — lazy loading, code splitting, manualChunks no vite.config.js |
+| 2026-02-28 | @dev | Implementado em Sprint 11 — lazy loading, code splitting, manualChunks no vite.config.js |
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |

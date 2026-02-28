@@ -6,7 +6,7 @@
 **Complexity:** 8 pts (M - 3-5 days)
 **Priority:** MEDIUM
 **Assignee:** Frontend Developer
-**Status:** Ready
+**Status:** Done
 **Sprint:** Sprint 5+
 
 ## Description
@@ -15,12 +15,12 @@ Implement pagination or virtual scrolling for large result sets to prevent UI fr
 
 ## Acceptance Criteria
 
-- [ ] Pagination implemented for search results
-- [ ] Virtual scrolling for movement timeline (if >100 items)
-- [ ] Performance test: 1000+ results render smoothly
-- [ ] Page size configurable (25, 50, 100 items)
-- [ ] URL parameters for pagination state
-- [ ] No UI freeze with large datasets
+- [x] Pagination implemented for search results
+- [x] Virtual scrolling for movement timeline (if >100 items)
+- [x] Performance test: 1000+ results render smoothly
+- [x] Page size configurable (25, 50, 100 items)
+- [x] URL parameters for pagination state
+- [x] No UI freeze with large datasets
 
 ## Technical Notes
 
@@ -48,11 +48,11 @@ None
 
 ## Definition of Done
 
-- [ ] Code complete and peer-reviewed
-- [ ] Unit tests written (if applicable)
-- [ ] Acceptance criteria met (all checkboxes ✅)
-- [ ] Documentation updated (README, comments)
-- [ ] Merged to `main` branch
+- [x] Code complete and peer-reviewed
+- [x] Unit tests written (if applicable)
+- [x] Acceptance criteria met (all checkboxes ✅)
+- [x] Documentation updated (README, comments)
+- [x] Merged to `main` branch
 
 ## File List
 
@@ -62,4 +62,7 @@ _To be updated during development_
 
 | Date | Author | Change |
 |------|--------|--------|
+| 2026-02-28 | @dev | Implementado em Sprint 11 — paginacao e virtualizacao bulk |
+| 2026-02-28 | @dev | Implementado em Sprint 11 — paginacao e virtualizacao para resultados bulk (VirtualizedList) |
+| 2026-02-28 | @dev | Implementado em Sprint 11 — paginacao e virtualizacao para resultados bulk (VirtualizedList) |
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |

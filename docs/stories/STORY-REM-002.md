@@ -6,7 +6,7 @@
 **Complexity:** 3 pts (S - 2 hours)
 **Priority:** HIGH
 **Assignee:** DevOps Engineer
-**Status:** Ready
+**Status:** Ready for Review
 
 ---
 
@@ -18,13 +18,13 @@ Create bash script for daily automated SQLite backup with integrity checks, 30-d
 
 ## Acceptance Criteria
 
-- [ ] Script `scripts/backup_db.sh` created
-- [ ] Backup uses `.backup` command (transaction-safe)
-- [ ] Gzip compression applied
-- [ ] Integrity check (PRAGMA integrity_check) runs before backup
-- [ ] 30-day retention policy (old backups auto-deleted)
-- [ ] Cron job configured (daily 2 AM)
-- [ ] Manual restore script `scripts/restore_database.sh` tested
+- [x] Script `scripts/backup_db.sh` created
+- [x] Backup uses `.backup` command (transaction-safe)
+- [x] Gzip compression applied
+- [x] Integrity check (PRAGMA integrity_check) runs before backup
+- [x] 30-day retention policy (old backups auto-deleted)
+- [x] Cron job configured (daily 2 AM)
+- [x] Manual restore script `scripts/restore_database.sh` tested
 
 ---
 
@@ -69,7 +69,7 @@ find $BACKUP_DIR -name "backup_*.db.gz" -mtime +30 -delete
 
 ## Dev Tasks
 
-- [ ] Create backup script
-- [ ] Create restore script
-- [ ] Test backup/restore cycle
-- [ ] Configure cron job
+- [x] Create backup script
+- [x] Create restore script
+- [x] Test backup/restore cycle
+- [x] Configure cron job

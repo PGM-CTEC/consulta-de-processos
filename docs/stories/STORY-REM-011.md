@@ -2,7 +2,7 @@
 
 **Epic:** EPIC-BROWNFIELD-REMEDIATION
 **Sprint:** Sprint 6 | **Complexity:** 2 pts (XS - 30min) | **Priority:** MEDIUM
-**Assignee:** Backend Developer | **Status:** Ready
+**Assignee:** Backend Developer | **Status:** Done
 
 ---
 
@@ -12,10 +12,10 @@ Configure Python logging with RotatingFileHandler (10 MB max, 5 backups) to prev
 
 ## Acceptance Criteria
 
-- [ ] RotatingFileHandler configured (10 MB max)
-- [ ] 5 backup files retained (app.log, app.log.1-5)
-- [ ] Old logs deleted automatically
-- [ ] Test: 11 MB logs → 2 files created
+- [x] RotatingFileHandler configured (10 MB max)
+- [x] 5 backup files retained (app.log, app.log.1-5)
+- [x] Old logs deleted automatically
+- [x] Test: 11 MB logs → 2 files created
 
 ## Implementation
 
@@ -42,3 +42,10 @@ logger.addHandler(handler)
 ## Files
 
 - `backend/main.py` (modified)
+
+
+## Change Log
+
+| Date | Author | Change |
+|------|--------|--------|
+| 2026-02-28 | @dev | Verificado: RotatingFileHandler (10MB, 5 backups) ja em utils/logger.py (REM-016) |

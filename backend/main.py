@@ -112,6 +112,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# Security headers middleware — Story: REM-051 (XSS Vulnerability Audit)
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://plausible.io; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self' https://plausible.io; "
+        "font-src 'self'; "
+        "frame-ancestors 'none';"
+    )
+    return response
+
 @app.get("/health", tags=["health"])
 async def health_check(db: Session = Depends(get_db)):
     """
