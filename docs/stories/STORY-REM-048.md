@@ -6,7 +6,7 @@
 **Complexity:** 5 pts (M - 1 day)
 **Priority:** MEDIUM
 **Assignee:** Backend Developer
-**Status:** Ready
+**Status:** Done
 **Sprint:** Sprint 5+
 
 ## Description

@@ -6,7 +6,7 @@
 **Complexity:** 3 pts (S - 1 day)
 **Priority:** LOW
 **Assignee:** Backend Developer / Frontend Developer
-**Status:** Ready
+**Status:** Done
 **Sprint:** Sprint 5+
 
 ## Description
