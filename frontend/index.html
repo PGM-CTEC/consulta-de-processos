@@ -1,10 +1,31 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <meta name="description" content="Sistema de consulta e acompanhamento de processos judiciais para a Procuradoria Geral do Município do Rio de Janeiro (PGM-Rio)" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Consulta Processual" />
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%234f46e5' width='192' height='192'/><text x='50%' y='50%' font-size='120' font-weight='bold' fill='white' text-anchor='middle' dy='.3em' font-family='system-ui'>C</text></svg>" />
+    <link rel="icon" type="image/png" sizes="192x192" href="data:image/png;base64,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"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAC8klEQVR4nO2X0W7bMBCGL9V2AQYA7LnAXfZYYCDIlp1b/wL7AX0B/YG+gBfQEzAEXmDnfEFpykfEMIBhIBuSqIUeQBCmKUoimlRim5d8kEjQP+6dT3/v7XR3/4rZbDZns9lsNpvNZrPZbDabzWaz2Wy+6ZGVSiXn9/vx+XwYx+PByWQyzGQySVQqFa7XK1wul3A6nZzNZpNkQqGQq9Vq7uv1YhqGYRwOB+d0OqN2u/0jWM3lco5QKOTs7e1xp9OJOx6PTkRExF1eXrpjsZizsVjMNRqNIVnD4ZDLZrNOfbXVajmNRuPMZrND8Pf7/T9d9mCfTifn9Xq5Sz/C9X07k0n0+/OfSEoZGQyGbpJh+EbJNIBAAGtVouyWq2Yz+d7vy6fz0e1Wo0sFgsRjUYlJRvBGgDgLZVKRbRaLXa73R0P/W2Zz+doNBpYr9cAkHOWb6KMRiNms5k7Go3Y0+l0B4A9VavVrFwuO5vNhkmlUrR/sNkstVoND+1r8ng8FAR4eHggXCIqWolEwimXy+52u2WzXllfXx9f8ng8REOoVqvU6/WyUqn0S8cqFAqXfL9arZhOp6P1ek0ejweEqlarVTwe/7Vyrdfjzud+9fV6sYVCYQj2TiFz+QZjrFgPSh6Px1UqFXY6nZrN5tUf5aqViMfjpQ6HQRT7/V6UZRnlchmx/Z8aCqEO0+mU1Wo1HAwG+H6/x+DxeKI1IAD7KXNz4Oc6xCUzGAwwGAzwer1Q1ev1D3NV5HX+VPltNhvcbjf+/vqIkizLGsL9+h9mMBjgarXCOp0Of/L29oZZLFa0BirP53P0+3382Fg9Gm+z2Sy8Xi88Hg/2+/0vyP8wGo1QqVRwBG0WCwUx98klHkT/QgGJXxoVRKgJjf2qCFarFfr9PuGnz+UqCxQKhQsEv9/v0eVyeYVX3e12CzORSITa7Tan0+lcT6eTW1paMpvNZrPZbDabzWaz2Ww2m81ms9lsNn/Vfv/4A3E3oJz8AAAAAElFTkSuQmCC"/>
+    <link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAAwuQbDAAACDklEQVR4nO3dMY4bIRCGYU+B7SJVKnuRUubWcVXnSJxSp/AZvESeIHGKnCInSFxSp5LLBfCFtaUIhMFhGXBm+HnSn39sNJsDMDB/f//48vIyns/H6XgalOfzcdztdlOpVAqlUqlUKpVKpVKp9P88xvM4xjMYiAEyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMyEAMx8AbM7fDRWi7aeAAAAAElFTkSuQmCC"/>
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Consulta Processual" />
+    <meta property="og:description" content="Sistema de consulta e acompanhamento de processos judiciais para a PGM-Rio" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://consulta-processual.pgm-rio.gov.br" />
+    <meta property="og:image" content="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 630'><rect fill='%234f46e5' width='1200' height='630'/><text x='600' y='300' font-size='200' font-weight='bold' fill='white' text-anchor='middle' dy='.3em' font-family='system-ui'>Consulta Processual</text><text x='600' y='450' font-size='60' fill='%23e0e7ff' text-anchor='middle'>Sistema de Consulta de Processos</text></svg>" />
+
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <title>Consulta Processual - Sistema de Consulta de Processos</title>
   </head>
   <body>
     <div id="root"></div>
