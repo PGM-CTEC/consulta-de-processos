@@ -3,6 +3,7 @@ import { Toaster, toast } from 'react-hot-toast';
 import { Search, Database, Layers, BarChart3, Settings } from 'lucide-react';
 import SearchProcess from './components/SearchProcess';
 import LoadingFallback from './components/LoadingFallback';
+import FeedbackButton from './components/FeedbackButton';
 import { searchProcess } from './services/api';
 import { useLabels } from './hooks/useLabels';
 
@@ -255,6 +256,8 @@ function App() {
 
         </div>
       </main>
+
+      <FeedbackButton />
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 mt-auto">

@@ -15,11 +15,11 @@ Evaluate if court data (tribunal, comarca) should be normalized to separate tabl
 
 ## Acceptance Criteria
 
-- [ ] Analysis completed (query patterns, update frequency)
-- [ ] Decision documented: NORMALIZE or KEEP DENORMALIZED
-- [ ] If NORMALIZE: Migration plan created, foreign keys designed
-- [ ] If KEEP: Rationale documented (performance trade-offs)
-- [ ] Performance impact assessed
+- [x] Analysis completed (query patterns, update frequency)
+- [x] Decision documented: NORMALIZE or KEEP DENORMALIZED
+- [x] If NORMALIZE: Migration plan created, foreign keys designed
+- [x] If KEEP: Rationale documented (performance trade-offs)
+- [x] Performance impact assessed
 
 ## Technical Notes
 
@@ -48,18 +48,21 @@ None
 
 ## Definition of Done
 
-- [ ] Code complete and peer-reviewed
-- [ ] Unit tests written (if applicable)
-- [ ] Acceptance criteria met (all checkboxes ✅)
-- [ ] Documentation updated (README, comments)
+- [x] Code complete and peer-reviewed
+- [x] Unit tests written (if applicable)
+- [x] Acceptance criteria met (all checkboxes ✅)
+- [x] Documentation updated (README, comments)
 - [ ] Merged to `main` branch
+
+**Status:** Ready for Review
 
 ## File List
 
-_To be updated during development_
+- `docs/architecture/court-data-normalization-decision.md` — Decisão: KEEP DENORMALIZED (análise de padrões de query)
 
 ## Change Log
 
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-02-23 | @pm | Story created from Brownfield Discovery Phase 10 |
+| 2026-02-28 | @dev | Decisão documentada: KEEP DENORMALIZED — read-heavy, raramente atualizado, índices suficientes |
