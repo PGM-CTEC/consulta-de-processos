@@ -30,7 +30,18 @@
       "Bash(npm run test:*)",
       "Bash(npx playwright:*)",
       "Bash(test:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(alembic init:*)",
+      "Bash(alembic revision:*)",
+      "Bash(rm:*)",
+      "Bash(alembic upgrade:*)",
+      "Bash(done)",
+      "Bash(cmd.exe /c \"where gh\")",
+      "Bash(powershell.exe -Command \"Get-Command gh -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(git remote get-url origin)",
+      "Bash(git credential:*)",
+      "Bash(git fetch origin)",
+      "Bash(git pull origin main)"
     ]
   },
   "hooks": {
