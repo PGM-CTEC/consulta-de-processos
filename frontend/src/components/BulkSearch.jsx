@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, ChevronDown, FileUp, AlertCircle } from 'lucide-react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { LoadingState } from './LoadingState';
 import { bulkSearch } from '../services/api';
 import * as XLSX from 'xlsx';
@@ -8,6 +9,124 @@ import { exporters } from '../utils/exportHelpers';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Input } from './ui/input';
+import Pagination from './Pagination';
+import { usePagination } from '../hooks/usePagination';
+
+// Threshold above which virtual scrolling is activated
+const VIRTUAL_THRESHOLD = 100;
+
+/**
+ * ResultRow — memoized row for successful results.
+ * Re-renders only when the result data changes.
+ */
+const ResultRow = React.memo(({ result }) => (
+    <tr className="hover:bg-gray-50/50 transition-colors">
+        <td className="px-6 py-4 font-mono font-bold text-gray-900 text-sm whitespace-nowrap">
+            {result.number}
+        </td>
+        <td className="px-6 py-4 text-sm font-semibold text-indigo-600">
+            {result.tribunal_name || result.court?.split(' - ')[0] || 'N/A'}
+        </td>
+        <td className="px-6 py-4 text-sm text-gray-600">
+            {result.court_unit || result.court?.split(' - ')[1] || result.court || 'N/A'}
+        </td>
+        <td className="px-6 py-4">
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(result.phase, result.class_nature)}`}>
+                {getPhaseDisplayName(result.phase, result.class_nature)}
+            </span>
+        </td>
+        <td className="px-6 py-4">
+            <div className="flex items-center text-green-600 text-xs font-semibold">
+                <CheckCircle className="h-4 w-4 mr-1" /> OK
+            </div>
+        </td>
+    </tr>
+));
+ResultRow.displayName = 'ResultRow';
+
+/**
+ * FailureRow — memoized row for failed lookups.
+ */
+const FailureRow = React.memo(({ number }) => (
+    <tr className="bg-red-50/20">
+        <td className="px-6 py-4 font-mono text-sm text-red-700 font-bold">{number}</td>
+        <td colSpan="3" className="px-6 py-4 text-xs text-red-500 italic font-medium">
+            Não localizado nos sistemas DataJud
+        </td>
+        <td className="px-6 py-4">
+            <XCircle className="h-4 w-4 text-red-500" />
+        </td>
+    </tr>
+));
+FailureRow.displayName = 'FailureRow';
+
+/**
+ * VirtualResultsBody — renders a virtualised list of ResultRows inside a scrollable container.
+ * Used when paginatedResults.length > VIRTUAL_THRESHOLD.
+ */
+const VirtualResultsBody = ({ items }) => {
+    const parentRef = useRef(null);
+
+    const virtualizer = useVirtualizer({
+        count: items.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: () => 60,
+        overscan: 5,
+    });
+
+    return (
+        <div
+            ref={parentRef}
+            style={{ height: '480px', overflowY: 'auto' }}
+            data-testid="virtual-scroll-container"
+        >
+            <table
+                className="w-full text-left border-collapse"
+                style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}
+            >
+                <tbody>
+                    {virtualizer.getVirtualItems().map((virtualRow) => {
+                        const result = items[virtualRow.index];
+                        return (
+                            <tr
+                                key={result.number ?? virtualRow.index}
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: `${virtualRow.size}px`,
+                                    transform: `translateY(${virtualRow.start}px)`,
+                                }}
+                                className="hover:bg-gray-50/50 transition-colors"
+                            >
+                                <td className="px-6 py-4 font-mono font-bold text-gray-900 text-sm whitespace-nowrap" style={{ width: '25%' }}>
+                                    {result.number}
+                                </td>
+                                <td className="px-6 py-4 text-sm font-semibold text-indigo-600" style={{ width: '20%' }}>
+                                    {result.tribunal_name || result.court?.split(' - ')[0] || 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-600" style={{ width: '25%' }}>
+                                    {result.court_unit || result.court?.split(' - ')[1] || result.court || 'N/A'}
+                                </td>
+                                <td className="px-6 py-4" style={{ width: '15%' }}>
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(result.phase, result.class_nature)}`}>
+                                        {getPhaseDisplayName(result.phase, result.class_nature)}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4" style={{ width: '15%' }}>
+                                    <div className="flex items-center text-green-600 text-xs font-semibold">
+                                        <CheckCircle className="h-4 w-4 mr-1" /> OK
+                                    </div>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+};
 
 const BulkSearch = () => {
     const [numbers, setNumbers] = useState('');
@@ -17,6 +136,20 @@ const BulkSearch = () => {
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [dragging, setDragging] = useState(false);
     const fileInputRef = useRef(null);
+
+    // Pagination state — apply only to successful results
+    const allResults = results?.results ?? [];
+    const {
+        page,
+        pageSize,
+        setPageSize,
+        totalPages,
+        totalItems,
+        paginatedItems,
+        goTo,
+        startItem,
+        endItem,
+    } = usePagination(allResults, 25);
 
     // Fechar export menu no ESC — REM-030
     useEffect(() => {
@@ -107,6 +240,9 @@ const BulkSearch = () => {
     const handleExportXLSX = () => exporters.xlsx(results.results);
     const handleExportTXT = () => exporters.txt(results.results);
     const handleExportMD = () => exporters.md(results.results);
+
+    // Decide whether to use virtual scrolling for the current page's items
+    const useVirtual = paginatedItems.length > VIRTUAL_THRESHOLD;
 
     return (
         <div className="space-y-6">
@@ -231,6 +367,7 @@ const BulkSearch = () => {
                         </div>
                     </CardContent>
 
+                    {/* Results table */}
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-gray-50 border-b border-gray-100">
@@ -242,44 +379,37 @@ const BulkSearch = () => {
                                     <th className="px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-widest">Status</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {results.results.map((p) => (
-                                    <tr key={p.number} className="hover:bg-gray-50/50 transition-colors">
-                                        <td className="px-6 py-4 font-mono font-bold text-gray-900 text-sm whitespace-nowrap">
-                                            {p.number}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm font-semibold text-indigo-600">
-                                            {p.tribunal_name || p.court?.split(' - ')[0] || 'N/A'}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">
-                                            {p.court_unit || p.court?.split(' - ')[1] || p.court || 'N/A'}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(p.phase, p.class_nature)}`}>
-                                                {getPhaseDisplayName(p.phase, p.class_nature)}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center text-green-600 text-xs font-semibold">
-                                                <CheckCircle className="h-4 w-4 mr-1" /> OK
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {results.failures.map((num) => (
-                                    <tr key={`failure-${num}`} className="bg-red-50/20">
-                                        <td className="px-6 py-4 font-mono text-sm text-red-700 font-bold">{num}</td>
-                                        <td colSpan="3" className="px-6 py-4 text-xs text-red-500 italic font-medium">
-                                            Não localizado nos sistemas DataJud
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <XCircle className="h-4 w-4 text-red-500" />
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
+                            {!useVirtual && (
+                                <tbody className="divide-y divide-gray-100">
+                                    {paginatedItems.map((p) => (
+                                        <ResultRow key={p.number} result={p} />
+                                    ))}
+                                    {results.failures.map((num) => (
+                                        <FailureRow key={`failure-${num}`} number={num} />
+                                    ))}
+                                </tbody>
+                            )}
                         </table>
+
+                        {/* Virtual scroll — only for large pages */}
+                        {useVirtual && (
+                            <VirtualResultsBody items={paginatedItems} />
+                        )}
                     </div>
+
+                    {/* Pagination controls */}
+                    {totalItems > 0 && (
+                        <Pagination
+                            page={page}
+                            pageSize={pageSize}
+                            totalPages={totalPages}
+                            totalItems={totalItems}
+                            startItem={startItem}
+                            endItem={endItem}
+                            onPageChange={goTo}
+                            onPageSize={setPageSize}
+                        />
+                    )}
                 </Card>
             )}
         </div>
