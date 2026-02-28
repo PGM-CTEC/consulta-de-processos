@@ -2,7 +2,11 @@ from backend.services.phase_analyzer import PhaseAnalyzer
 
 
 def test_fazenda_re_flow_current_contract():
-    """Valida o contrato atual do analisador para classe 7 (procedimento comum)."""
+    """Valida o contrato do analisador para classe 7 (procedimento comum).
+
+    Código 246 (Proferida Sentença) avança para Fase 02, NÃO arquiva.
+    Apenas código 22 (Baixa Definitiva) gera Fase 15.
+    """
     movements = [{"codigo": 26, "nome": "Distribuído", "dataHora": "2024-01-01"}]
     assert PhaseAnalyzer.analyze(7, movements) == "01 Conhecimento - Antes da Sentença"
 
@@ -15,9 +19,11 @@ def test_fazenda_re_flow_current_contract():
     movements.insert(0, {"codigo": 25, "nome": "Despacho Saneador", "dataHora": "2024-03-01"})
     assert PhaseAnalyzer.analyze(7, movements) == "01 Conhecimento - Antes da Sentença"
 
+    # Sentença proferida (246) → Fase 02, processo ainda NÃO está arquivado
     movements.insert(0, {"codigo": 246, "nome": "Sentença Proferida", "dataHora": "2024-06-01"})
-    assert PhaseAnalyzer.analyze(7, movements) == "15 Arquivado Definitivamente"
+    assert PhaseAnalyzer.analyze(7, movements) == "02 Conhecimento - Sentença sem Trânsito em Julgado"
 
+    # Baixa Definitiva (22) → agora sim arquivado (Fase 15)
     movements.insert(0, {"codigo": 22, "nome": "Baixa Definitiva", "dataHora": "2024-08-01"})
     assert PhaseAnalyzer.analyze(7, movements) == "15 Arquivado Definitivamente"
 
@@ -38,7 +44,12 @@ def test_fazenda_autora_flow_current_contract():
 
 
 def test_instance_logic_consistency():
-    """Garante consistência entre auto-detecção e grau explicitamente informado."""
+    """Garante consistência entre auto-detecção e grau explicitamente informado.
+
+    Processo com sentença (246) + remessa ao tribunal (970) deve ser classificado
+    na fase de recurso pendente em 2ª instância (Fase 04), não como arquivado.
+    Código 246 não é baixa definitiva.
+    """
     movements = [
         {"codigo": 26, "nome": "Distribuído", "dataHora": "2024-01-01"},
         {"codigo": 246, "nome": "Sentença", "dataHora": "2024-06-01"},
@@ -47,8 +58,10 @@ def test_instance_logic_consistency():
 
     auto_phase = PhaseAnalyzer.analyze(7, movements)
     g2_phase = PhaseAnalyzer.analyze(7, movements, grau="G2")
+    # Ambas as formas devem concordar sobre a instância de tramitação
     assert auto_phase == g2_phase
-    assert auto_phase == "15 Arquivado Definitivamente"
+    # Sentença + remessa = Recurso 2ª Instância Pendente (Fase 04), NÃO arquivado
+    assert auto_phase == "04 Conhecimento - Recurso 2ª Instância - Pendente Julgamento"
 
     movements.insert(0, {"codigo": 60303, "nome": "Retorno dos Autos", "dataHora": "2024-12-01"})
-    assert PhaseAnalyzer.analyze(7, movements) == "15 Arquivado Definitivamente"
+    assert PhaseAnalyzer.analyze(7, movements) == "04 Conhecimento - Recurso 2ª Instância - Pendente Julgamento"

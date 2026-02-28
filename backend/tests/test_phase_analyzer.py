@@ -162,3 +162,81 @@ class TestPhaseAnalyzerClassifications:
         """Verify exception handling doesn't crash the analyzer."""
         result = PhaseAnalyzer.analyze(None, [], "TJSP", "G1")
         assert result is None or isinstance(result, str)
+
+    # -------------------------------------------------------------------------
+    # Testes de regressão — Bug: código 246 ("Definitivo"/"Proferida Sentença")
+    # não deve sozinho determinar "Arquivado Definitivamente".
+    # Processo 0001745-93.1989.8.19.0002 — TJRJ Desapropriação (ajuizado 1989)
+    # -------------------------------------------------------------------------
+
+    def test_codigo_246_sozinho_nao_arquiva(self):
+        """
+        Código 246 (Proferida Sentença / 'Definitivo' no TJRJ) NÃO deve
+        classificar o processo como Arquivado Definitivamente (Fase 15).
+        Apenas o código 22 (Baixa Definitiva) é o arquivamento oficial CNJ.
+        """
+        movements = [
+            {"codigo": "26",  "nome": "Distribuição",  "dataHora": "1989-01-06T00:00:01Z"},
+            {"codigo": "246", "nome": "Definitivo",     "dataHora": "2007-09-06T11:15:16Z"},
+        ]
+        result = PhaseAnalyzer.analyze("90", movements, "TJRJ", "G1",
+                                       process_number="0001745-93.1989.8.19.0002")
+
+        assert result is not None
+        assert not result.startswith("15"), (
+            f"Código 246 não deve gerar Fase 15 (Arquivado). Resultado: {result}"
+        )
+
+    def test_codigo_246_com_reativacao_posterior_nao_arquiva(self):
+        """
+        Sequência real do processo: Definitivo (246) → Reativação (849).
+        A Reativação posterior deve impedir classificação como arquivado.
+        """
+        movements = [
+            {"codigo": "246", "nome": "Definitivo",  "dataHora": "2010-11-29T14:19:00Z"},
+            {"codigo": "849", "nome": "Reativação",  "dataHora": "2018-10-31T11:58:28Z"},
+        ]
+        result = PhaseAnalyzer.analyze("90", movements, "TJRJ", "G1",
+                                       process_number="0001745-93.1989.8.19.0002")
+
+        assert result is not None
+        assert not result.startswith("15"), (
+            f"Reativação (849) posterior deve impedir Fase 15. Resultado: {result}"
+        )
+
+    def test_codigo_246_com_redistribuicao_posterior_nao_arquiva(self):
+        """
+        Sequência real do processo: Definitivo (246) → Redistribuição (36).
+        Redistribuição indica processo ativo e deve impedir classificação como arquivado.
+        """
+        movements = [
+            {"codigo": "246", "nome": "Definitivo",      "dataHora": "2021-11-12T15:18:32Z"},
+            {"codigo": "36",  "nome": "Redistribuição",  "dataHora": "2023-10-19T09:01:29Z"},
+            {"codigo": "85",  "nome": "Petição",         "dataHora": "2024-11-13T03:16:20Z"},
+        ]
+        result = PhaseAnalyzer.analyze("90", movements, "TJRJ", "G1",
+                                       process_number="0001745-93.1989.8.19.0002")
+
+        assert result is not None
+        assert not result.startswith("15"), (
+            f"Redistribuição (36) posterior deve impedir Fase 15. Resultado: {result}"
+        )
+
+    def test_codigo_22_correto_arquiva(self):
+        """
+        Código 22 (Baixa Definitiva) SEM desarquivamento posterior
+        deve classificar corretamente como Fase 15 — Arquivado Definitivamente.
+        Garante que a correção não quebra o comportamento legítimo.
+        """
+        movements = [
+            {"codigo": "26",  "nome": "Distribuição",      "dataHora": "2020-01-10T10:00:00Z"},
+            {"codigo": "246", "nome": "Proferida Sentença", "dataHora": "2021-03-15T14:00:00Z"},
+            {"codigo": "22",  "nome": "Baixa Definitiva",   "dataHora": "2022-06-01T09:00:00Z"},
+        ]
+        result = PhaseAnalyzer.analyze("7", movements, "TJSP", "G1",
+                                       process_number="0000001-01.2020.8.26.0001")
+
+        assert result is not None
+        assert result.startswith("15"), (
+            f"Código 22 deve gerar Fase 15 (Arquivado). Resultado: {result}"
+        )

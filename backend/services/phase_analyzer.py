@@ -90,8 +90,11 @@ class PhaseAnalyzer:
             # Verificar se há movimento de baixa definitiva (código 22) ou arquivamento
             situacao = "MOVIMENTO"  # Default
 
-            # Códigos de movimentos que indicam baixa definitiva/arquivamento
-            CODIGOS_BAIXA = {22, 246, 861, 865, 10965, 10966, 10967, 12618}
+            # Códigos de movimentos que indicam baixa definitiva/arquivamento.
+            # NOTA: código 246 (CNJ = "Proferida Sentença", TJRJ = "Definitivo")
+            # foi removido pois proferir sentença não equivale a baixa definitiva.
+            # O único código oficial CNJ de arquivamento é o 22 (Baixa Definitiva).
+            CODIGOS_BAIXA = {22, 861, 865, 10965, 10966, 10967, 12618}
 
             # Verificar se algum movimento indica baixa
             has_baixa = any(m.codigo in CODIGOS_BAIXA for m in movimentos_adaptados)
@@ -104,8 +107,10 @@ class PhaseAnalyzer:
                 if movs_baixa:
                     ultima_baixa = max(movs_baixa, key=lambda m: m.data)
 
-                    # Códigos de desarquivamento/reativação
-                    CODIGOS_DESARQUIVAMENTO = {900, 12617}
+                    # Códigos de desarquivamento/reativação.
+                    # 849 = Reativação (sinal explícito de reabertura no TJRJ/outros)
+                    # 36  = Redistribuição (processo redistribuído = ativo)
+                    CODIGOS_DESARQUIVAMENTO = {900, 12617, 849, 36}
 
                     # Verificar se há desarquivamento posterior
                     movs_desarq = [m for m in movimentos_adaptados
