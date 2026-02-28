@@ -1,16 +1,17 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, ChevronDown, FileUp, AlertCircle } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { LoadingState } from './LoadingState';
+import { useForm } from 'react-hook-form';
+import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { bulkSearch } from '../services/api';
 import * as XLSX from 'xlsx';
 import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
 import { exporters } from '../utils/exportHelpers';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { Input } from './ui/input';
 import Pagination from './Pagination';
 import { usePagination } from '../hooks/usePagination';
+import { bulkSearchSchema } from '../lib/validationSchemas';
 
 // Threshold above which virtual scrolling is activated
 const VIRTUAL_THRESHOLD = 100;
@@ -129,13 +130,25 @@ const VirtualResultsBody = ({ items }) => {
 };
 
 const BulkSearch = () => {
-    const [numbers, setNumbers] = useState('');
     const [loading, setLoading] = useState(false);
     const [results, setResults] = useState(null);
-    const [error, setError] = useState(null);
+    const [apiError, setApiError] = useState(null);
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [dragging, setDragging] = useState(false);
     const fileInputRef = useRef(null);
+
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        watch,
+        formState: { errors },
+    } = useForm({
+        resolver: standardSchemaResolver(bulkSearchSchema),
+        defaultValues: { numbers: '' },
+    });
+
+    const numbersValue = watch('numbers');
 
     // Pagination state — apply only to successful results
     const allResults = results?.results ?? [];
@@ -159,17 +172,16 @@ const BulkSearch = () => {
         return () => document.removeEventListener('keydown', handleEsc);
     }, [showExportMenu]);
 
-    const handleSearch = async () => {
-        const processList = numbers.split('\n').map(n => n.trim()).filter(n => n.length > 0);
-        if (processList.length === 0) return;
+    const onSubmit = async (data) => {
+        const processList = data.numbers.split('\n').map(n => n.trim()).filter(n => n.length > 0);
 
         setLoading(true);
-        setError(null);
+        setApiError(null);
         try {
-            const data = await bulkSearch(processList);
-            setResults(data);
+            const result = await bulkSearch(processList);
+            setResults(result);
         } catch {
-            setError('Falha ao processar a busca em lote.');
+            setApiError('Falha ao processar a busca em lote.');
         } finally {
             setLoading(false);
         }
@@ -218,13 +230,13 @@ const BulkSearch = () => {
                 }
 
                 if (detectedNumbers.length > 0) {
-                    setNumbers(detectedNumbers.join('\n'));
-                    setError(null);
+                    setValue('numbers', detectedNumbers.join('\n'), { shouldValidate: true });
+                    setApiError(null);
                 } else {
-                    setError('Nenhum número de processo detectado no arquivo.');
+                    setApiError('Nenhum número de processo detectado no arquivo.');
                 }
             } catch {
-                setError('Erro ao ler o arquivo. Verifique o formato.');
+                setApiError('Erro ao ler o arquivo. Verifique o formato.');
             }
         };
 
@@ -257,7 +269,7 @@ const BulkSearch = () => {
                     </p>
                 </div>
 
-                <form className="p-6 space-y-4" aria-labelledby="bulk-search-title">
+                <form className="p-6 space-y-4" aria-labelledby="bulk-search-title" onSubmit={handleSubmit(onSubmit)}>
                     <fieldset className="space-y-4 border-b border-gray-200 pb-4">
                         <legend className="text-sm font-bold text-gray-600 uppercase tracking-widest mb-4">Importar Arquivo</legend>
                         {/* Drag and Drop Zone */}
@@ -294,17 +306,21 @@ const BulkSearch = () => {
                             </label>
                             <textarea
                                 id="bulk-numbers-textarea"
-                                className="w-full h-48 p-6 pt-10 border rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent font-mono text-sm leading-relaxed"
+                                className={`w-full h-48 p-6 pt-10 border rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent font-mono text-sm leading-relaxed ${errors.numbers ? 'border-red-400' : ''}`}
                                 placeholder="Um número por linha..."
-                                value={numbers}
-                                onChange={(e) => setNumbers(e.target.value)}
+                                {...register('numbers')}
                             />
+                            {errors.numbers && (
+                                <p role="alert" className="text-red-500 text-xs mt-1 font-medium">
+                                    {errors.numbers.message}
+                                </p>
+                            )}
                         </div>
                     </fieldset>
 
                     <Button
-                        onClick={handleSearch}
-                        disabled={loading || !numbers.trim()}
+                        type="submit"
+                        disabled={loading || !numbersValue?.trim()}
                         className={`w-full flex items-center justify-center p-4 font-bold text-white transition-all ${loading ? 'bg-gray-400' : 'bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-200'
                             }`}
                     >
@@ -315,10 +331,10 @@ const BulkSearch = () => {
                         )}
                         {loading ? 'Processando Lote...' : 'Iniciar Consulta em Lote'}
                     </Button>
-                    {error && (
+                    {apiError && (
                         <div className="flex items-center text-red-500 bg-red-50 p-3 rounded-lg text-sm font-medium">
                             <AlertCircle className="h-4 w-4 mr-2" />
-                            {error}
+                            {apiError}
                         </div>
                     )}
                 </form>

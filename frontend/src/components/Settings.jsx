@@ -1,34 +1,44 @@
 import React, { useState } from 'react';
-import { Settings, Save, Loader2, Play, CheckCircle2, AlertCircle, Eye, EyeOff, Database } from 'lucide-react';
+import { Loader2, Play, CheckCircle2, Database } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { testSQLConnection, importFromSQL } from '../services/api';
 import { toast } from 'react-hot-toast';
+import { sqlConfigSchema } from '../lib/validationSchemas';
+
+const fieldClass = 'w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none';
+const errorClass = 'text-red-500 text-xs mt-1';
+
+const FieldError = ({ error }) =>
+    error ? <p className={errorClass}>{error.message}</p> : null;
 
 const SettingsComponent = () => {
-    const [config, setConfig] = useState({
-        driver: 'postgresql',
-        host: 'localhost',
-        port: 5432,
-        user: '',
-        password: '',
-        database: '',
-        query: 'SELECT numero_processo FROM processos LIMIT 100'
-    });
     const [testing, setTesting] = useState(false);
     const [importing, setImporting] = useState(false);
     const [showConfig, setShowConfig] = useState(true);
 
-    const handleConfigChange = (e) => {
-        const { name, value } = e.target;
-        setConfig(prev => ({
-            ...prev,
-            [name]: name === 'port' ? parseInt(value) || 0 : value
-        }));
-    };
+    const {
+        register,
+        getValues,
+        formState: { errors },
+    } = useForm({
+        resolver: standardSchemaResolver(sqlConfigSchema),
+        mode: 'onBlur',
+        defaultValues: {
+            driver: 'postgresql',
+            host: 'localhost',
+            port: 5432,
+            user: '',
+            password: '',
+            database: '',
+            query: 'SELECT numero_processo FROM processos LIMIT 100',
+        },
+    });
 
     const handleTestConnection = async () => {
         setTesting(true);
         try {
-            const result = await testSQLConnection(config);
+            const result = await testSQLConnection(getValues());
             if (result.success) {
                 toast.success(result.message);
             } else {
@@ -45,7 +55,7 @@ const SettingsComponent = () => {
         if (!confirm('Deseja iniciar a importação de processos via SQL? Isso pode levar alguns minutos.')) return;
         setImporting(true);
         try {
-            const result = await importFromSQL(config);
+            const result = await importFromSQL(getValues());
             const successCount = result.results.length;
             const failCount = result.failures.length;
             toast.success(`Importação concluída: ${successCount} sucessos, ${failCount} falhas.`);
@@ -79,45 +89,42 @@ const SettingsComponent = () => {
                 </div>
 
                 {showConfig && (
-                    <div className="p-6 space-y-6">
+                    <form className="p-6 space-y-6" onSubmit={(e) => e.preventDefault()}>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-1">
                                 <label htmlFor="sql-driver" className="text-xs font-bold text-gray-500 uppercase tracking-wide">Driver / Banco</label>
                                 <select
                                     id="sql-driver"
-                                    name="driver"
-                                    value={config.driver}
-                                    onChange={handleConfigChange}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    {...register('driver')}
+                                    className={fieldClass}
                                 >
                                     <option value="postgresql">PostgreSQL</option>
                                     <option value="mysql">MySQL</option>
                                     <option value="mssql+pyodbc">SQL Server (PyODBC)</option>
                                     <option value="sqlite">SQLite</option>
                                 </select>
+                                <FieldError error={errors.driver} />
                             </div>
                             <div className="space-y-1">
                                 <label htmlFor="sql-host" className="text-xs font-bold text-gray-500 uppercase tracking-wide">Host</label>
                                 <input
                                     id="sql-host"
                                     type="text"
-                                    name="host"
-                                    value={config.host}
-                                    onChange={handleConfigChange}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm"
+                                    {...register('host')}
+                                    className={fieldClass}
                                     placeholder="localhost"
                                 />
+                                <FieldError error={errors.host} />
                             </div>
                             <div className="space-y-1">
                                 <label htmlFor="sql-port" className="text-xs font-bold text-gray-500 uppercase tracking-wide">Porta</label>
                                 <input
                                     id="sql-port"
                                     type="number"
-                                    name="port"
-                                    value={config.port}
-                                    onChange={handleConfigChange}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm"
+                                    {...register('port')}
+                                    className={fieldClass}
                                 />
+                                <FieldError error={errors.port} />
                             </div>
                         </div>
 
@@ -127,10 +134,8 @@ const SettingsComponent = () => {
                                 <input
                                     id="sql-user"
                                     type="text"
-                                    name="user"
-                                    value={config.user}
-                                    onChange={handleConfigChange}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm"
+                                    {...register('user')}
+                                    className={fieldClass}
                                 />
                             </div>
                             <div className="space-y-1">
@@ -138,10 +143,8 @@ const SettingsComponent = () => {
                                 <input
                                     id="sql-password"
                                     type="password"
-                                    name="password"
-                                    value={config.password}
-                                    onChange={handleConfigChange}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm"
+                                    {...register('password')}
+                                    className={fieldClass}
                                 />
                             </div>
                             <div className="space-y-1">
@@ -149,11 +152,10 @@ const SettingsComponent = () => {
                                 <input
                                     id="sql-database"
                                     type="text"
-                                    name="database"
-                                    value={config.database}
-                                    onChange={handleConfigChange}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm"
+                                    {...register('database')}
+                                    className={fieldClass}
                                 />
+                                <FieldError error={errors.database} />
                             </div>
                         </div>
 
@@ -161,17 +163,17 @@ const SettingsComponent = () => {
                             <label htmlFor="sql-query" className="text-xs font-bold text-gray-500 uppercase tracking-wide">Query SQL</label>
                             <textarea
                                 id="sql-query"
-                                name="query"
-                                value={config.query}
-                                onChange={handleConfigChange}
+                                {...register('query')}
                                 rows="3"
-                                className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm font-mono"
+                                className={`${fieldClass} font-mono`}
                                 placeholder="SELECT cnj_number FROM processes"
                             />
+                            <FieldError error={errors.query} />
                         </div>
 
                         <div className="flex space-x-4">
                             <button
+                                type="button"
                                 onClick={handleTestConnection}
                                 disabled={testing || importing}
                                 className="flex-1 bg-white border-2 border-indigo-600 text-indigo-600 px-6 py-3 rounded-xl font-bold hover:bg-indigo-50 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
@@ -180,6 +182,7 @@ const SettingsComponent = () => {
                                 <span>Testar Conexão</span>
                             </button>
                             <button
+                                type="button"
                                 onClick={handleImport}
                                 disabled={testing || importing}
                                 className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
@@ -188,7 +191,7 @@ const SettingsComponent = () => {
                                 <span>Iniciar Importação</span>
                             </button>
                         </div>
-                    </div>
+                    </form>
                 )}
             </div>
         </div>
