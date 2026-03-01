@@ -65,3 +65,31 @@ def test_instance_logic_consistency():
 
     movements.insert(0, {"codigo": 60303, "nome": "Retorno dos Autos", "dataHora": "2024-12-01"})
     assert PhaseAnalyzer.analyze(7, movements) == "04 Conhecimento - Recurso 2ª Instância - Pendente Julgamento"
+
+
+def test_desapropriacao_fase_execucao():
+    """Classe 90 (Desapropriação) deve ser classificada como Fase 10 Execução.
+
+    Após julgamento (246) e reativação (849), a desapropriação entra na fase
+    de execução: pagamento da diferença entre depósito inicial e valor devido.
+    Baixa definitiva real (22) ainda arquiva o processo normalmente.
+    """
+    # Fluxo típico de desapropriação em execução
+    movements = [
+        {"codigo": 26,  "nome": "Distribuído",  "dataHora": "1989-01-06"},
+        {"codigo": 246, "nome": "Definitivo",   "dataHora": "2007-09-06"},
+        {"codigo": 849, "nome": "Reativação",   "dataHora": "2018-10-31"},
+        {"codigo": 85,  "nome": "Petição",      "dataHora": "2026-01-30"},
+    ]
+    assert PhaseAnalyzer.analyze(90, movements) == "10 Execução"
+
+    # Com apenas distribuição (início do processo) — ainda execução
+    movements_inicio = [{"codigo": 26, "nome": "Distribuído", "dataHora": "2024-01-01"}]
+    assert PhaseAnalyzer.analyze(90, movements_inicio) == "10 Execução"
+
+    # Baixa Definitiva real (22) ainda arquiva corretamente
+    movements_baixa = [
+        {"codigo": 26, "nome": "Distribuído",      "dataHora": "2024-01-01"},
+        {"codigo": 22, "nome": "Baixa Definitiva", "dataHora": "2024-08-01"},
+    ]
+    assert PhaseAnalyzer.analyze(90, movements_baixa) == "15 Arquivado Definitivamente"

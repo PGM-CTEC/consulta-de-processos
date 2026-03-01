@@ -42,6 +42,7 @@ class Process(Base, SoftDeleteMixin):
     
     distribution_date = Column(DateTime(timezone=True), nullable=True)
     phase = Column(String, nullable=True)
+    phase_warning = Column(String, nullable=True)  # Aviso de classificação incerta (ex: DCP TJRJ)
     last_update = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     # Raw JSON data from DataJud for future proofing

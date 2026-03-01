@@ -10,6 +10,12 @@ from .classification_rules import (
 
 logger = logging.getLogger(__name__)
 
+DCP_WARNING_MESSAGE = (
+    "A classificação deste processo pode estar errada, considerando-se "
+    "tratar de um processo do sistema DCP do TJRJ com mais de 5 anos"
+)
+
+
 class PhaseAnalyzer:
     """
     Analyzes process phases using the strict deterministic rules from
@@ -135,9 +141,42 @@ class PhaseAnalyzer:
             classificador = ClassificadorFases()
             resultado = classificador.classificar(processo)
             
-            # 3. Return Phase Code + Description
-            return f"{resultado.fase.value} {resultado.fase.descricao}"
+            # 3. Return Phase Code + Description (com sufixo DCP se aplicável)
+            phase_str = f"{resultado.fase.value} {resultado.fase.descricao}"
+            if PhaseAnalyzer._is_dcp_process(raw_data, tribunal):
+                phase_str += " *"
+            return phase_str
 
         except Exception as e:
             logger.error(f"Error in PhaseAnalyzer: {e}")
             return "Erro na Análise"
+
+    @staticmethod
+    def _is_dcp_process(raw_data: Optional[Dict[str, Any]], tribunal: str) -> bool:
+        """
+        Verifica se o processo é do sistema DCP do TJRJ com mais de 5 anos.
+
+        Critérios (todos obrigatórios):
+        1. tribunal == "TJRJ"
+        2. raw_data.sistema.codigo == -1  (sistema legado DCP)
+        3. dataAjuizamento há mais de 5 anos
+        """
+        if not raw_data or tribunal != "TJRJ":
+            return False
+
+        sistema = raw_data.get("sistema", {})
+        if not isinstance(sistema, dict) or sistema.get("codigo") != -1:
+            return False
+
+        data_str = raw_data.get("dataAjuizamento", "")
+        if not data_str:
+            return False
+
+        try:
+            if len(data_str) >= 8 and data_str[:8].isdigit():
+                data_ajuiz = datetime.strptime(data_str[:8], "%Y%m%d")
+            else:
+                data_ajuiz = datetime.fromisoformat(data_str.replace("Z", "+00:00"))
+            return (datetime.now() - data_ajuiz).days > 5 * 365
+        except (ValueError, TypeError):
+            return False

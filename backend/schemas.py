@@ -29,6 +29,7 @@ class ProcessBase(BaseModel):
     judge: Optional[str] = None
     distribution_date: Optional[datetime] = None
     phase: Optional[str] = None
+    phase_warning: Optional[str] = None
 
 class HistoryResponse(BaseModel):
     id: int

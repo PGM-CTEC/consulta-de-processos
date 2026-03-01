@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from .datajud import DataJudClient
-from .phase_analyzer import PhaseAnalyzer
+from .phase_analyzer import PhaseAnalyzer, DCP_WARNING_MESSAGE
 from .. import models, schemas
 from ..database import transaction_scope
 from ..exceptions import DataJudAPIException, ProcessNotFoundException
@@ -180,22 +180,29 @@ class ProcessService:
             class_code,
             movements_data,
             tribunal,
-            data.get("grau", "G1")
+            data.get("grau", "G1"),
+            raw_data=data
         )
 
         raw_payload = dict(data)
-        meta = raw_payload.get("__meta__")
-        if isinstance(meta, dict):
-            selected_index = meta.get("selected_index", 0)
-            source_grau = None
-            instances = meta.get("instances") or []
-            if isinstance(selected_index, int) and 0 <= selected_index < len(instances):
-                source_grau = (instances[selected_index] or {}).get("grau")
-            if not source_grau:
-                source_grau = raw_payload.get("grau")
-            meta["phase_source_instance_index"] = selected_index
-            meta["phase_source_grau"] = source_grau
-            raw_payload["__meta__"] = meta
+        meta = raw_payload.get("__meta__") or {}
+        selected_index = meta.get("selected_index", 0)
+        source_grau = None
+        instances = meta.get("instances") or []
+        if isinstance(selected_index, int) and 0 <= selected_index < len(instances):
+            source_grau = (instances[selected_index] or {}).get("grau")
+        if not source_grau:
+            source_grau = raw_payload.get("grau")
+        meta["phase_source_instance_index"] = selected_index
+        meta["phase_source_grau"] = source_grau
+
+        # Injeta mensagem de aviso quando processo é DCP TJRJ antigo
+        phase_warning = None
+        if isinstance(phase, str) and phase.endswith(" *"):
+            phase_warning = DCP_WARNING_MESSAGE
+            meta["phase_warning"] = phase_warning
+
+        raw_payload["__meta__"] = meta
 
         return {
             "class_nature": class_name,
@@ -206,6 +213,7 @@ class ProcessService:
             "district": str((root_orgao or {}).get("codigoMunicipioIBGE", "")),
             "distribution_date": dist_date,
             "phase": phase,
+            "phase_warning": phase_warning,
             "raw_data": raw_payload
         }
 

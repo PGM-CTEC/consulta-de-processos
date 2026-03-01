@@ -250,6 +250,7 @@ class CodigosCNJ:
         229,    # Execução de Alimentos
         1727,   # Cumprimento de Sentença (Juizado)
         165,    # Execução Contra a Fazenda Pública
+        90,     # Desapropriação — execução do pagamento da diferença entre depósito e valor devido
         # Adicionar outras conforme necessidade
     }
     
