@@ -132,6 +132,8 @@ const VirtualResultsBody = ({ items }) => {
 
 // Interval (ms) between polling requests during bulk job processing.
 const POLL_INTERVAL_MS = 2000;
+// Maximum consecutive polling errors before stopping
+const MAX_POLL_ERRORS = 3;
 
 const BulkSearch = () => {
     const [loading, setLoading] = useState(false);
@@ -142,6 +144,7 @@ const BulkSearch = () => {
     // Queue-based bulk job state
     const [job, setJob] = useState(null);         // current job metadata
     const pollRef = useRef(null);                 // interval handle
+    const pollErrorCount = useRef(0);             // consecutive error counter
     const fileInputRef = useRef(null);
 
     const {
@@ -190,9 +193,11 @@ const BulkSearch = () => {
     // Start polling a submitted bulk job every POLL_INTERVAL_MS.
     const startPolling = (jobId) => {
         stopPolling();
+        pollErrorCount.current = 0; // Reset error counter
         pollRef.current = setInterval(async () => {
             try {
                 const status = await getBulkJob(jobId);
+                pollErrorCount.current = 0; // Reset on success
                 setJob(status);
                 if (status.status === 'done' || status.status === 'error') {
                     stopPolling();
@@ -206,10 +211,17 @@ const BulkSearch = () => {
                         setApiError('O processamento em lote falhou. Tente novamente.');
                     }
                 }
-            } catch {
-                stopPolling();
-                setLoading(false);
-                setApiError('Erro ao verificar progresso do processamento.');
+            } catch (error) {
+                pollErrorCount.current += 1;
+                console.error(`Erro ao verificar progresso (tentativa ${pollErrorCount.current}/${MAX_POLL_ERRORS}):`, error);
+
+                // Only stop polling after MAX_POLL_ERRORS consecutive failures
+                if (pollErrorCount.current >= MAX_POLL_ERRORS) {
+                    stopPolling();
+                    setLoading(false);
+                    setApiError('Erro ao verificar progresso do processamento. Verifique sua conexão com a internet.');
+                }
+                // Otherwise, continue polling (transient error)
             }
         }, POLL_INTERVAL_MS);
     };
