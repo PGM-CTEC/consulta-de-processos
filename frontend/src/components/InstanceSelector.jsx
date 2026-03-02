@@ -119,11 +119,17 @@ const InstanceSelector = ({ processNumber, onInstanceChange, meta }) => {
   const missingExpected = Array.isArray(instances?.missing_expected_instances)
     ? instances.missing_expected_instances
     : [];
-  const slots = SLOT_ORDER.map((grau) => ({
-    grau,
-    instance: list.find((item) => item.grau === grau),
-    missing: missingExpected.includes(grau),
-  }));
+  // Mostra apenas slots que têm instância ou estão explicitamente ausentes (missing_expected).
+  // Slots de rito completamente diferente (ex: G1/G2 num processo JE/TR) são ocultados.
+  const slots = SLOT_ORDER
+    .map((grau) => ({
+      grau,
+      instance: list.find((item) => item.grau === grau),
+      missing: missingExpected.includes(grau),
+    }))
+    .filter((slot) => slot.instance || slot.missing);
+
+  const gridCols = slots.length <= 2 ? 'md:grid-cols-2' : 'md:grid-cols-3';
 
   return (
     <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4 mb-4 space-y-3">
@@ -149,7 +155,7 @@ const InstanceSelector = ({ processNumber, onInstanceChange, meta }) => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className={`grid grid-cols-1 ${gridCols} gap-3`}>
         {slots.map((slot) => {
           if (!slot.instance) {
             return (
