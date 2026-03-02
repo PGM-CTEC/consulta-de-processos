@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from .datajud import DataJudClient
 from .phase_analyzer import PhaseAnalyzer, DCP_WARNING_MESSAGE
@@ -78,13 +79,28 @@ class ProcessService:
         return process
 
     def _record_history(self, process: models.Process):
-        """Record the search in history."""
+        """
+        Record the search in history, avoiding duplicates.
+        If process already exists in history, update its timestamp instead of creating duplicate.
+        """
         try:
-            history_entry = models.SearchHistory(
-                number=process.number,
-                court=process.court
-            )
-            self.db.add(history_entry)
+            # Check if process already exists in history
+            existing = self.db.query(models.SearchHistory).filter(
+                models.SearchHistory.number == process.number
+            ).first()
+
+            if existing:
+                # Update timestamp to move to top of recent searches
+                existing.created_at = func.now()
+                existing.court = process.court  # Update court info if changed
+            else:
+                # Create new history entry
+                history_entry = models.SearchHistory(
+                    number=process.number,
+                    court=process.court
+                )
+                self.db.add(history_entry)
+
             self.db.commit()
         except Exception as e:
             logger.error(f"Error recording history for {process.number}: {e}")
