@@ -202,6 +202,19 @@ class ProcessService:
             phase_warning = DCP_WARNING_MESSAGE
             meta["phase_warning"] = phase_warning
 
+        # Aviso quando apenas a Turma Recursal (TR = 2ª instância) foi localizada no
+        # DataJud sem a 1ª instância do Juizado Especial (JE).  O DataJud indexa o TR
+        # separado da tramitação no JE, e processos anteriores a ~2018 frequentemente
+        # não têm a 1ª instância exposta na base pública.
+        missing = meta.get("missing_expected_instances", [])
+        if "JE" in missing and not phase_warning:
+            phase_warning = (
+                "Atenção: o DataJud localizou apenas a 2ª instância (Turma Recursal). "
+                "A 1ª instância (Juizado Especial) pode estar tramitando ativamente "
+                "no sistema do tribunal e não foi localizada na base pública do DataJud/CNJ."
+            )
+            meta["phase_warning"] = phase_warning
+
         raw_payload["__meta__"] = meta
 
         return {
@@ -486,13 +499,30 @@ class ProcessService:
             logger.error(f"Error fetching instances for {process_number}: {e}")
             raise
 
+    # Mapeamento canônico de grau DataJud → rótulo de instância exibido ao usuário.
+    # TR = Turma Recursal = 2ª instância dos Juizados Especiais.
+    # JE = Juizado Especial = 1ª instância dos Juizados Especiais.
+    _GRAU_LABEL: dict = {
+        "G1":  "1ª Instância",
+        "JE":  "1ª Instância (Juizado Especial)",
+        "G2":  "2ª Instância",
+        "TR":  "2ª Instância (Turma Recursal)",
+        "SUP": "Instância Superior",
+    }
+
+    @classmethod
+    def _grau_label(cls, grau: str | None) -> str:
+        return cls._GRAU_LABEL.get(grau or "", grau or "N/A")
+
     def _parse_instance_summary(self, instance_data: dict, index: int) -> dict:
         """
         Cria um resumo de uma instância do processo.
         """
+        grau = instance_data.get("grau", "N/A")
         return {
             "index": index,
-            "grau": instance_data.get("grau", "N/A"),
+            "grau": grau,
+            "grau_label": self._grau_label(grau),
             "tribunal": instance_data.get("tribunal", "N/A"),
             "orgao_julgador": instance_data.get("orgao_julgador", "N/A"),
             "latest_movement_at": instance_data.get("latest_movement_at"),
@@ -505,9 +535,11 @@ class ProcessService:
         not the pre-summarized metadata shape.
         """
         summarized = self.client._summarize_instance(instance_data)
+        grau = summarized.get("grau", "N/A")
         return {
             "index": index,
-            "grau": summarized.get("grau", "N/A"),
+            "grau": grau,
+            "grau_label": self._grau_label(grau),
             "tribunal": summarized.get("tribunal", "N/A"),
             "orgao_julgador": summarized.get("orgao_julgador", "N/A"),
             "latest_movement_at": summarized.get("latest_movement_at"),

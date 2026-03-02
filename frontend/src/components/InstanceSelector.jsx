@@ -15,13 +15,16 @@ const EMPTY_INSTANCES = {
 };
 
 const GRAU_LABELS = {
-  G1: '1a Instancia',
-  G2: '2a Instancia',
+  G1:  '1ª Instância',
+  JE:  '1ª Instância (Juizado Especial)',
+  G2:  '2ª Instância',
+  TR:  '2ª Instância (Turma Recursal)',
   SUP: 'Tribunais Superiores',
-  JE: 'Juizado Especial',
 };
 
-const SLOT_ORDER = ['G1', 'G2', 'SUP'];
+// Ordem de exibição: 1ªs instâncias → 2ªs instâncias → superiores.
+// JE e TR são as instâncias dos Juizados Especiais (equivalentes a G1/G2).
+const SLOT_ORDER = ['G1', 'JE', 'G2', 'TR', 'SUP'];
 
 const normalizePayload = (payload) => {
   const list = Array.isArray(payload?.instances) ? payload.instances : [];
@@ -182,9 +185,9 @@ const InstanceSelector = ({ processNumber, onInstanceChange, meta }) => {
               <div className="flex items-center justify-between gap-2">
                 <span
                   className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-bold ${
-                    slot.grau === 'G1'
+                    ['G1', 'JE'].includes(slot.grau)
                       ? 'bg-blue-100 text-blue-700'
-                      : slot.grau === 'G2'
+                      : ['G2', 'TR'].includes(slot.grau)
                       ? 'bg-purple-100 text-purple-700'
                       : 'bg-amber-100 text-amber-700'
                   }`}

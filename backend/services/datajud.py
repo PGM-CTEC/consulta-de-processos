@@ -308,9 +308,14 @@ class DataJudClient:
             if isinstance(h, dict) and (h or {}).get("grau")
         }
         missing: List[str] = []
-        # If second instance exists but first instance doesn't, make this explicit.
+        # G2 sem G1: recurso ordinário sem 1ª instância correspondente.
         if "G2" in graus_present and "G1" not in graus_present:
             missing.append("G1")
+        # TR sem JE: Turma Recursal (2ª instância) sem o Juizado Especial de origem (1ª instância).
+        # O DataJud frequentemente indexa apenas o TR sem expor a tramitação do JE,
+        # especialmente em processos anteriores a 2018.
+        if "TR" in graus_present and "G1" not in graus_present and "JE" not in graus_present:
+            missing.append("JE")
         return missing
 
     @staticmethod
@@ -335,7 +340,9 @@ class DataJudClient:
 
     @staticmethod
     def _has_second_instance(hits: List[Dict[str, Any]]) -> bool:
-        return any((h or {}).get("grau") == "G2" for h in hits if isinstance(h, dict))
+        # TR (Turma Recursal) é a 2ª instância dos Juizados Especiais,
+        # assim como G2 é a 2ª instância do rito ordinário.
+        return any((h or {}).get("grau") in ("G2", "TR") for h in hits if isinstance(h, dict))
 
     async def _search_aliases(self, aliases: List[str], clean_number: str) -> List[Dict[str, Any]]:
         deduped = self._dedupe_aliases(aliases)

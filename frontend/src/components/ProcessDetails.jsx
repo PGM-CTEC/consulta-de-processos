@@ -137,7 +137,7 @@ function ProcessDetails({ data }) {
         try {
             const newInstanceData = await getProcessInstance(activeData.number, instanceMeta.index);
             setActiveData(newInstanceData);
-            toast.success(`Visualizando ${instanceMeta.grau || 'Instância selecionada'}`);
+            toast.success(`Visualizando ${instanceMeta.grau_label || instanceMeta.grau || 'Instância selecionada'}`);
         } catch (error) {
             console.error("Erro ao trocar instância:", error);
             toast.error("Erro ao carregar instância");

@@ -1,3 +1,4 @@
+import asyncio
 import os
 import logging
 
@@ -10,11 +11,12 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
-from .database import get_db
+from .database import get_db, SessionLocal
 from .services.process_service import ProcessService
 from .services.stats_service import StatsService
 from .services.sql_integration_service import SQLIntegrationService
 from .services.metrics_service import get_metrics_service
+from .services.bulk_queue import bulk_job_manager, run_bulk_job
 from . import schemas
 from .config import settings
 from .error_handlers import register_exception_handlers
@@ -239,6 +241,75 @@ async def get_processes_bulk(
         body.numbers,
         max_concurrent=settings.BULK_MAX_CONCURRENT
     )
+
+@app.post("/processes/bulk/submit", response_model=schemas.BulkJobStatusResponse)
+@limiter.limit("20/minute")
+async def submit_bulk_job(
+    request: Request, body: schemas.BulkSubmitRequest
+):
+    """
+    Submit a bulk processing job and return a job_id immediately.
+
+    The job processes all numbers in the background using asyncio with a
+    configurable concurrency limit. Poll GET /processes/bulk/{job_id} for
+    progress and results. Supports thousands of numbers without HTTP timeout.
+    """
+    job = await bulk_job_manager.create(body.numbers)
+    # Fire-and-forget: passes SessionLocal factory so the background task
+    # creates its own session (the request session closes when handler returns).
+    asyncio.create_task(
+        run_bulk_job(
+            job=job,
+            numbers=body.numbers,
+            db_factory=SessionLocal,
+            max_concurrent=settings.BULK_MAX_CONCURRENT,
+        )
+    )
+    return schemas.BulkJobStatusResponse(
+        job_id=job.job_id,
+        status=job.status,
+        total=job.total,
+        processed=job.processed,
+        results_count=job.results_count,
+        failures_count=job.failures_count,
+        created_at=job.created_at,
+        completed_at=job.completed_at,
+    )
+
+
+@app.get("/processes/bulk/{job_id}", response_model=schemas.BulkJobResultsResponse)
+async def get_bulk_job(
+    job_id: str,
+    page: int = 1,
+    per_page: int = 50,
+):
+    """
+    Poll bulk job status and retrieve paginated results.
+
+    - While status is 'running': returns progress counters + partial results.
+    - When status is 'done': returns all results (paginated).
+    - per_page max: 200.
+    """
+    per_page = min(per_page, 200)
+    job = await bulk_job_manager.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job não encontrado ou expirado.")
+
+    total_pages = max(1, -(-job.results_count // per_page))  # ceiling division
+    results_page = job.get_results_page(page, per_page)
+
+    return schemas.BulkJobResultsResponse(
+        job_id=job.job_id,
+        status=job.status,
+        total=job.total,
+        processed=job.processed,
+        failures=job.failures,
+        results=results_page,
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages,
+    )
+
 
 @app.get("/stats", response_model=schemas.DatabaseStats)
 async def get_database_stats(db: Session = Depends(get_db)):

@@ -64,6 +64,18 @@ export const bulkSearch = async (numbers) => {
     return response.data;
 };
 
+export const bulkSubmit = async (numbers) => {
+    const response = await api.post('/processes/bulk/submit', { numbers });
+    return response.data; // { job_id, status, total, ... }
+};
+
+export const getBulkJob = async (jobId, page = 1, perPage = 50) => {
+    const response = await api.get(`/processes/bulk/${jobId}`, {
+        params: { page, per_page: perPage },
+    });
+    return response.data;
+};
+
 export const getStats = async () => {
     const response = await api.get('/stats');
     return response.data;

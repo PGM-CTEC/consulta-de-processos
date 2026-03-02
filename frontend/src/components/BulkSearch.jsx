@@ -3,7 +3,7 @@ import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, Chev
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useForm } from 'react-hook-form';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
-import { bulkSearch } from '../services/api';
+import { bulkSubmit, getBulkJob } from '../services/api';
 import * as XLSX from 'xlsx';
 import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
 import { exporters } from '../utils/exportHelpers';
@@ -130,12 +130,18 @@ const VirtualResultsBody = ({ items }) => {
     );
 };
 
+// Interval (ms) between polling requests during bulk job processing.
+const POLL_INTERVAL_MS = 2000;
+
 const BulkSearch = () => {
     const [loading, setLoading] = useState(false);
     const [results, setResults] = useState(null);
     const [apiError, setApiError] = useState(null);
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [dragging, setDragging] = useState(false);
+    // Queue-based bulk job state
+    const [job, setJob] = useState(null);         // current job metadata
+    const pollRef = useRef(null);                 // interval handle
     const fileInputRef = useRef(null);
 
     const {
@@ -173,20 +179,61 @@ const BulkSearch = () => {
         return () => document.removeEventListener('keydown', handleEsc);
     }, [showExportMenu]);
 
+    // Stop polling and clean up the interval reference.
+    const stopPolling = () => {
+        if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+        }
+    };
+
+    // Start polling a submitted bulk job every POLL_INTERVAL_MS.
+    const startPolling = (jobId) => {
+        stopPolling();
+        pollRef.current = setInterval(async () => {
+            try {
+                const status = await getBulkJob(jobId);
+                setJob(status);
+                if (status.status === 'done' || status.status === 'error') {
+                    stopPolling();
+                    setLoading(false);
+                    if (status.status === 'done') {
+                        trackSearch('bulk', true);
+                        // Load all results (first page) and merge with job data
+                        setResults({ results: status.results, failures: status.failures });
+                    } else {
+                        trackSearch('bulk', false);
+                        setApiError('O processamento em lote falhou. Tente novamente.');
+                    }
+                }
+            } catch {
+                stopPolling();
+                setLoading(false);
+                setApiError('Erro ao verificar progresso do processamento.');
+            }
+        }, POLL_INTERVAL_MS);
+    };
+
+    // Cleanup polling on unmount.
+    useEffect(() => () => stopPolling(), []);
+
     const onSubmit = async (data) => {
         const processList = data.numbers.split('\n').map(n => n.trim()).filter(n => n.length > 0);
 
-        trackSearch('bulk', true);
         setLoading(true);
         setApiError(null);
+        setResults(null);
+        setJob(null);
+        stopPolling();
+
         try {
-            const result = await bulkSearch(processList);
-            setResults(result);
+            const submitted = await bulkSubmit(processList);
+            setJob(submitted);
+            startPolling(submitted.job_id);
         } catch {
             trackSearch('bulk', false);
-            setApiError('Falha ao processar a busca em lote.');
-        } finally {
             setLoading(false);
+            setApiError('Falha ao iniciar a busca em lote.');
         }
     };
 
@@ -356,6 +403,36 @@ const BulkSearch = () => {
                     )}
                 </form>
             </Card>
+
+            {/* Progress panel — shown while job is running */}
+            {job && job.status !== 'done' && job.status !== 'error' && (
+                <Card className="overflow-hidden animate-in fade-in duration-300">
+                    <CardContent className="p-6 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-violet-700 font-semibold">
+                                <Loader2 className="animate-spin h-5 w-5" />
+                                Processando fila — aguarde…
+                            </div>
+                            <span className="text-sm text-gray-500 font-mono">
+                                {job.processed}/{job.total}
+                            </span>
+                        </div>
+                        {/* Progress bar */}
+                        <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                            <div
+                                className="bg-violet-500 h-3 rounded-full transition-all duration-500"
+                                style={{ width: job.total ? `${Math.round((job.processed / job.total) * 100)}%` : '0%' }}
+                            />
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-400">
+                            <span>{job.total ? Math.round((job.processed / job.total) * 100) : 0}% concluído</span>
+                            <span>
+                                {job.results_count} encontrados · {job.failures_count} falhas
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {results && (
                 <Card className="overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">

@@ -1,26 +1,28 @@
 import { useState, lazy, Suspense } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { Search, Database, Layers, BarChart3, Settings } from 'lucide-react';
+import { Search, Database, Layers, BarChart3, Sun, Moon } from 'lucide-react';
 import SearchProcess from './components/SearchProcess';
 import LoadingFallback from './components/LoadingFallback';
 import FeedbackButton from './components/FeedbackButton';
 import { searchProcess } from './services/api';
 import { useLabels } from './hooks/useLabels';
+import { useTheme } from './hooks/useTheme';
 
 // Lazy-loaded tab components — loaded only when the user navigates to that tab.
 // This splits the bundle into separate chunks, reducing initial load time.
 const ProcessDetails = lazy(() => import('./components/ProcessDetails'));
 const BulkSearch = lazy(() => import('./components/BulkSearch'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
-const PerformanceDashboard = lazy(() => import('./components/PerformanceDashboard'));
-const SettingsComponent = lazy(() => import('./components/Settings'));
 const HistoryTab = lazy(() => import('./components/HistoryTab'));
+const PhasesReferenceModal = lazy(() => import('./components/PhasesReferenceModal'));
 
 function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('single'); // 'single', 'bulk', 'analytics', 'performance', 'history' or 'settings'
+  const [activeTab, setActiveTab] = useState('single'); // 'single' | 'bulk' | 'analytics' | 'history'
+  const [showPhasesModal, setShowPhasesModal] = useState(false);
   const { labels, loading: labelsLoading } = useLabels();
+  const { isDark, toggleTheme } = useTheme();
 
   if (labelsLoading) {
     return (
@@ -73,86 +75,47 @@ function App() {
             </div>
           </div>
 
-          <nav className="flex bg-gray-100 p-1 rounded-xl border border-gray-200" role="tablist" aria-label="Tipo de consulta">
-            <button
-              onClick={() => setActiveTab('single')}
-              role="tab"
-              aria-selected={activeTab === 'single'}
-              aria-controls="tab-panel-single"
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${activeTab === 'single'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-                }`}
+          <div className="flex items-center gap-3">
+            <nav
+              className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-xl border border-gray-200 dark:border-gray-600"
+              role="tablist"
+              aria-label="Tipo de consulta"
             >
-              <Search className="h-4 w-4" aria-hidden="true" />
-              <span>{labels.nav.single}</span>
-            </button>
+              {[
+                { id: 'single',    label: labels.nav.single,    icon: Search    },
+                { id: 'bulk',      label: labels.nav.bulk,      icon: Layers    },
+                { id: 'analytics', label: labels.nav.analytics, icon: BarChart3 },
+                { id: 'history',   label: labels.nav.history,   icon: Database  },
+              ].map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  role="tab"
+                  aria-selected={activeTab === id}
+                  aria-controls={`tab-panel-${id}`}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold transition-all
+                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
+                    ${activeTab === id
+                      ? 'bg-white dark:bg-gray-800 text-indigo-600 shadow-sm'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                    }`}
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </nav>
+
+            {/* Toggle tema */}
             <button
-              onClick={() => setActiveTab('bulk')}
-              role="tab"
-              aria-selected={activeTab === 'bulk'}
-              aria-controls="tab-panel-bulk"
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${activeTab === 'bulk'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-                }`}
+              onClick={toggleTheme}
+              aria-label="Alternar tema"
+              aria-pressed={isDark}
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <Layers className="h-4 w-4" aria-hidden="true" />
-              <span>{labels.nav.bulk}</span>
+              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
-            <button
-              onClick={() => setActiveTab('analytics')}
-              role="tab"
-              aria-selected={activeTab === 'analytics'}
-              aria-controls="tab-panel-analytics"
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${activeTab === 'analytics'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              <BarChart3 className="h-4 w-4" aria-hidden="true" />
-              <span>{labels.nav.analytics}</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              role="tab"
-              aria-selected={activeTab === 'history'}
-              aria-controls="tab-panel-history"
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${activeTab === 'history'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              <Database className="h-4 w-4" aria-hidden="true" />
-              <span>{labels.nav.history}</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('performance')}
-              role="tab"
-              aria-selected={activeTab === 'performance'}
-              aria-controls="tab-panel-performance"
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${activeTab === 'performance'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              <BarChart3 className="h-4 w-4" aria-hidden="true" />
-              <span>Performance</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              role="tab"
-              aria-selected={activeTab === 'settings'}
-              aria-controls="tab-panel-settings"
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${activeTab === 'settings'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              <Settings className="h-4 w-4" aria-hidden="true" />
-              <span>{labels.nav.settings}</span>
-            </button>
-          </nav>
+          </div>
         </div>
       </header>
 
@@ -179,7 +142,7 @@ function App() {
                 </p>
               </div>
 
-              <SearchProcess onSearch={handleSearch} loading={loading} labels={labels} />
+              <SearchProcess onSearch={handleSearch} loading={loading} labels={labels} onShowPhases={() => setShowPhasesModal(true)} />
 
               {data && (
                 <Suspense fallback={<LoadingFallback message="Carregando detalhes do processo..." />}>
@@ -197,7 +160,7 @@ function App() {
               className="animate-in fade-in slide-in-from-bottom-4 duration-700"
             >
               <Suspense fallback={<LoadingFallback message="Carregando consulta em lote..." />}>
-                <BulkSearch />
+                <BulkSearch onShowPhases={() => setShowPhasesModal(true)} />
               </Suspense>
             </div>
           )}
@@ -228,34 +191,14 @@ function App() {
             </div>
           )}
 
-          {activeTab === 'performance' && (
-            <div
-              id="tab-panel-performance"
-              role="tabpanel"
-              aria-labelledby="tab-performance"
-              className="animate-in fade-in slide-in-from-bottom-4 duration-700"
-            >
-              <Suspense fallback={<LoadingFallback message="Carregando métricas de performance..." />}>
-                <PerformanceDashboard />
-              </Suspense>
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <div
-              id="tab-panel-settings"
-              role="tabpanel"
-              aria-labelledby="tab-settings"
-              className="animate-in fade-in slide-in-from-bottom-4 duration-700"
-            >
-              <Suspense fallback={<LoadingFallback message="Carregando configurações..." />}>
-                <SettingsComponent />
-              </Suspense>
-            </div>
-          )}
-
         </div>
       </main>
+
+      {showPhasesModal && (
+        <Suspense fallback={null}>
+          <PhasesReferenceModal onClose={() => setShowPhasesModal(false)} />
+        </Suspense>
+      )}
 
       <FeedbackButton />
 

@@ -70,6 +70,47 @@ class BulkProcessResponse(BaseModel):
     results: List[ProcessResponse]
     failures: List[str] = []
 
+# --- Bulk Queue (async job) schemas ---
+
+class BulkSubmitRequest(BaseModel):
+    """Submit a bulk job — no upper limit on list size."""
+    numbers: List[str] = Field(..., min_length=1, description="Números CNJ dos processos")
+
+    @field_validator("numbers")
+    @classmethod
+    def validate_numbers(cls, v):
+        if not v:
+            raise ValidationException("Lista de números não pode estar vazia")
+        # Sanitise whitespace and filter empty strings
+        cleaned = [n.strip() for n in v if n and n.strip()]
+        if not cleaned:
+            raise ValidationException("Nenhum número de processo válido na lista")
+        return cleaned
+
+class BulkJobStatusResponse(BaseModel):
+    """Lightweight status response — safe to poll every 2 s."""
+    job_id: str
+    status: str          # pending | running | done | error
+    total: int
+    processed: int
+    results_count: int
+    failures_count: int
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+
+class BulkJobResultsResponse(BaseModel):
+    """Full results response with pagination."""
+    job_id: str
+    status: str
+    total: int
+    processed: int
+    failures: List[str]
+    results: List[ProcessResponse]
+    page: int
+    per_page: int
+    total_pages: int
+
 class TribunalStats(BaseModel):
     tribunal_name: str
     count: int
