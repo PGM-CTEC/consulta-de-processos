@@ -234,6 +234,7 @@ class DataJudClient:
         try:
             if response.status_code == 404:
                 logger.info(f"Process {clean_number} not found in {alias} (404)")
+                self._breaker.record_success()  # 404 is a successful API response
                 return []
             if response.status_code == 401:
                 logger.error("DataJud API authentication failed (401)")
