@@ -72,6 +72,7 @@ export const bulkSubmit = async (numbers) => {
 export const getBulkJob = async (jobId, page = 1, perPage = 50) => {
     const response = await api.get(`/processes/bulk/${jobId}`, {
         params: { page, per_page: perPage },
+        timeout: 60000, // 60s timeout for large bulk jobs
     });
     return response.data;
 };
