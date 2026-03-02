@@ -14,7 +14,7 @@ const ProcessDetails = lazy(() => import('./components/ProcessDetails'));
 const BulkSearch = lazy(() => import('./components/BulkSearch'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const HistoryTab = lazy(() => import('./components/HistoryTab'));
-const PhasesReferenceModal = lazy(() => import('./components/PhasesReferenceModal'));
+const PhaseReference = lazy(() => import('./components/PhaseReference'));
 
 function App() {
   const [data, setData] = useState(null);
@@ -49,7 +49,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
       {/* Skip to main content link for accessibility */}
       <a
         href="#main-content"
@@ -61,17 +61,17 @@ function App() {
       <Toaster position="top-right" toastOptions={{ ariaLive: 'polite' }} />
 
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+      <header className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-20 sm:px-6 lg:px-8 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="bg-indigo-600 rounded-lg p-2 shadow-md shadow-indigo-100">
               <Database className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-extrabold text-gray-900 tracking-tight leading-none">
-                {labels.app.title.split(' ')[0]}<span className="text-indigo-600">{labels.app.title.split(' ')[1] || ''}</span>
+              <h1 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-none">
+                {labels.app.title.split(' ')[0]}<span className="text-indigo-600 dark:text-indigo-400">{labels.app.title.split(' ')[1] || ''}</span>
               </h1>
-              <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest leading-none mt-1">{labels.app.subtitle}</p>
+              <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-widest leading-none mt-1">{labels.app.subtitle}</p>
             </div>
           </div>
 
@@ -131,13 +131,13 @@ function App() {
               className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700"
             >
               <div className="text-center space-y-4">
-                <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
+                <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white sm:text-5xl">
                   {labels.home.heroTitle} <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400">
                     {labels.home.heroHighlight}
                   </span>
                 </h2>
-                <p className="max-w-2xl mx-auto text-xl text-gray-500">
+                <p className="max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400">
                   {labels.home.heroSubtitle}
                 </p>
               </div>
@@ -196,20 +196,36 @@ function App() {
 
       {showPhasesModal && (
         <Suspense fallback={null}>
-          <PhasesReferenceModal onClose={() => setShowPhasesModal(false)} />
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={() => setShowPhasesModal(false)}>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-6xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+                <h2 className="text-xl font-bold text-gray-900">Referência de Fases</h2>
+                <button
+                  onClick={() => setShowPhasesModal(false)}
+                  className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-2"
+                  aria-label="Fechar modal"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <PhaseReference />
+            </div>
+          </div>
         </Suspense>
       )}
 
       <FeedbackButton />
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-auto">
+      <footer className="bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 mt-auto">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center sm:flex sm:justify-between sm:items-center">
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-400 dark:text-gray-500 text-sm">
             {labels.app.footerText}
           </p>
           <div className="mt-4 sm:mt-0 flex justify-center space-x-6">
-            <span className="inline-flex items-center text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+            <span className="inline-flex items-center text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded">
               {labels.app.statusOnline}
             </span>
           </div>

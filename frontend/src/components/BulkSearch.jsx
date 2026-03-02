@@ -22,14 +22,14 @@ const VIRTUAL_THRESHOLD = 100;
  * Re-renders only when the result data changes.
  */
 const ResultRow = React.memo(({ result }) => (
-    <tr className="hover:bg-gray-50/50 transition-colors">
-        <td className="px-6 py-4 font-mono font-bold text-gray-900 text-sm whitespace-nowrap">
+    <tr className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors">
+        <td className="px-6 py-4 font-mono font-bold text-gray-900 dark:text-gray-100 text-sm whitespace-nowrap">
             {result.number}
         </td>
-        <td className="px-6 py-4 text-sm font-semibold text-indigo-600">
+        <td className="px-6 py-4 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
             {result.tribunal_name || result.court?.split(' - ')[0] || 'N/A'}
         </td>
-        <td className="px-6 py-4 text-sm text-gray-600">
+        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
             {result.court_unit || result.court?.split(' - ')[1] || result.court || 'N/A'}
         </td>
         <td className="px-6 py-4">
@@ -38,7 +38,7 @@ const ResultRow = React.memo(({ result }) => (
             </span>
         </td>
         <td className="px-6 py-4">
-            <div className="flex items-center text-green-600 text-xs font-semibold">
+            <div className="flex items-center text-green-600 dark:text-green-400 text-xs font-semibold">
                 <CheckCircle className="h-4 w-4 mr-1" /> OK
             </div>
         </td>
@@ -50,13 +50,13 @@ ResultRow.displayName = 'ResultRow';
  * FailureRow — memoized row for failed lookups.
  */
 const FailureRow = React.memo(({ number }) => (
-    <tr className="bg-red-50/20">
-        <td className="px-6 py-4 font-mono text-sm text-red-700 font-bold">{number}</td>
-        <td colSpan="3" className="px-6 py-4 text-xs text-red-500 italic font-medium">
+    <tr className="bg-red-50/20 dark:bg-red-900/20">
+        <td className="px-6 py-4 font-mono text-sm text-red-700 dark:text-red-400 font-bold">{number}</td>
+        <td colSpan="3" className="px-6 py-4 text-xs text-red-500 dark:text-red-400 italic font-medium">
             Não localizado nos sistemas DataJud
         </td>
         <td className="px-6 py-4">
-            <XCircle className="h-4 w-4 text-red-500" />
+            <XCircle className="h-4 w-4 text-red-500 dark:text-red-400" />
         </td>
     </tr>
 ));
@@ -100,15 +100,15 @@ const VirtualResultsBody = ({ items }) => {
                                     height: `${virtualRow.size}px`,
                                     transform: `translateY(${virtualRow.start}px)`,
                                 }}
-                                className="hover:bg-gray-50/50 transition-colors"
+                                className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors"
                             >
-                                <td className="px-6 py-4 font-mono font-bold text-gray-900 text-sm whitespace-nowrap" style={{ width: '25%' }}>
+                                <td className="px-6 py-4 font-mono font-bold text-gray-900 dark:text-gray-100 text-sm whitespace-nowrap" style={{ width: '25%' }}>
                                     {result.number}
                                 </td>
-                                <td className="px-6 py-4 text-sm font-semibold text-indigo-600" style={{ width: '20%' }}>
+                                <td className="px-6 py-4 text-sm font-semibold text-indigo-600 dark:text-indigo-400" style={{ width: '20%' }}>
                                     {result.tribunal_name || result.court?.split(' - ')[0] || 'N/A'}
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-600" style={{ width: '25%' }}>
+                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400" style={{ width: '25%' }}>
                                     {result.court_unit || result.court?.split(' - ')[1] || result.court || 'N/A'}
                                 </td>
                                 <td className="px-6 py-4" style={{ width: '15%' }}>
@@ -117,7 +117,7 @@ const VirtualResultsBody = ({ items }) => {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4" style={{ width: '15%' }}>
-                                    <div className="flex items-center text-green-600 text-xs font-semibold">
+                                    <div className="flex items-center text-green-600 dark:text-green-400 text-xs font-semibold">
                                         <CheckCircle className="h-4 w-4 mr-1" /> OK
                                     </div>
                                 </td>
@@ -334,15 +334,15 @@ const BulkSearch = () => {
                 </div>
 
                 <form className="p-6 space-y-4" aria-labelledby="bulk-search-title" onSubmit={handleSubmit(onSubmit)}>
-                    <fieldset className="space-y-4 border-b border-gray-200 pb-4">
-                        <legend className="text-sm font-bold text-gray-600 uppercase tracking-widest mb-4">Importar Arquivo</legend>
+                    <fieldset className="space-y-4 border-b border-gray-200 dark:border-slate-700 pb-4">
+                        <legend className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest mb-4">Importar Arquivo</legend>
                         {/* Drag and Drop Zone */}
                         <div
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
                             onDrop={handleDrop}
                             onClick={() => fileInputRef.current.click()}
-                            className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all ${dragging ? 'border-violet-500 bg-violet-50' : 'border-gray-200 hover:border-violet-300 hover:bg-gray-50'
+                            className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all ${dragging ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20' : 'border-gray-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-600 hover:bg-gray-50 dark:hover:bg-slate-800/50'
                                 }`}
                         >
                             <input
@@ -353,24 +353,24 @@ const BulkSearch = () => {
                                 className="hidden"
                                 aria-label="Importar arquivo com números de processo"
                             />
-                            <FileUp className={`h-10 w-10 mb-3 ${dragging ? 'text-violet-500' : 'text-gray-400'}`} />
-                            <p className="text-sm font-semibold text-gray-700">Clique ou arraste um arquivo para importar</p>
-                            <p className="text-xs text-gray-600 mt-1">Suporta .txt, .csv e .xlsx</p>
+                            <FileUp className={`h-10 w-10 mb-3 ${dragging ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Clique ou arraste um arquivo para importar</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Suporta .txt, .csv e .xlsx</p>
                         </div>
                     </fieldset>
 
                     <fieldset className="space-y-4">
-                        <legend className="text-sm font-bold text-gray-600 uppercase tracking-widest mb-4">Listagem Manual</legend>
+                        <legend className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest mb-4">Listagem Manual</legend>
                         <div className="relative">
                             <label
                                 htmlFor="bulk-numbers-textarea"
-                                className="absolute top-3 left-4 flex items-center text-xs font-bold text-gray-600 uppercase tracking-widest bg-white pr-2"
+                                className="absolute top-3 left-4 flex items-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest bg-white dark:bg-slate-800 pr-2"
                             >
                                 Números de Processo
                             </label>
                             <textarea
                                 id="bulk-numbers-textarea"
-                                className={`w-full h-48 p-6 pt-10 border rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent font-mono text-sm leading-relaxed ${errors.numbers ? 'border-red-400' : ''}`}
+                                className={`w-full h-48 p-6 pt-10 border rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent font-mono text-sm leading-relaxed bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-slate-700 placeholder:text-gray-400 dark:placeholder:text-gray-500 ${errors.numbers ? 'border-red-400 dark:border-red-500' : ''}`}
                                 placeholder="Um número por linha..."
                                 {...register('numbers')}
                             />
@@ -409,22 +409,22 @@ const BulkSearch = () => {
                 <Card className="overflow-hidden animate-in fade-in duration-300">
                     <CardContent className="p-6 space-y-3">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-violet-700 font-semibold">
+                            <div className="flex items-center gap-2 text-violet-700 dark:text-violet-400 font-semibold">
                                 <Loader2 className="animate-spin h-5 w-5" />
                                 Processando fila — aguarde…
                             </div>
-                            <span className="text-sm text-gray-500 font-mono">
+                            <span className="text-sm text-gray-500 dark:text-gray-400 font-mono">
                                 {job.processed}/{job.total}
                             </span>
                         </div>
                         {/* Progress bar */}
-                        <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                        <div className="w-full bg-gray-100 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
                             <div
-                                className="bg-violet-500 h-3 rounded-full transition-all duration-500"
+                                className="bg-violet-500 dark:bg-violet-600 h-3 rounded-full transition-all duration-500"
                                 style={{ width: job.total ? `${Math.round((job.processed / job.total) * 100)}%` : '0%' }}
                             />
                         </div>
-                        <div className="flex justify-between text-xs text-gray-400">
+                        <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500">
                             <span>{job.total ? Math.round((job.processed / job.total) * 100) : 0}% concluído</span>
                             <span>
                                 {job.results_count} encontrados · {job.failures_count} falhas
@@ -436,10 +436,10 @@ const BulkSearch = () => {
 
             {results && (
                 <Card className="overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <CardContent className="p-6 border-b border-gray-100 flex justify-between items-center relative">
+                    <CardContent className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center relative">
                         <div>
-                            <h2 id="results-title" className="text-lg font-bold text-gray-900">Resultados da Consulta</h2>
-                            <p className="text-sm text-gray-500">
+                            <h2 id="results-title" className="text-lg font-bold text-gray-900 dark:text-white">Resultados da Consulta</h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
                                 {results.results.length} processados | {results.failures.length} falhas
                             </p>
                         </div>
@@ -459,17 +459,17 @@ const BulkSearch = () => {
                             </Button>
 
                             {showExportMenu && (
-                                <div role="menu" aria-label="Opções de exportação" className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                    <Button role="menuitem" variant="ghost" onClick={() => { handleExportCSV(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center rounded-none">
+                                <div role="menu" aria-label="Opções de exportação" className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                    <Button role="menuitem" variant="ghost" onClick={() => { handleExportCSV(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 font-medium border-b border-gray-50 dark:border-slate-700 flex items-center rounded-none">
                                         <FileText className="mr-2 h-4 w-4 text-emerald-500" aria-hidden="true" /> Excel / CSV (.csv)
                                     </Button>
-                                    <Button role="menuitem" variant="ghost" onClick={() => { handleExportXLSX(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center rounded-none">
+                                    <Button role="menuitem" variant="ghost" onClick={() => { handleExportXLSX(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 font-medium border-b border-gray-50 dark:border-slate-700 flex items-center rounded-none">
                                         <FileText className="mr-2 h-4 w-4 text-green-600" aria-hidden="true" /> Planilha Excel (.xlsx)
                                     </Button>
-                                    <Button role="menuitem" variant="ghost" onClick={() => { handleExportTXT(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-50 flex items-center rounded-none">
+                                    <Button role="menuitem" variant="ghost" onClick={() => { handleExportTXT(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 font-medium border-b border-gray-50 dark:border-slate-700 flex items-center rounded-none">
                                         <FileText className="mr-2 h-4 w-4 text-gray-600" aria-hidden="true" /> Texto Puro (.txt)
                                     </Button>
-                                    <Button role="menuitem" variant="ghost" onClick={() => { handleExportMD(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium flex items-center rounded-none">
+                                    <Button role="menuitem" variant="ghost" onClick={() => { handleExportMD(); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 font-medium flex items-center rounded-none">
                                         <FileText className="mr-2 h-4 w-4 text-blue-600" aria-hidden="true" /> Markdown (.md)
                                     </Button>
                                 </div>
@@ -480,17 +480,17 @@ const BulkSearch = () => {
                     {/* Results table */}
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-50 border-b border-gray-100">
+                            <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-widest">Processo Judicial</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-widest">Tribunal</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-widest">Órgão Judicial / Vara</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-widest">Fase Atual</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-widest">Status</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Processo Judicial</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Tribunal</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Órgão Judicial / Vara</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Fase Atual</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Status</th>
                                 </tr>
                             </thead>
                             {!useVirtual && (
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                     {paginatedItems.map((p) => (
                                         <ResultRow key={p.number} result={p} />
                                     ))}
