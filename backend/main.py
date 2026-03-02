@@ -225,7 +225,7 @@ async def get_process_instance_detail(number: str, index: int, db: Session = Dep
 @app.post("/processes/bulk", response_model=schemas.BulkProcessResponse)
 @limiter.limit("50/minute")
 async def get_processes_bulk(
-    http_request: Request, request: schemas.BulkProcessRequest, db: Session = Depends(get_db)
+    request: Request, body: schemas.BulkProcessRequest, db: Session = Depends(get_db)
 ):
     """
     Retrieve multiple processes by their CNJ numbers in parallel.
@@ -236,7 +236,7 @@ async def get_processes_bulk(
     """
     service = ProcessService(db)
     return await service.get_bulk_processes(
-        request.numbers,
+        body.numbers,
         max_concurrent=settings.BULK_MAX_CONCURRENT
     )
 

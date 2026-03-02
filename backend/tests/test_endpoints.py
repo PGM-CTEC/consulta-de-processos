@@ -9,6 +9,7 @@ Tests HTTP contracts and API behavior:
 - Error handling and validation
 """
 import pytest
+from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 from unittest.mock import patch, AsyncMock, MagicMock
 
@@ -100,21 +101,42 @@ class TestGetProcessEndpoint:
 class TestBulkProcessesEndpoint:
     """Tests for POST /processes/bulk"""
 
+    def _make_mock_process(self, number: str, tribunal: str = "TJSP") -> MagicMock:
+        """Cria um MagicMock com todos os campos de ProcessResponse preenchidos.
+
+        Pydantic v2 não coerce MagicMock para None — todos os campos opcionais
+        de string precisam de valores válidos (str | None) para que a serialização
+        da response_model funcione sem ValidationError.
+        """
+        m = MagicMock(spec=models.Process)
+        m.id = 1
+        m.number = number
+        m.class_nature = None
+        m.subject = None
+        m.court = None
+        m.tribunal_name = tribunal
+        m.court_unit = None
+        m.district = None
+        m.judge = None
+        m.distribution_date = None
+        m.phase = None
+        m.phase_warning = None
+        m.last_update = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        m.raw_data = None
+        m.deleted_at = None
+        return m
+
     def test_bulk_success(self, client):
         """Successfully process bulk request."""
         with patch('backend.main.ProcessService') as MockService:
             mock_service = MagicMock()
             mock_service.get_bulk_processes = AsyncMock(return_value={
-                "results": [
-                    MagicMock(id=1, number="00000001010000100001", tribunal_name="TJSP")
-                ],
+                "results": [self._make_mock_process("00000001010000100001")],
                 "failures": []
             })
             MockService.return_value = mock_service
 
-            payload = {
-                "numbers": ["00000001010000100001"]
-            }
+            payload = {"numbers": ["00000001010000100001"]}
 
             response = client.post("/processes/bulk", json=payload)
 
@@ -128,16 +150,12 @@ class TestBulkProcessesEndpoint:
         with patch('backend.main.ProcessService') as MockService:
             mock_service = MagicMock()
             mock_service.get_bulk_processes = AsyncMock(return_value={
-                "results": [
-                    MagicMock(id=1, number="00000001010000100001", tribunal_name="TJSP")
-                ],
+                "results": [self._make_mock_process("00000001010000100001")],
                 "failures": ["99999999999999999999"]
             })
             MockService.return_value = mock_service
 
-            payload = {
-                "numbers": ["00000001010000100001", "99999999999999999999"]
-            }
+            payload = {"numbers": ["00000001010000100001", "99999999999999999999"]}
 
             response = client.post("/processes/bulk", json=payload)
 
@@ -152,8 +170,8 @@ class TestBulkProcessesEndpoint:
 
         response = client.post("/processes/bulk", json=payload)
 
-        # Should handle gracefully
-        assert response.status_code in [200, 400]
+        # 422 = Pydantic validation error (min_length=1 não satisfeito); 400 também seria aceitável
+        assert response.status_code in [200, 400, 422]
 
     def test_bulk_rate_limit(self, client):
         """Respect rate limit of 50/minute for bulk."""
