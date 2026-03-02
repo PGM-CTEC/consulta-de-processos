@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, Database, Calendar, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { BarChart3, TrendingUp, Database, Calendar, RefreshCw, Loader2, AlertCircle, ArrowUpDown } from 'lucide-react';
 import { getStats } from '../services/api';
 import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
 import { Button } from './ui/button';
@@ -9,6 +9,9 @@ const Dashboard = () => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    // Filters and sorting for phases section
+    const [phaseSortBy, setPhaseSortBy] = useState('count-desc'); // count-desc|count-asc|name-asc|name-desc
+    const [phaseFilterNature, setPhaseFilterNature] = useState('all'); // all|civel|penal
 
     const loadStats = async () => {
         setLoading(true);
@@ -61,8 +64,39 @@ const Dashboard = () => {
     }
 
     const maxTribunalCount = Math.max(...stats.tribunals.map(t => t.count), 1);
-    const maxPhaseCount = Math.max(...stats.phases.map(p => p.count), 1);
     const maxTimelineCount = Math.max(...stats.timeline.map(t => t.count), 1);
+
+    // Filter and sort phases based on user selections
+    const filteredAndSortedPhases = useMemo(() => {
+        if (!stats?.phases) return [];
+
+        let filtered = [...stats.phases];
+
+        // Apply filter by nature (asterisk indicates penal/criminal nature)
+        if (phaseFilterNature === 'civel') {
+            filtered = filtered.filter(p => !p.phase.endsWith(' *'));
+        } else if (phaseFilterNature === 'penal') {
+            filtered = filtered.filter(p => p.phase.endsWith(' *'));
+        }
+
+        // Apply sorting
+        filtered.sort((a, b) => {
+            if (phaseSortBy === 'count-desc') {
+                return b.count - a.count;
+            } else if (phaseSortBy === 'count-asc') {
+                return a.count - b.count;
+            } else if (phaseSortBy === 'name-asc') {
+                return a.phase.localeCompare(b.phase, 'pt-BR');
+            } else if (phaseSortBy === 'name-desc') {
+                return b.phase.localeCompare(a.phase, 'pt-BR');
+            }
+            return 0;
+        });
+
+        return filtered;
+    }, [stats?.phases, phaseSortBy, phaseFilterNature]);
+
+    const maxPhaseCount = Math.max(...filteredAndSortedPhases.map(p => p.count), 1);
 
     return (
         <div className="space-y-6">
@@ -179,12 +213,46 @@ const Dashboard = () => {
                 </section>
 
                 {/* Phases Chart */}
-                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="phases-title">
-                    <h2 id="phases-title" className="text-lg font-bold text-gray-900 mb-4">Processos por Fase</h2>
-                    {stats.phases.length > 0 ? (
+                <section className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 p-6" aria-labelledby="phases-title">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <h2 id="phases-title" className="text-lg font-bold text-gray-900 dark:text-white">Processos por Fase</h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Asterisco (*) indica processos de natureza penal/criminal
+                            </p>
+                        </div>
+                        <div className="flex gap-2">
+                            {/* Filter by nature */}
+                            <select
+                                value={phaseFilterNature}
+                                onChange={(e) => setPhaseFilterNature(e.target.value)}
+                                className="px-3 py-1.5 text-sm border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                                aria-label="Filtrar por natureza"
+                            >
+                                <option value="all">Todas naturezas</option>
+                                <option value="civel">Somente cível</option>
+                                <option value="penal">Somente penal</option>
+                            </select>
+
+                            {/* Sort by */}
+                            <select
+                                value={phaseSortBy}
+                                onChange={(e) => setPhaseSortBy(e.target.value)}
+                                className="px-3 py-1.5 text-sm border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                                aria-label="Ordenar por"
+                            >
+                                <option value="count-desc">Maior quantidade</option>
+                                <option value="count-asc">Menor quantidade</option>
+                                <option value="name-asc">Nome (A-Z)</option>
+                                <option value="name-desc">Nome (Z-A)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {filteredAndSortedPhases.length > 0 ? (
                         <figure aria-label="Gráfico: Distribuição de Processos por Fase">
                             <ul className="space-y-3 list-none p-0">
-                                {stats.phases.map((phase, idx) => (
+                                {filteredAndSortedPhases.map((phase, idx) => (
                                     <li key={idx} className="space-y-1">
                                         <div className="flex justify-between items-center text-sm">
                                             <div className="flex items-center space-x-2">
@@ -218,7 +286,7 @@ const Dashboard = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {stats.phases.map((phase, idx) => (
+                                    {filteredAndSortedPhases.map((phase, idx) => (
                                         <tr key={idx}>
                                             <td>Fase {phase.phase}</td>
                                             <td>{phase.class_nature}</td>
@@ -229,7 +297,12 @@ const Dashboard = () => {
                             </table>
                         </figure>
                     ) : (
-                        <p className="text-gray-600 text-sm italic">Nenhum dado disponível</p>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm italic">
+                            {phaseFilterNature !== 'all'
+                                ? `Nenhum processo de natureza ${phaseFilterNature === 'civel' ? 'cível' : 'penal'} encontrado`
+                                : 'Nenhum dado disponível'
+                            }
+                        </p>
                     )}
                 </section>
             </div>
