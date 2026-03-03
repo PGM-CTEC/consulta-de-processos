@@ -1,25 +1,18 @@
-import { useState, useEffect } from 'react';
-
-const STORAGE_KEY = 'consulta-processual-theme';
+import { useEffect } from 'react';
+import { useSettingsStore } from '../stores/settingsStore';
 
 export function useTheme() {
-    const [isDark, setIsDark] = useState(() => {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored !== null) return stored === 'dark';
-        return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    });
+  const theme = useSettingsStore((s) => s.theme);
+  const updateSetting = useSettingsStore((s) => s.updateSetting);
+  const isDark = theme === 'dark';
 
-    useEffect(() => {
-        const root = document.documentElement;
-        if (isDark) {
-            root.classList.add('dark');
-        } else {
-            root.classList.remove('dark');
-        }
-        localStorage.setItem(STORAGE_KEY, isDark ? 'dark' : 'light');
-    }, [isDark]);
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
 
-    const toggleTheme = () => setIsDark(prev => !prev);
+  const toggleTheme = () => updateSetting('theme', isDark ? 'light' : 'dark');
 
-    return { isDark, toggleTheme };
+  return { theme, isDark, toggleTheme };
 }
+
+export default useTheme;
