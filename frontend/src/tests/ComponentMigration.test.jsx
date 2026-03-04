@@ -2,8 +2,8 @@
  * Component Migration Tests — REM-035
  * Tests for migrating existing components to design system
  */
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Dashboard from '../components/Dashboard';
 import BulkSearch from '../components/BulkSearch';
@@ -33,6 +33,21 @@ vi.mock('../services/api', () => ({
     ],
   })),
   bulkSearch: vi.fn(() => Promise.resolve({
+    results: [
+      {
+        number: '0000001-11.2020.1.00.0000',
+        tribunal_name: 'TJSP',
+        court: 'Tribunal - SP',
+        court_unit: 'Vara',
+        phase: '1',
+        class_nature: 'Recursal',
+      },
+    ],
+    failures: [],
+  })),
+  bulkSubmit: vi.fn(() => Promise.resolve({ job_id: 'test-job-123' })),
+  getBulkJob: vi.fn(() => Promise.resolve({
+    status: 'done',
     results: [
       {
         number: '0000001-11.2020.1.00.0000',
@@ -125,6 +140,10 @@ describe('Dashboard Component Migration — REM-035', () => {
 });
 
 describe('BulkSearch Component Migration — REM-035', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders search form with Button component', () => {
     render(<BulkSearch />);
 
@@ -161,7 +180,8 @@ describe('BulkSearch Component Migration — REM-035', () => {
   });
 
   it('renders export button with Button component after results', async () => {
-    const user = userEvent.setup();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
     render(<BulkSearch />);
 
     const textarea = screen.getByPlaceholderText('Um número por linha...');
@@ -169,6 +189,8 @@ describe('BulkSearch Component Migration — REM-035', () => {
 
     const searchBtn = screen.getByRole('button', { name: /Iniciar Consulta em Lote/ });
     await user.click(searchBtn);
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
 
     // Wait for results
     const exportBtn = await screen.findByRole('button', { name: /Exportar Relatório/ });
@@ -177,7 +199,8 @@ describe('BulkSearch Component Migration — REM-035', () => {
   });
 
   it('export menu items are buttons with proper roles', async () => {
-    const user = userEvent.setup();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
     render(<BulkSearch />);
 
     const textarea = screen.getByPlaceholderText('Um número por linha...');
@@ -185,6 +208,8 @@ describe('BulkSearch Component Migration — REM-035', () => {
 
     const searchBtn = screen.getByRole('button', { name: /Iniciar Consulta em Lote/ });
     await user.click(searchBtn);
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
 
     const exportBtn = await screen.findByRole('button', { name: /Exportar Relatório/ });
     await user.click(exportBtn);

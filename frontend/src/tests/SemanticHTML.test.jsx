@@ -76,7 +76,7 @@ describe('Semantic HTML Structure — REM-032', () => {
       // Wait for async data load
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const sectionTitles = container.querySelectorAll('section > h2');
+      const sectionTitles = container.querySelectorAll('section h2');
       expect(sectionTitles.length).toBeGreaterThanOrEqual(3);
     });
 

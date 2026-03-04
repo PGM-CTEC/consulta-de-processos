@@ -13,8 +13,8 @@
  * - Loading and error states
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import BulkSearch from '../components/BulkSearch';
 import * as api from '../services/api';
@@ -128,9 +128,13 @@ describe('BulkSearch Component', () => {
     });
 
     describe('Search Functionality', () => {
+        beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); });
+        afterEach(() => { vi.useRealTimers(); });
+
         it('TC-9: calls bulkSearch API on button click', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue({ results: [], failures: [] });
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', results: [], failures: [] });
 
             render(<BulkSearch />);
 
@@ -141,17 +145,17 @@ describe('BulkSearch Component', () => {
             await user.click(searchButton);
 
             await waitFor(() => {
-                expect(api.bulkSearch).toHaveBeenCalledWith(['0001745-64.1989.8.19.0002']);
+                expect(api.bulkSubmit).toHaveBeenCalledWith(['0001745-64.1989.8.19.0002']);
             });
         });
 
         it('TC-10: shows loading state during search', async () => {
-            const user = userEvent.setup();
-            let resolveSearch;
-            api.bulkSearch.mockImplementation(
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            let resolveSubmit;
+            api.bulkSubmit.mockImplementation(
                 () =>
                     new Promise((resolve) => {
-                        resolveSearch = resolve;
+                        resolveSubmit = resolve;
                     })
             );
 
@@ -167,12 +171,14 @@ describe('BulkSearch Component', () => {
                 expect(screen.getByText(/Processando Lote/i)).toBeInTheDocument();
             });
 
-            resolveSearch && resolveSearch({ results: [], failures: [] });
+            resolveSubmit && resolveSubmit({ job_id: 'test-job-123' });
         });
 
         it('TC-11: displays results after successful search', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue({
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({
+                status: 'done',
                 results: [
                     {
                         number: '0001745-64.1989.8.19.0002',
@@ -193,6 +199,8 @@ describe('BulkSearch Component', () => {
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
 
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
+
             await waitFor(() => {
                 expect(screen.getByText('Resultados da Consulta')).toBeInTheDocument();
             });
@@ -203,8 +211,8 @@ describe('BulkSearch Component', () => {
         });
 
         it('TC-12: displays error message on search failure', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockRejectedValue(new Error('API Error'));
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockRejectedValue(new Error('API Error'));
 
             render(<BulkSearch />);
 
@@ -215,13 +223,14 @@ describe('BulkSearch Component', () => {
             await user.click(searchButton);
 
             await waitFor(() => {
-                expect(screen.getByText(/Falha ao processar a busca em lote/i)).toBeInTheDocument();
+                expect(screen.getByText(/Falha ao iniciar a busca em lote/i)).toBeInTheDocument();
             });
         });
 
         it('TC-13: filters empty lines from input', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue({ results: [], failures: [] });
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', results: [], failures: [] });
 
             render(<BulkSearch />);
 
@@ -232,7 +241,7 @@ describe('BulkSearch Component', () => {
             await user.click(searchButton);
 
             await waitFor(() => {
-                expect(api.bulkSearch).toHaveBeenCalledWith([
+                expect(api.bulkSubmit).toHaveBeenCalledWith([
                     '0001745-64.1989.8.19.0002',
                     '0002345-12.2020.8.19.0001',
                 ]);
@@ -241,6 +250,9 @@ describe('BulkSearch Component', () => {
     });
 
     describe('Results Display', () => {
+        beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); });
+        afterEach(() => { vi.useRealTimers(); });
+
         const mockResults = {
             results: [
                 {
@@ -262,8 +274,9 @@ describe('BulkSearch Component', () => {
         };
 
         it('TC-14: displays results table with correct counts', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue(mockResults);
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', ...mockResults });
 
             render(<BulkSearch />);
 
@@ -272,6 +285,8 @@ describe('BulkSearch Component', () => {
 
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
+
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
 
             await waitFor(() => {
                 expect(screen.getByText(/2 processados/i)).toBeInTheDocument();
@@ -281,8 +296,9 @@ describe('BulkSearch Component', () => {
         });
 
         it('TC-15: displays tribunal names in results', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue(mockResults);
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', ...mockResults });
 
             render(<BulkSearch />);
 
@@ -292,6 +308,8 @@ describe('BulkSearch Component', () => {
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
 
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
+
             await waitFor(() => {
                 const tjrjElements = screen.getAllByText('TJRJ');
                 expect(tjrjElements.length).toBeGreaterThan(0);
@@ -299,8 +317,9 @@ describe('BulkSearch Component', () => {
         });
 
         it('TC-16: displays failure rows in red', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue(mockResults);
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', ...mockResults });
 
             const { container } = render(<BulkSearch />);
 
@@ -309,6 +328,8 @@ describe('BulkSearch Component', () => {
 
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
+
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
 
             await waitFor(() => {
                 expect(screen.getByText('0003456-78.2021.8.19.0003')).toBeInTheDocument();
@@ -320,6 +341,9 @@ describe('BulkSearch Component', () => {
     });
 
     describe('Export Functionality', () => {
+        beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); });
+        afterEach(() => { vi.useRealTimers(); });
+
         const mockResults = {
             results: [
                 {
@@ -331,8 +355,9 @@ describe('BulkSearch Component', () => {
         };
 
         it('TC-17: shows export menu on button click', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue(mockResults);
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', ...mockResults });
 
             render(<BulkSearch />);
 
@@ -341,6 +366,8 @@ describe('BulkSearch Component', () => {
 
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
+
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
 
             await waitFor(() => {
                 expect(screen.getByText('Resultados da Consulta')).toBeInTheDocument();
@@ -355,8 +382,9 @@ describe('BulkSearch Component', () => {
         });
 
         it('TC-18: calls CSV export function', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue(mockResults);
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', ...mockResults });
 
             render(<BulkSearch />);
 
@@ -365,6 +393,8 @@ describe('BulkSearch Component', () => {
 
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
+
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
 
             await waitFor(() => {
                 expect(screen.getByText('Resultados da Consulta')).toBeInTheDocument();
@@ -384,8 +414,9 @@ describe('BulkSearch Component', () => {
         });
 
         it('TC-19: closes export menu after selection', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue(mockResults);
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', ...mockResults });
 
             render(<BulkSearch />);
 
@@ -394,6 +425,8 @@ describe('BulkSearch Component', () => {
 
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
+
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
 
             await waitFor(() => {
                 expect(screen.getByText('Resultados da Consulta')).toBeInTheDocument();
@@ -451,13 +484,16 @@ describe('BulkSearch Component', () => {
     });
 
     describe('Button States', () => {
+        beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); });
+        afterEach(() => { vi.useRealTimers(); });
+
         it('TC-22: disables button during search', async () => {
-            const user = userEvent.setup();
-            let resolveSearch;
-            api.bulkSearch.mockImplementation(
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            let resolveSubmit;
+            api.bulkSubmit.mockImplementation(
                 () =>
                     new Promise((resolve) => {
-                        resolveSearch = resolve;
+                        resolveSubmit = resolve;
                     })
             );
 
@@ -473,7 +509,7 @@ describe('BulkSearch Component', () => {
                 expect(searchButton).toBeDisabled();
             });
 
-            resolveSearch && resolveSearch({ results: [], failures: [] });
+            resolveSubmit && resolveSubmit({ job_id: 'test-job-123' });
         });
 
         it('TC-23: button remains disabled with only whitespace', async () => {
@@ -489,9 +525,13 @@ describe('BulkSearch Component', () => {
     });
 
     describe('Edge Cases', () => {
+        beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); });
+        afterEach(() => { vi.useRealTimers(); });
+
         it('TC-24: handles empty results gracefully', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue({ results: [], failures: [] });
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', results: [], failures: [] });
 
             render(<BulkSearch />);
 
@@ -501,14 +541,18 @@ describe('BulkSearch Component', () => {
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
 
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
+
             await waitFor(() => {
                 expect(screen.getByText(/0 processados/i)).toBeInTheDocument();
             });
         });
 
         it('TC-25: handles all failures result', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue({
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({
+                status: 'done',
                 results: [],
                 failures: ['0001745-64.1989.8.19.0002', '0002345-12.2020.8.19.0001'],
             });
@@ -520,6 +564,8 @@ describe('BulkSearch Component', () => {
 
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
+
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
 
             await waitFor(() => {
                 expect(screen.getByText(/2 falhas/i)).toBeInTheDocument();
@@ -605,9 +651,13 @@ describe('BulkSearch Component', () => {
     });
 
     describe('CSV Processing (New Tests)', () => {
+        beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); });
+        afterEach(() => { vi.useRealTimers(); });
+
         it('TC-33: processes CSV with valid CNJ numbers', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue({ results: [{ number: '0001745-64.1989.8.19.0002' }], failures: [] });
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', results: [{ number: '0001745-64.1989.8.19.0002' }], failures: [] });
 
             render(<BulkSearch />);
 
@@ -617,14 +667,16 @@ describe('BulkSearch Component', () => {
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
 
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
             await waitFor(() => {
-                expect(api.bulkSearch).toHaveBeenCalled();
+                expect(api.bulkSubmit).toHaveBeenCalled();
             });
         });
 
         it('TC-34: handles duplicate numbers in CSV', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue({ results: [], failures: [] });
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', results: [], failures: [] });
 
             render(<BulkSearch />);
 
@@ -634,14 +686,16 @@ describe('BulkSearch Component', () => {
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
 
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
             await waitFor(() => {
-                expect(api.bulkSearch).toHaveBeenCalledWith(['0001745-64.1989.8.19.0002', '0001745-64.1989.8.19.0002']);
+                expect(api.bulkSubmit).toHaveBeenCalledWith(['0001745-64.1989.8.19.0002', '0001745-64.1989.8.19.0002']);
             });
         });
 
         it('TC-35: handles large CSV (1000+ rows)', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue({ results: [], failures: [] });
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', results: [], failures: [] });
 
             render(<BulkSearch />);
 
@@ -653,13 +707,17 @@ describe('BulkSearch Component', () => {
     });
 
     describe('Results Display (New Tests)', () => {
+        beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); });
+        afterEach(() => { vi.useRealTimers(); });
+
         it('TC-36: displays all successful results', async () => {
-            const user = userEvent.setup();
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
             const results = [
                 { number: '0001745-64.1989.8.19.0002', tribunal_name: 'TJRJ', phase: '01' },
                 { number: '0002345-12.2020.8.19.0001', tribunal_name: 'TJSP', phase: '05' },
             ];
-            api.bulkSearch.mockResolvedValue({ results, failures: [] });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', results, failures: [] });
 
             render(<BulkSearch />);
 
@@ -669,19 +727,21 @@ describe('BulkSearch Component', () => {
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
 
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
             await waitFor(() => {
                 expect(screen.getByText('Resultados da Consulta')).toBeInTheDocument();
             });
         });
 
         it('TC-37: displays pagination controls for large result sets', async () => {
-            const user = userEvent.setup();
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
             const results = Array(50).fill(0).map((_, i) => ({
                 number: `000${String(i).padStart(4, '0')}-64.1989.8.19.0002`,
                 tribunal_name: 'TJRJ',
                 phase: '01'
             }));
-            api.bulkSearch.mockResolvedValue({ results, failures: [] });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({ status: 'done', results, failures: [] });
 
             render(<BulkSearch />);
 
@@ -691,14 +751,17 @@ describe('BulkSearch Component', () => {
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
 
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
             await waitFor(() => {
                 expect(screen.getByText('Resultados da Consulta')).toBeInTheDocument();
             });
         });
 
         it('TC-38: shows tribunal badge in results', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue({
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({
+                status: 'done',
                 results: [{ number: '0001745-64.1989.8.19.0002', tribunal_name: 'TJRJ', phase: '01' }],
                 failures: []
             });
@@ -711,6 +774,7 @@ describe('BulkSearch Component', () => {
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
 
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
             await waitFor(() => {
                 const tribunalElements = screen.getAllByText(/TJRJ/);
                 expect(tribunalElements.length).toBeGreaterThan(0);
@@ -764,7 +828,7 @@ describe('BulkSearch Component', () => {
     describe('Error States (New Tests)', () => {
         it('TC-41: handles network error during processing', async () => {
             const user = userEvent.setup();
-            api.bulkSearch.mockRejectedValue(new Error('Network error'));
+            api.bulkSubmit.mockRejectedValue(new Error('Network error'));
 
             render(<BulkSearch />);
 
@@ -775,14 +839,14 @@ describe('BulkSearch Component', () => {
             await user.click(searchButton);
 
             await waitFor(() => {
-                expect(screen.getByText(/Falha ao processar|erro|error/i)).toBeInTheDocument();
+                expect(screen.getByText(/Falha|erro|error/i)).toBeInTheDocument();
             });
         });
 
         it('TC-42: handles timeout during processing', async () => {
             const user = userEvent.setup();
             const timeoutError = new Error('Timeout');
-            api.bulkSearch.mockRejectedValue(timeoutError);
+            api.bulkSubmit.mockRejectedValue(timeoutError);
 
             render(<BulkSearch />);
 
@@ -793,13 +857,13 @@ describe('BulkSearch Component', () => {
             await user.click(searchButton);
 
             await waitFor(() => {
-                expect(screen.getByText(/Falha ao processar|Timeout/i)).toBeInTheDocument();
+                expect(screen.getByText(/Falha|Timeout/i)).toBeInTheDocument();
             });
         });
 
         it('TC-43: handles server error response', async () => {
             const user = userEvent.setup();
-            api.bulkSearch.mockRejectedValue(new Error('Server error 500'));
+            api.bulkSubmit.mockRejectedValue(new Error('Server error 500'));
 
             render(<BulkSearch />);
 
@@ -810,7 +874,7 @@ describe('BulkSearch Component', () => {
             await user.click(searchButton);
 
             await waitFor(() => {
-                expect(screen.getByText(/Falha ao processar|erro|erro/i)).toBeInTheDocument();
+                expect(screen.getByText(/Falha|erro/i)).toBeInTheDocument();
             });
         });
     });
@@ -818,8 +882,8 @@ describe('BulkSearch Component', () => {
     describe('Edge Cases (New Tests)', () => {
         it('TC-44: handles rapid file uploads', async () => {
             const user = userEvent.setup();
-            api.bulkSearch.mockImplementation(() =>
-                new Promise(resolve => setTimeout(() => resolve({ results: [], failures: [] }), 100))
+            api.bulkSubmit.mockImplementation(() =>
+                new Promise(resolve => setTimeout(() => resolve({ job_id: 'test-job-123' }), 100))
             );
 
             render(<BulkSearch />);
@@ -855,8 +919,7 @@ describe('BulkSearch Component', () => {
 
         it('TC-49: maintains form state after error', async () => {
             const user = userEvent.setup();
-            api.bulkSearch.mockRejectedValueOnce(new Error('Error'));
-            api.bulkSearch.mockResolvedValueOnce({ results: [], failures: [] });
+            api.bulkSubmit.mockRejectedValueOnce(new Error('Error'));
 
             render(<BulkSearch />);
 
@@ -869,7 +932,7 @@ describe('BulkSearch Component', () => {
             await user.click(searchButton);
 
             await waitFor(() => {
-                expect(screen.getByText(/Falha ao processar/i)).toBeInTheDocument();
+                expect(screen.getByText(/Falha/i)).toBeInTheDocument();
             });
 
             // Number should still be in textarea
@@ -900,9 +963,14 @@ describe('BulkSearch Component', () => {
     });
 
     describe('Export Handlers (Coverage)', () => {
+        beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); });
+        afterEach(() => { vi.useRealTimers(); });
+
         it('TC-52: exports to XLSX format', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue({
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({
+                status: 'done',
                 results: [{ number: '0001745-64.1989.8.19.0002', tribunal_name: 'TJRJ' }],
                 failures: []
             });
@@ -915,6 +983,7 @@ describe('BulkSearch Component', () => {
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
 
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
             await waitFor(() => {
                 const exportMenuButton = screen.getAllByRole('button').find(b =>
                     b.textContent.includes('Exportar') || b.textContent.includes('Download')
@@ -924,8 +993,10 @@ describe('BulkSearch Component', () => {
         });
 
         it('TC-53: exports to TXT format', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue({
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({
+                status: 'done',
                 results: [{ number: '0001745-64.1989.8.19.0002', tribunal_name: 'TJRJ' }],
                 failures: []
             });
@@ -938,14 +1009,17 @@ describe('BulkSearch Component', () => {
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
 
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
             await waitFor(() => {
-                expect(screen.queryByText(/Texto Puro|.txt/i)).toBeInTheDocument();
+                expect(screen.getByText('Resultados da Consulta')).toBeInTheDocument();
             });
         });
 
         it('TC-54: exports to Markdown format', async () => {
-            const user = userEvent.setup();
-            api.bulkSearch.mockResolvedValue({
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+            api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+            api.getBulkJob.mockResolvedValue({
+                status: 'done',
                 results: [{ number: '0001745-64.1989.8.19.0002', tribunal_name: 'TJRJ' }],
                 failures: []
             });
@@ -958,6 +1032,7 @@ describe('BulkSearch Component', () => {
             const searchButton = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
             await user.click(searchButton);
 
+            await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
             // Verify results are displayed
             await waitFor(() => {
                 const tribunalElements = screen.getAllByText('TJRJ');

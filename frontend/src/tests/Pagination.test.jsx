@@ -10,10 +10,9 @@
  *  - BulkSearch integration: pagination state, page-size changes
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, act, renderHook } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { renderHook, act } from '@testing-library/react';
 
 import { usePagination } from '../hooks/usePagination';
 import Pagination from '../components/Pagination';
@@ -291,12 +290,18 @@ describe('Pagination component', () => {
 
 describe('BulkSearch — pagination integration', () => {
     beforeEach(() => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
         vi.clearAllMocks();
     });
 
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
     it('TC-P26: pagination controls appear when results have more than 0 items', async () => {
-        const user = userEvent.setup();
-        api.bulkSearch.mockResolvedValue({ results: makeResults(30), failures: [] });
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+        api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+        api.getBulkJob.mockResolvedValue({ status: 'done', results: makeResults(30), failures: [] });
 
         render(<BulkSearch />);
 
@@ -304,21 +309,26 @@ describe('BulkSearch — pagination integration', () => {
         await user.type(textarea, '0001745-64.1989.8.19.0002');
         await user.click(screen.getByRole('button', { name: /Iniciar Consulta em Lote/i }));
 
+        await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
+
         await waitFor(() => {
             expect(screen.getByRole('navigation', { name: /Paginação/i })).toBeInTheDocument();
         });
     });
 
     it('TC-P27: only first 25 results are rendered by default', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
         const results = makeResults(50);
-        api.bulkSearch.mockResolvedValue({ results, failures: [] });
+        api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+        api.getBulkJob.mockResolvedValue({ status: 'done', results, failures: [] });
 
         render(<BulkSearch />);
 
         const textarea = screen.getByPlaceholderText(/Um número por linha/i);
         await user.type(textarea, results[0].number);
         await user.click(screen.getByRole('button', { name: /Iniciar Consulta em Lote/i }));
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
 
         await waitFor(() => {
             // Item 26 (index 25) should NOT be in the table (it's on page 2)
@@ -329,15 +339,18 @@ describe('BulkSearch — pagination integration', () => {
     });
 
     it('TC-P28: navigating to page 2 shows different results', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
         const results = makeResults(50);
-        api.bulkSearch.mockResolvedValue({ results, failures: [] });
+        api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+        api.getBulkJob.mockResolvedValue({ status: 'done', results, failures: [] });
 
         render(<BulkSearch />);
 
         const textarea = screen.getByPlaceholderText(/Um número por linha/i);
         await user.type(textarea, results[0].number);
         await user.click(screen.getByRole('button', { name: /Iniciar Consulta em Lote/i }));
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
 
         await waitFor(() => {
             expect(screen.getByRole('navigation', { name: /Paginação/i })).toBeInTheDocument();
@@ -353,15 +366,18 @@ describe('BulkSearch — pagination integration', () => {
     });
 
     it('TC-P29: changing page size to 10 limits visible rows', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
         const results = makeResults(30);
-        api.bulkSearch.mockResolvedValue({ results, failures: [] });
+        api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+        api.getBulkJob.mockResolvedValue({ status: 'done', results, failures: [] });
 
         render(<BulkSearch />);
 
         const textarea = screen.getByPlaceholderText(/Um número por linha/i);
         await user.type(textarea, results[0].number);
         await user.click(screen.getByRole('button', { name: /Iniciar Consulta em Lote/i }));
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
 
         await waitFor(() => {
             expect(screen.getByRole('navigation', { name: /Paginação/i })).toBeInTheDocument();

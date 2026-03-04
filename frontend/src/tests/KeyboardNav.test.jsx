@@ -9,8 +9,8 @@
  * - Tab navigation reaches focusable elements
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import BulkSearch from '../components/BulkSearch';
 import * as api from '../services/api';
@@ -71,8 +71,10 @@ const MOCK_RESULTS = {
 
 // Helper: render BulkSearch with results visible
 async function renderWithResults() {
-    const user = userEvent.setup();
-    api.bulkSearch.mockResolvedValue(MOCK_RESULTS);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+    api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+    api.getBulkJob.mockResolvedValue({ status: 'done', ...MOCK_RESULTS });
     render(<BulkSearch />);
 
     const textarea = screen.getByPlaceholderText(/Um número por linha/i);
@@ -80,6 +82,8 @@ async function renderWithResults() {
 
     const searchBtn = screen.getByRole('button', { name: /Iniciar Consulta em Lote/i });
     await user.click(searchBtn);
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
 
     await waitFor(() => {
         expect(screen.getByText('Resultados da Consulta')).toBeInTheDocument();
@@ -91,6 +95,10 @@ async function renderWithResults() {
 describe('Keyboard Navigation — REM-030', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
     describe('BulkSearch — Initial Render (no results)', () => {

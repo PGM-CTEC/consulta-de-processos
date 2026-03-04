@@ -160,32 +160,33 @@ describe('BulkSearch — form validation', () => {
 
     it('calls bulkSearch on valid submit', async () => {
         const user = userEvent.setup();
-        api.bulkSearch.mockResolvedValue({ results: [], failures: [] });
+        api.bulkSubmit.mockResolvedValue({ job_id: 'test-job-123' });
+        api.getBulkJob.mockResolvedValue({ status: 'done', results: [], failures: [] });
         render(<BulkSearch />);
         const textarea = screen.getByPlaceholderText(/Um número por linha/i);
         await user.type(textarea, '0001745-64.1989.8.19.0002');
         await user.click(screen.getByRole('button', { name: /Iniciar Consulta em Lote/i }));
-        await waitFor(() => expect(api.bulkSearch).toHaveBeenCalledWith(['0001745-64.1989.8.19.0002']));
+        await waitFor(() => expect(api.bulkSubmit).toHaveBeenCalledWith(['0001745-64.1989.8.19.0002']));
     });
 
     it('shows API error inline on search failure', async () => {
         const user = userEvent.setup();
-        api.bulkSearch.mockRejectedValue(new Error('fail'));
+        api.bulkSubmit.mockRejectedValue(new Error('fail'));
         render(<BulkSearch />);
         await user.type(screen.getByPlaceholderText(/Um número por linha/i), '0001745-64.1989.8.19.0002');
         await user.click(screen.getByRole('button', { name: /Iniciar Consulta em Lote/i }));
-        await waitFor(() => expect(screen.getByText(/Falha ao processar a busca em lote/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Falha ao iniciar a busca em lote/i)).toBeInTheDocument());
     });
 
     it('preserves textarea value after API error', async () => {
         const user = userEvent.setup();
-        api.bulkSearch.mockRejectedValue(new Error('fail'));
+        api.bulkSubmit.mockRejectedValue(new Error('fail'));
         render(<BulkSearch />);
         const textarea = screen.getByPlaceholderText(/Um número por linha/i);
         const testNum = '0001745-64.1989.8.19.0002';
         await user.type(textarea, testNum);
         await user.click(screen.getByRole('button', { name: /Iniciar Consulta em Lote/i }));
-        await waitFor(() => screen.getByText(/Falha ao processar/i));
+        await waitFor(() => screen.getByText(/Falha ao iniciar/i));
         expect(textarea).toHaveValue(testNum);
     });
 });

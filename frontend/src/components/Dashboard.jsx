@@ -31,6 +31,36 @@ const Dashboard = () => {
         loadStats();
     }, []);
 
+    // Must be before early returns to comply with React Rules of Hooks
+    const filteredAndSortedPhases = useMemo(() => {
+        if (!stats?.phases) return [];
+
+        let filtered = [...stats.phases];
+
+        // Apply filter by nature (asterisk indicates penal/criminal nature)
+        if (phaseFilterNature === 'civel') {
+            filtered = filtered.filter(p => !p.phase.endsWith(' *'));
+        } else if (phaseFilterNature === 'penal') {
+            filtered = filtered.filter(p => p.phase.endsWith(' *'));
+        }
+
+        // Apply sorting
+        filtered.sort((a, b) => {
+            if (phaseSortBy === 'count-desc') {
+                return b.count - a.count;
+            } else if (phaseSortBy === 'count-asc') {
+                return a.count - b.count;
+            } else if (phaseSortBy === 'name-asc') {
+                return a.phase.localeCompare(b.phase, 'pt-BR');
+            } else if (phaseSortBy === 'name-desc') {
+                return b.phase.localeCompare(a.phase, 'pt-BR');
+            }
+            return 0;
+        });
+
+        return filtered;
+    }, [stats?.phases, phaseSortBy, phaseFilterNature]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-96">
@@ -65,37 +95,6 @@ const Dashboard = () => {
 
     const maxTribunalCount = Math.max(...stats.tribunals.map(t => t.count), 1);
     const maxTimelineCount = Math.max(...stats.timeline.map(t => t.count), 1);
-
-    // Filter and sort phases based on user selections
-    const filteredAndSortedPhases = useMemo(() => {
-        if (!stats?.phases) return [];
-
-        let filtered = [...stats.phases];
-
-        // Apply filter by nature (asterisk indicates penal/criminal nature)
-        if (phaseFilterNature === 'civel') {
-            filtered = filtered.filter(p => !p.phase.endsWith(' *'));
-        } else if (phaseFilterNature === 'penal') {
-            filtered = filtered.filter(p => p.phase.endsWith(' *'));
-        }
-
-        // Apply sorting
-        filtered.sort((a, b) => {
-            if (phaseSortBy === 'count-desc') {
-                return b.count - a.count;
-            } else if (phaseSortBy === 'count-asc') {
-                return a.count - b.count;
-            } else if (phaseSortBy === 'name-asc') {
-                return a.phase.localeCompare(b.phase, 'pt-BR');
-            } else if (phaseSortBy === 'name-desc') {
-                return b.phase.localeCompare(a.phase, 'pt-BR');
-            }
-            return 0;
-        });
-
-        return filtered;
-    }, [stats?.phases, phaseSortBy, phaseFilterNature]);
-
     const maxPhaseCount = Math.max(...filteredAndSortedPhases.map(p => p.count), 1);
 
     return (
