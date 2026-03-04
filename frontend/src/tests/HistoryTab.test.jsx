@@ -52,7 +52,7 @@ describe('HistoryTab Component', () => {
     describe('Loading State', () => {
         it('TC-1: displays loading spinner initially', () => {
             api.getHistory.mockImplementation(
-                () => new Promise(() => {}) // Never resolves
+                () => new Promise(() => { }) // Never resolves
             );
 
             const { container } = render(<HistoryTab labels={mockLabels} />);
@@ -62,7 +62,7 @@ describe('HistoryTab Component', () => {
         });
 
         it('TC-2: loading state has spinner with correct styling', () => {
-            api.getHistory.mockImplementation(() => new Promise(() => {}));
+            api.getHistory.mockImplementation(() => new Promise(() => { }));
 
             const { container } = render(<HistoryTab labels={mockLabels} />);
 
@@ -286,7 +286,7 @@ describe('HistoryTab Component', () => {
         });
 
         it('TC-15: logs error to console on API failure', async () => {
-            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
             api.getHistory.mockRejectedValue(new Error('API Error'));
 
             render(<HistoryTab labels={mockLabels} />);
@@ -367,7 +367,7 @@ describe('HistoryTab Component', () => {
             });
 
             const buttons = screen.getAllByRole('button').filter((btn) =>
-                btn.className.includes('w-full')
+                btn.getAttribute('aria-label')?.includes('processo')
             );
             expect(buttons.length).toBeGreaterThan(0);
         });

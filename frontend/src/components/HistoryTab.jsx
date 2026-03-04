@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Trash2, ChevronRight, AlertCircle, FileText } from 'lucide-react';
+import { Clock, Trash2, Copy, ExternalLink, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { getHistory, clearHistory } from '../services/api';
+import { getHistory, clearHistory, searchProcess } from '../services/api';
 
-function HistoryTab({ labels }) {
+function HistoryTab({ labels, onProcessView }) {
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -14,12 +14,10 @@ function HistoryTab({ labels }) {
     const loadHistory = async () => {
         setLoading(true);
         try {
-            // Note: API endpoints to be implemented in backend
             const data = await getHistory();
             setHistory(data);
         } catch (error) {
             console.error('Error fetching history:', error);
-            // Fallback while backend is not ready
             setHistory([]);
         } finally {
             setLoading(false);
@@ -35,6 +33,32 @@ function HistoryTab({ labels }) {
             toast.success('Histórico limpo com sucesso!');
         } catch {
             toast.error('Erro ao limpar histórico.');
+        }
+    };
+
+    const handleCopyNumber = (number, event) => {
+        event.stopPropagation();
+        navigator.clipboard.writeText(number).then(() => {
+            toast.success('Número copiado!');
+        }).catch(() => {
+            toast.error('Erro ao copiar número.');
+        });
+    };
+
+    const handleViewProcess = async (number, event) => {
+        event.stopPropagation();
+        try {
+            toast.loading('Buscando processo...', { id: 'search' });
+            const result = await searchProcess(number);
+            toast.success('Processo encontrado!', { id: 'search' });
+
+            // Se houver callback para visualizar processo
+            if (onProcessView) {
+                onProcessView(result);
+            }
+        } catch (error) {
+            toast.error('Erro ao buscar processo.', { id: 'search' });
+            console.error('Error fetching process:', error);
         }
     };
 
@@ -73,24 +97,42 @@ function HistoryTab({ labels }) {
                     <ul className="divide-y divide-gray-100">
                         {history.map((item, index) => (
                             <li key={index} className="hover:bg-gray-50 transition-colors">
-                                <button className="w-full px-6 py-4 flex items-center justify-between text-left group">
-                                    <div className="flex items-center space-x-4">
-                                        <div className="bg-indigo-50 p-2 rounded-lg group-hover:bg-indigo-100 transition-colors">
+                                <div className="px-6 py-4 flex items-center justify-between">
+                                    <div className="flex items-center space-x-4 flex-1">
+                                        <div className="bg-indigo-50 p-2 rounded-lg">
                                             <FileText className="h-5 w-5 text-indigo-600" />
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                                        <div className="flex-1">
+                                            <p className="font-bold text-gray-900 font-mono text-sm">
                                                 {item.number}
                                             </p>
                                             <div className="flex items-center space-x-2 text-xs text-gray-500 mt-1">
-                                                <span>{item.court}</span>
+                                                <span className="truncate max-w-xs">{item.court || 'Tribunal não especificado'}</span>
                                                 <span>•</span>
-                                                <span>{new Date(item.created_at).toLocaleString()}</span>
+                                                <span>{new Date(item.created_at).toLocaleString('pt-BR')}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 transform group-hover:translate-x-1 transition-all" />
-                                </button>
+                                    <div className="flex items-center space-x-2 ml-4">
+                                        <button
+                                            onClick={(e) => handleCopyNumber(item.number, e)}
+                                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                            title="Copiar número do processo"
+                                            aria-label="Copiar número do processo"
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => handleViewProcess(item.number, e)}
+                                            className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-indigo-600 hover:text-white hover:bg-indigo-600 border border-indigo-200 rounded-lg transition-colors"
+                                            title="Ver detalhes do processo"
+                                            aria-label="Ver detalhes do processo"
+                                        >
+                                            <ExternalLink className="h-4 w-4" />
+                                            <span>Ver Detalhes</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </li>
                         ))}
                     </ul>

@@ -4,6 +4,7 @@ import { Search, Database, Layers, BarChart3, Sun, Moon } from 'lucide-react';
 import SearchProcess from './components/SearchProcess';
 import LoadingFallback from './components/LoadingFallback';
 import FeedbackButton from './components/FeedbackButton';
+import HistoryTab from './components/HistoryTab'; // Import direto para evitar erro com React 19
 import { searchProcess } from './services/api';
 import { useLabels } from './hooks/useLabels';
 import { useTheme } from './hooks/useTheme';
@@ -13,7 +14,6 @@ import { useTheme } from './hooks/useTheme';
 const ProcessDetails = lazy(() => import('./components/ProcessDetails'));
 const BulkSearch = lazy(() => import('./components/BulkSearch'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
-const HistoryTab = lazy(() => import('./components/HistoryTab'));
 const PhaseReference = lazy(() => import('./components/PhaseReference'));
 
 function App() {
@@ -46,6 +46,12 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewFromHistory = (processData) => {
+    // Muda para a aba "Consulta Individual" e exibe os dados
+    setActiveTab('single');
+    setData(processData);
   };
 
   return (
@@ -185,9 +191,7 @@ function App() {
               aria-labelledby="tab-history"
               className="animate-in fade-in slide-in-from-bottom-4 duration-700"
             >
-              <Suspense fallback={<LoadingFallback message="Carregando histórico..." />}>
-                <HistoryTab labels={labels} />
-              </Suspense>
+              <HistoryTab labels={labels} onProcessView={handleViewFromHistory} />
             </div>
           )}
 

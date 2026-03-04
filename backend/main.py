@@ -29,6 +29,23 @@ from .utils.redact import redact_dict
 from .middleware import CorrelationIdMiddleware, RequestLoggerMiddleware
 from contextlib import asynccontextmanager
 
+# Sentry setup (Story: REM-013)
+SENTRY_AVAILABLE = False
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    SENTRY_AVAILABLE = True
+except ImportError:
+    pass
+
+if SENTRY_AVAILABLE and settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        integrations=[FastApiIntegration()],
+        environment=settings.ENVIRONMENT,
+        traces_sample_rate=0.1,
+    )
+
 # Initialize loggers (Story: REM-016 — Centralized Logging Local)
 logger = setup_logger()
 setup_access_logger()  # Initializes "access" logger used by RequestLoggerMiddleware

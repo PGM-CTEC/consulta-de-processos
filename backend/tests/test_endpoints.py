@@ -15,12 +15,21 @@ from unittest.mock import patch, AsyncMock, MagicMock
 
 from backend.main import app
 from backend import models
+from backend.database import get_db
 
 
 @pytest.fixture
-def client():
-    """FastAPI test client."""
-    return TestClient(app)
+def client(test_db):
+    """FastAPI test client with DB override."""
+    def override_get_db():
+        try:
+            yield test_db
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as c:
+        yield c
     app.dependency_overrides.clear()
 
 

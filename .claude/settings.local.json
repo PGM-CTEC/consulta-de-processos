@@ -41,7 +41,10 @@
       "Bash(git remote get-url origin)",
       "Bash(git credential:*)",
       "Bash(git fetch origin)",
-      "Bash(git pull origin main)"
+      "Bash(git pull origin main)",
+      "Bash(npm run dev)",
+      "Bash(cmd.exe /c iniciar.bat)",
+      "Bash(npm ls react react-dom)"
     ]
   },
   "hooks": {
