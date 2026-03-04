@@ -48,11 +48,11 @@ self.addEventListener('fetch', (event) => {
 
   // API calls: Network-first (fresh data preferred)
   if (url.pathname.startsWith('/processes') ||
-      url.pathname.startsWith('/health') ||
-      url.pathname.startsWith('/stats') ||
-      url.pathname.startsWith('/history') ||
-      url.pathname.startsWith('/settings') ||
-      url.pathname.startsWith('/sql')) {
+    url.pathname.startsWith('/health') ||
+    url.pathname.startsWith('/stats') ||
+    url.pathname.startsWith('/history') ||
+    url.pathname.startsWith('/settings') ||
+    url.pathname.startsWith('/sql')) {
     event.respondWith(
       fetch(request)
         .then((response) => {

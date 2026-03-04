@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 const DEFAULT_LABELS = {
     app: {
-        title: "Consulta Processual",
+        title: "Consulta Fase Processual",
         subtitle: "DataJud Intelligence",
         statusOnline: "Status: Online",
         statusOffline: "Status: Offline",

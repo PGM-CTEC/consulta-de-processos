@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { BarChart3, TrendingUp, Database, Calendar, RefreshCw, Loader2, AlertCircle, Filter } from 'lucide-react';
 import { getStats } from '../services/api';
-import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
+import { getPhaseColorClasses, getPhaseProgressBarClasses } from '../utils/phaseColors';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
@@ -223,7 +223,7 @@ const Dashboard = () => {
                                     </div>
                                     <div className="w-full bg-gray-100 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
                                         <div
-                                            className={`${phase.count > 0 ? 'bg-gradient-to-r from-violet-500 to-violet-600' : 'bg-gray-200'} h-3 rounded-full transition-all duration-500`}
+                                            className={`${phase.count > 0 ? getPhaseProgressBarClasses(phase.phase) : 'bg-gray-200 dark:bg-slate-600'} h-3 rounded-full transition-all duration-500`}
                                             style={{ width: `${(phase.count / maxPhaseCount) * 100}%` }}
                                         />
                                     </div>

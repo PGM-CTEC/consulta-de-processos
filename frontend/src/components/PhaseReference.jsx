@@ -99,55 +99,6 @@ const PhaseReference = () => {
         </div>
       ))}
 
-      {/* Color Legend */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Legenda de Cores</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-blue-100 border-2 border-blue-200"></div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Azul</p>
-              <p className="text-xs text-gray-600">Conhecimento em andamento</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-green-100 border-2 border-green-200"></div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Verde</p>
-              <p className="text-xs text-gray-600">Trânsito em julgado</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-orange-100 border-2 border-orange-200"></div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Laranja</p>
-              <p className="text-xs text-gray-600">Execução</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-yellow-100 border-2 border-yellow-200"></div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Amarelo</p>
-              <p className="text-xs text-gray-600">Suspenso/Sobrestado</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-purple-100 border-2 border-purple-200"></div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Roxo</p>
-              <p className="text-xs text-gray-600">Conversão em renda</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-gray-200"></div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Cinza</p>
-              <p className="text-xs text-gray-600">Arquivado definitivamente</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Documentation Link */}
       <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-6 text-center border border-gray-200">
         <p className="text-sm text-gray-700">

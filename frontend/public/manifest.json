@@ -1,14 +1,17 @@
 {
-  "name": "Consulta Processual - Sistema de Consulta de Processos",
-  "short_name": "Consulta Processual",
-  "description": "Sistema de consulta e acompanhamento de processos judiciais para a Procuradoria Geral do Município do Rio de Janeiro (PGM-Rio)",
+  "name": "Consulta de Fase Processual",
+  "short_name": "Consulta de Fase Processual",
+  "description": "Sistema de consulta e acompanhamento de fases processuais para a Procuradoria Geral do Município do Rio de Janeiro (PGM-Rio)",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#4f46e5",
-  "categories": ["productivity", "business"],
+  "categories": [
+    "productivity",
+    "business"
+  ],
   "icons": [
     {
       "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%234f46e5' width='192' height='192'/><text x='50%' y='50%' font-size='120' font-weight='bold' fill='white' text-anchor='middle' dy='.3em' font-family='system-ui'>C</text></svg>",

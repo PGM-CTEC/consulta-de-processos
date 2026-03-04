@@ -1,6 +1,6 @@
 {
     "app": {
-        "title": "Consulta Processual",
+        "title": "Consulta Fase Processual",
         "subtitle": "DataJud Intelligence",
         "statusOnline": "Status: Online",
         "statusOffline": "Status: Offline",
@@ -14,7 +14,7 @@
         "history": "Histórico"
     },
     "home": {
-        "heroTitle": "Consulte processos em",
+        "heroTitle": "Consulte a fase de processos em",
         "heroHighlight": "tempo real",
         "heroSubtitle": "Acesse dados unificados do Poder Judiciário (DataJud) de forma simples e rápida."
     },

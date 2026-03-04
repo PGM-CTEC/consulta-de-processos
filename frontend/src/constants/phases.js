@@ -14,7 +14,7 @@ export const VALID_PHASES = {
     code: '01',
     name: 'Conhecimento — Antes da Sentença',
     type: 'Conhecimento',
-    color: 'blue'
+    color: 'sky'
   },
   CONHECIMENTO_SENTENCA_SEM_TRANSITO: {
     code: '02',
@@ -26,43 +26,43 @@ export const VALID_PHASES = {
     code: '03',
     name: 'Conhecimento — Sentença com Trânsito em Julgado',
     type: 'Conhecimento',
-    color: 'green'
+    color: 'indigo'
   },
   CONHECIMENTO_RECURSO_2_PENDENTE: {
     code: '04',
     name: 'Conhecimento — Recurso 2ª Instância — Pendente Julgamento',
     type: 'Conhecimento',
-    color: 'blue'
+    color: 'violet'
   },
   CONHECIMENTO_RECURSO_2_JULGADO: {
     code: '05',
     name: 'Conhecimento — Recurso 2ª Instância — Julgado sem Trânsito',
     type: 'Conhecimento',
-    color: 'blue'
+    color: 'purple'
   },
   CONHECIMENTO_RECURSO_2_TRANSITADO: {
     code: '06',
     name: 'Conhecimento — Recurso 2ª Instância — Transitado em Julgado',
     type: 'Conhecimento',
-    color: 'green'
+    color: 'fuchsia'
   },
   CONHECIMENTO_RECURSO_SUP_PENDENTE: {
     code: '07',
     name: 'Conhecimento — Recurso Tribunais Superiores — Pendente Julgamento',
     type: 'Conhecimento',
-    color: 'blue'
+    color: 'pink'
   },
   CONHECIMENTO_RECURSO_SUP_JULGADO: {
     code: '08',
     name: 'Conhecimento — Recurso Tribunais Superiores — Julgado sem Trânsito',
     type: 'Conhecimento',
-    color: 'blue'
+    color: 'rose'
   },
   CONHECIMENTO_RECURSO_SUP_TRANSITADO: {
     code: '09',
     name: 'Conhecimento — Recurso Tribunais Superiores — Transitado em Julgado',
     type: 'Conhecimento',
-    color: 'green'
+    color: 'red'
   },
 
   // Fases de Execução (10-12, 14)
@@ -76,19 +76,19 @@ export const VALID_PHASES = {
     code: '11',
     name: 'Execução Suspensa',
     type: 'Execução',
-    color: 'orange'
+    color: 'amber'
   },
   EXECUCAO_SUSPENSA_PARCIAL: {
     code: '12',
     name: 'Execução Suspensa Parcialmente (Impugnação Parcial)',
     type: 'Execução',
-    color: 'orange'
+    color: 'yellow'
   },
   CONVERSAO_RENDA: {
     code: '14',
     name: 'Conversão em Renda',
     type: 'Execução',
-    color: 'purple'
+    color: 'green'
   },
 
   // Fases Transversais e Finais (13, 15)
@@ -96,13 +96,13 @@ export const VALID_PHASES = {
     code: '13',
     name: 'Suspenso / Sobrestado',
     type: 'Transversal',
-    color: 'yellow'
+    color: 'lime'
   },
   ARQUIVADO: {
     code: '15',
     name: 'Arquivado Definitivamente',
     type: 'Final',
-    color: 'gray'
+    color: 'slate'
   }
 };
 
@@ -214,8 +214,8 @@ export function normalizePhase(phaseInput, classNature = null) {
   // Apenas processar como conhecimento se NÃO for classe de execução
   if (!isExecution) {
     if (inputLower.includes('conhecimento') || inputLower.includes('sentença') ||
-        inputLower.includes('recurso') || inputLower.includes('transitado') ||
-        inputLower.includes('trânsito') || inputLower.includes('julgado')) {
+      inputLower.includes('recurso') || inputLower.includes('transitado') ||
+      inputLower.includes('trânsito') || inputLower.includes('julgado')) {
 
       // Tribunais Superiores (07-09)
       if (inputLower.includes('superior') || inputLower.includes('stj') || inputLower.includes('stf')) {
@@ -230,7 +230,7 @@ export function normalizePhase(phaseInput, classNature = null) {
 
       // 2ª Instância (04-06)
       if (inputLower.includes('2ª') || inputLower.includes('segunda') ||
-          inputLower.includes('recurso') || inputLower.includes('2.')) {
+        inputLower.includes('recurso') || inputLower.includes('2.')) {
         if (inputLower.includes('transitado') || inputLower.includes('trânsito')) {
           return VALID_PHASES.CONHECIMENTO_RECURSO_2_TRANSITADO.name;
         }
