@@ -9,19 +9,11 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    resolve: {
+      dedupe: ['react', 'react-dom'],
+    },
     build: {
-      rollupOptions: {
-        output: {
-          // Split large dependencies into separate named chunks to reduce
-          // initial bundle size and improve caching (REM-037).
-          manualChunks: {
-            // React core — changes rarely, gets long cache lifetime
-            vendor: ['react', 'react-dom'],
-            // UI utility libraries
-            'ui-utils': ['react-hot-toast', 'lucide-react'],
-          },
-        },
-      },
+      // Simplificado para evitar problemas de duplicidade de instâncias de React (REM-037)
     },
     server: {
       proxy: {

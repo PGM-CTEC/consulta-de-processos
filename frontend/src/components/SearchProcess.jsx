@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Search, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
