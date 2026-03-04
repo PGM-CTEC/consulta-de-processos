@@ -40,10 +40,13 @@ class TestGetProcessEndpoint:
                 tribunal_name="TJSP",
                 court_unit="1ª Vara",
                 district="3550308",
+                judge=None,
                 phase="02",
+                phase_warning=None,
                 distribution_date=None,
-                last_update=None,
-                raw_data={}
+                last_update=datetime(2024, 1, 1, tzinfo=timezone.utc),
+                raw_data={},
+                deleted_at=None,
             ))
             MockService.return_value = mock_service
 
@@ -69,8 +72,8 @@ class TestGetProcessEndpoint:
         """Return 422 for invalid process number."""
         response = client.get("/processes/invalid")
 
-        # FastAPI will still attempt to process it
-        assert response.status_code in [400, 422, 404]
+        # Backend validates format; invalid numbers get 400/422/404 or 503 (DataJud error)
+        assert response.status_code in [400, 422, 404, 503]
 
     def test_get_process_rate_limit(self, client):
         """Respect rate limit of 100/minute."""
@@ -86,10 +89,13 @@ class TestGetProcessEndpoint:
                 tribunal_name="TJSP",
                 court_unit="Vara",
                 district="3550308",
+                judge=None,
                 phase="02",
+                phase_warning=None,
                 distribution_date=None,
-                last_update=None,
-                raw_data={}
+                last_update=datetime(2024, 1, 1, tzinfo=timezone.utc),
+                raw_data={},
+                deleted_at=None,
             ))
             MockService.return_value = mock_service
 

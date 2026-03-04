@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"  # development, staging, production
     DEBUG: bool = True
 
+    # Monitoring (optional)
+    SENTRY_DSN: str = ""  # Empty = Sentry disabled
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

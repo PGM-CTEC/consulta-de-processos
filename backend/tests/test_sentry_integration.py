@@ -49,9 +49,13 @@ class TestSentryConfiguration:
             pytest.skip("FastAPI integration requires: pip install sentry-sdk[fastapi]")
 
 
+sentry_available = pytest.importorskip("sentry_sdk", reason="sentry_sdk not installed")
+
+
 class TestSentryInitialization:
     """Tests for Sentry initialization in FastAPI app."""
 
+    @pytest.mark.skipif(not __import__('importlib').util.find_spec('sentry_sdk'), reason="sentry_sdk not installed")
     @patch('sentry_sdk.init')
     def test_sentry_init_called_with_config(self, mock_sentry_init):
         """

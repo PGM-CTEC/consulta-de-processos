@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from .database import get_db, SessionLocal
 from .services.process_service import ProcessService
@@ -145,7 +146,7 @@ async def health_check(db: Session = Depends(get_db)):
     """
     try:
         # Verify database connectivity
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
 
         return {
             "status": "healthy",
@@ -156,10 +157,10 @@ async def health_check(db: Session = Depends(get_db)):
         }
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
-        return {
-            "status": "unhealthy",
-            "error": "Database connection failed"
-        }, 503
+        return JSONResponse(
+            content={"status": "unhealthy", "error": "Database connection failed"},
+            status_code=503
+        )
 
 
 @app.get("/ready", tags=["health"])
@@ -172,11 +173,14 @@ async def readiness_check(db: Session = Depends(get_db)):
     """
     try:
         # Verify database connectivity
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         return {"ready": True, "version": settings.VERSION}
     except Exception as e:
         logger.error(f"Readiness check failed: {str(e)}")
-        return {"ready": False, "error": str(e)}, 503
+        return JSONResponse(
+            content={"ready": False, "error": str(e)},
+            status_code=503
+        )
 
 
 @app.post("/api/logs")
