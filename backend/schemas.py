@@ -138,12 +138,17 @@ class TimelineStats(BaseModel):
     month: str
     count: int
 
+class ClassStats(BaseModel):
+    class_nature: str
+    count: int
+
 class DatabaseStats(BaseModel):
     total_processes: int
     total_movements: int
     tribunals: List[TribunalStats]
     phases: List[PhaseStats]
     timeline: List[TimelineStats]
+    classes: List[ClassStats] = []
     last_updated: Optional[datetime] = None
 
 class SQLConnectionConfig(BaseModel):

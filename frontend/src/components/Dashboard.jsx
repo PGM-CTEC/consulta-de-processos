@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { BarChart3, TrendingUp, Database, Calendar, RefreshCw, Loader2, AlertCircle, ArrowUpDown } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { BarChart3, TrendingUp, Database, Calendar, RefreshCw, Loader2, AlertCircle, Filter } from 'lucide-react';
 import { getStats } from '../services/api';
 import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
 import { Button } from './ui/button';
@@ -10,8 +10,7 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     // Filters and sorting for phases section
-    const [phaseSortBy, setPhaseSortBy] = useState('count-desc'); // count-desc|count-asc|name-asc|name-desc
-    const [phaseFilterNature, setPhaseFilterNature] = useState('all'); // all|civel|penal
+    const [phaseSortBy, setPhaseSortBy] = useState('logical'); // logical|count-desc|count-asc|name-asc
 
     const loadStats = async () => {
         setLoading(true);
@@ -37,29 +36,24 @@ const Dashboard = () => {
 
         let filtered = [...stats.phases];
 
-        // Apply filter by nature (asterisk indicates penal/criminal nature)
-        if (phaseFilterNature === 'civel') {
-            filtered = filtered.filter(p => !p.phase.endsWith(' *'));
-        } else if (phaseFilterNature === 'penal') {
-            filtered = filtered.filter(p => p.phase.endsWith(' *'));
-        }
-
         // Apply sorting
         filtered.sort((a, b) => {
-            if (phaseSortBy === 'count-desc') {
+            if (phaseSortBy === 'logical') {
+                // Logical order is already provided by backend (01 to 15)
+                // We just need to preserve it or re-sort if someone changed it
+                return a.phase.localeCompare(b.phase, 'pt-BR');
+            } else if (phaseSortBy === 'count-desc') {
                 return b.count - a.count;
             } else if (phaseSortBy === 'count-asc') {
                 return a.count - b.count;
             } else if (phaseSortBy === 'name-asc') {
                 return a.phase.localeCompare(b.phase, 'pt-BR');
-            } else if (phaseSortBy === 'name-desc') {
-                return b.phase.localeCompare(a.phase, 'pt-BR');
             }
             return 0;
         });
 
         return filtered;
-    }, [stats?.phases, phaseSortBy, phaseFilterNature]);
+    }, [stats?.phases, phaseSortBy]);
 
     if (loading) {
         return (
@@ -163,10 +157,10 @@ const Dashboard = () => {
             {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Tribunals Chart */}
-                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="tribunals-title">
-                    <h2 id="tribunals-title" className="text-lg font-bold text-gray-900 mb-4">Processos por Tribunal</h2>
+                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+                    <h2 className="text-lg font-bold text-gray-900 mb-4">Processos por Tribunal</h2>
                     {stats.tribunals.length > 0 ? (
-                        <figure aria-label="Gráfico: Distribuição de Processos por Tribunal">
+                        <figure>
                             <ul className="space-y-3 list-none p-0">
                                 {stats.tribunals.map((tribunal, idx) => (
                                     <li key={idx} className="space-y-1">
@@ -176,11 +170,6 @@ const Dashboard = () => {
                                         </div>
                                         <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                                             <div
-                                                role="meter"
-                                                aria-label={`${tribunal.tribunal_name}: ${tribunal.count} processos`}
-                                                aria-valuenow={tribunal.count}
-                                                aria-valuemin={0}
-                                                aria-valuemax={maxTribunalCount}
                                                 className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-3 rounded-full transition-all duration-500"
                                                 style={{ width: `${(tribunal.count / maxTribunalCount) * 100}%` }}
                                             />
@@ -188,23 +177,6 @@ const Dashboard = () => {
                                     </li>
                                 ))}
                             </ul>
-                            <table className="sr-only">
-                                <caption>Distribuição de Processos por Tribunal</caption>
-                                <thead>
-                                    <tr>
-                                        <th>Tribunal</th>
-                                        <th>Quantidade</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {stats.tribunals.map((tribunal, idx) => (
-                                        <tr key={idx}>
-                                            <td>{tribunal.tribunal_name}</td>
-                                            <td>{tribunal.count}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
                         </figure>
                     ) : (
                         <p className="text-gray-600 text-sm italic">Nenhum dado disponível</p>
@@ -212,149 +184,125 @@ const Dashboard = () => {
                 </section>
 
                 {/* Phases Chart */}
-                <section className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 p-6" aria-labelledby="phases-title">
+                <section className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 p-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                         <div>
-                            <h2 id="phases-title" className="text-lg font-bold text-gray-900 dark:text-white">Processos por Fase</h2>
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Processos por Fase</h2>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Asterisco (*) indica processos de natureza penal/criminal
+                                Todas as 15 fases processuais em ordem lógica
                             </p>
                         </div>
                         <div className="flex gap-2">
-                            {/* Filter by nature */}
-                            <select
-                                value={phaseFilterNature}
-                                onChange={(e) => setPhaseFilterNature(e.target.value)}
-                                className="px-3 py-1.5 text-sm border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                                aria-label="Filtrar por natureza"
-                            >
-                                <option value="all">Todas naturezas</option>
-                                <option value="civel">Somente cível</option>
-                                <option value="penal">Somente penal</option>
-                            </select>
-
                             {/* Sort by */}
                             <select
                                 value={phaseSortBy}
                                 onChange={(e) => setPhaseSortBy(e.target.value)}
                                 className="px-3 py-1.5 text-sm border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                                aria-label="Ordenar por"
                             >
+                                <option value="logical">Ordem Jurídica</option>
                                 <option value="count-desc">Maior quantidade</option>
                                 <option value="count-asc">Menor quantidade</option>
                                 <option value="name-asc">Nome (A-Z)</option>
-                                <option value="name-desc">Nome (Z-A)</option>
                             </select>
                         </div>
                     </div>
 
-                    {filteredAndSortedPhases.length > 0 ? (
-                        <figure aria-label="Gráfico: Distribuição de Processos por Fase">
-                            <ul className="space-y-3 list-none p-0">
-                                {filteredAndSortedPhases.map((phase, idx) => (
-                                    <li key={idx} className="space-y-1">
-                                        <div className="flex justify-between items-center text-sm">
-                                            <div className="flex items-center space-x-2">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getPhaseColorClasses(phase.phase, phase.class_nature)}`}>
-                                                    {getPhaseDisplayName(phase.phase, phase.class_nature)}
-                                                </span>
-                                            </div>
-                                            <span className="font-bold text-indigo-600">{phase.count.toLocaleString()}</span>
+                    <figure>
+                        <ul className="space-y-3 list-none p-0">
+                            {filteredAndSortedPhases.map((phase, idx) => (
+                                <li key={idx} className="space-y-1">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <div className="flex items-center space-x-2">
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getPhaseColorClasses(phase.phase)}`}>
+                                                {phase.phase}
+                                            </span>
                                         </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                                            <div
-                                                role="meter"
-                                                aria-label={`Fase ${phase.phase} (${phase.class_nature}): ${phase.count} processos`}
-                                                aria-valuenow={phase.count}
-                                                aria-valuemin={0}
-                                                aria-valuemax={maxPhaseCount}
-                                                className="bg-gradient-to-r from-violet-500 to-violet-600 h-3 rounded-full transition-all duration-500"
-                                                style={{ width: `${(phase.count / maxPhaseCount) * 100}%` }}
-                                            />
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                            <table className="sr-only">
-                                <caption>Distribuição de Processos por Fase</caption>
-                                <thead>
-                                    <tr>
-                                        <th>Fase</th>
-                                        <th>Natureza da Classe</th>
-                                        <th>Quantidade</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredAndSortedPhases.map((phase, idx) => (
-                                        <tr key={idx}>
-                                            <td>Fase {phase.phase}</td>
-                                            <td>{phase.class_nature}</td>
-                                            <td>{phase.count}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </figure>
-                    ) : (
-                        <p className="text-gray-600 dark:text-gray-400 text-sm italic">
-                            {phaseFilterNature !== 'all'
-                                ? `Nenhum processo de natureza ${phaseFilterNature === 'civel' ? 'cível' : 'penal'} encontrado`
-                                : 'Nenhum dado disponível'
-                            }
-                        </p>
-                    )}
+                                        <span className={`font-bold ${phase.count > 0 ? 'text-indigo-600' : 'text-gray-300'}`}>
+                                            {phase.count.toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-gray-100 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
+                                        <div
+                                            className={`${phase.count > 0 ? 'bg-gradient-to-r from-violet-500 to-violet-600' : 'bg-gray-200'} h-3 rounded-full transition-all duration-500`}
+                                            style={{ width: `${(phase.count / maxPhaseCount) * 100}%` }}
+                                        />
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </figure>
                 </section>
             </div>
 
-            {/* Timeline Chart */}
-            {stats.timeline && stats.timeline.length > 0 && (
-                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="timeline-title">
-                    <h2 id="timeline-title" className="text-lg font-bold text-gray-900 mb-4">Distribuição Temporal (Últimos 12 meses)</h2>
-                    <figure aria-label="Gráfico: Distribuição Temporal dos últimos 12 meses">
-                        <div className="flex items-end justify-between space-x-2 h-64">
-                            {stats.timeline.map((item, idx) => {
-                                const height = (item.count / maxTimelineCount) * 100;
-                                return (
-                                    <div key={idx} className="flex-1 flex flex-col items-center">
-                                        <div className="w-full flex flex-col items-center justify-end h-full pb-2">
-                                            <span className="text-xs font-bold text-indigo-600 mb-1">{item.count}</span>
-                                            <div
-                                                role="meter"
-                                                aria-label={`${item.month}: ${item.count} processos`}
-                                                aria-valuenow={item.count}
-                                                aria-valuemin={0}
-                                                aria-valuemax={maxTimelineCount}
-                                                className="w-full bg-gradient-to-t from-indigo-500 to-indigo-400 rounded-t-lg hover:from-indigo-600 hover:to-indigo-500 transition-all cursor-pointer"
-                                                style={{ height: `${height}%` }}
-                                            />
-                                        </div>
-                                        <span className="text-xs text-gray-600 font-semibold mt-2 transform -rotate-45 origin-top-left">
-                                            {item.month}
-                                        </span>
-                                    </div>
-                                );
-                            })}
+            {/* Process Classes Chart - REPLACING the old redundant Nature filter with actual class stats */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-lg font-bold text-gray-900">Processos por Classe</h2>
+                        <div className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold flex items-center">
+                            <Filter className="h-3 w-3 mr-1" />
+                            {stats.classes?.length || 0} Classes
                         </div>
-                        <table className="sr-only">
-                            <caption>Distribuição Temporal (Últimos 12 meses)</caption>
-                            <thead>
-                                <tr>
-                                    <th>Mês</th>
-                                    <th>Quantidade</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {stats.timeline.map((item, idx) => (
-                                    <tr key={idx}>
-                                        <td>{item.month}</td>
-                                        <td>{item.count}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </figure>
+                    </div>
+                    {stats.classes && stats.classes.length > 0 ? (
+                        <div className="max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                            <ul className="space-y-3 list-none p-0">
+                                {stats.classes.map((cls, idx) => {
+                                    const maxClassCount = Math.max(...stats.classes.map(c => c.count), 1);
+                                    return (
+                                        <li key={idx} className="space-y-1">
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="font-semibold text-gray-700 truncate mr-2" title={cls.class_nature}>
+                                                    {cls.class_nature}
+                                                </span>
+                                                <span className="font-bold text-indigo-600">{cls.count.toLocaleString()}</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                                <div
+                                                    className="bg-indigo-400 h-2 rounded-full transition-all duration-500"
+                                                    style={{ width: `${(cls.count / maxClassCount) * 100}%` }}
+                                                />
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+                    ) : (
+                        <p className="text-gray-600 text-sm italic">Nenhum dado categorizado</p>
+                    )}
                 </section>
-            )}
+
+                {/* Timeline Chart */}
+                {stats.timeline && stats.timeline.length > 0 && (
+                    <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4">Distribuição Temporal (Últimos 12 meses)</h2>
+                        <figure>
+                            <div className="flex items-end justify-between space-x-2 h-64 px-2">
+                                {stats.timeline.map((item, idx) => {
+                                    const height = (item.count / maxTimelineCount) * 100;
+                                    return (
+                                        <div key={idx} className="flex-1 flex flex-col items-center group">
+                                            <div className="w-full flex flex-col items-center justify-end h-full pb-2 relative">
+                                                <div className="absolute -top-8 bg-indigo-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                                    {item.count} processos
+                                                </div>
+                                                <div
+                                                    className="w-full bg-gradient-to-t from-indigo-500 to-indigo-400 rounded-t-lg hover:from-indigo-600 hover:to-indigo-500 transition-all cursor-pointer"
+                                                    style={{ height: `${height || 2}%` }}
+                                                />
+                                            </div>
+                                            <span className="text-[10px] text-gray-600 font-semibold mt-2 transform -rotate-45 origin-top-left">
+                                                {item.month}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </figure>
+                    </section>
+                )}
+            </div>
         </div>
     );
 };

@@ -46,24 +46,57 @@ class StatsService:
                 for name, count in tribunal_stats
             ]
 
-            # Group by phase
-            phase_stats = (
+            # Group by phase - Enhanced logic (Story: BI-002)
+            # We want all 15 phases even if count is 0, correctly sorted by code.
+            from .services.classification_rules import FaseProcessual
+
+            # Get raw counts from DB
+            db_phase_counts = (
                 self.db.query(
                     models.Process.phase,
                     func.count(models.Process.id).label('count')
                 )
                 .filter(models.Process.phase.isnot(None))
                 .group_by(models.Process.phase)
+                .all()
+            )
+
+            # Map raw phase strings to their codes and aggregate counts
+            # Backend phase strings are "XX Description"
+            code_counts = {fp.value: 0 for fp in FaseProcessual}
+            for phase_str, count in db_phase_counts:
+                # Extract code (first two chars)
+                code = phase_str[:2]
+                if code in code_counts:
+                    code_counts[code] += count
+
+            # Build ordered list of all 15 phases
+            phases = [
+                schemas.PhaseStats(
+                    phase=f"{fp.value} — {fp.descricao}",
+                    count=code_counts[fp.value]
+                )
+                for fp in sorted(FaseProcessual, key=lambda x: x.value)
+            ]
+
+            # Group by process class (natureZA)
+            class_stats_query = (
+                self.db.query(
+                    models.Process.class_nature,
+                    func.count(models.Process.id).label('count')
+                )
+                .filter(models.Process.class_nature.isnot(None))
+                .group_by(models.Process.class_nature)
                 .order_by(func.count(models.Process.id).desc())
                 .all()
             )
 
-            phases = [
-                schemas.PhaseStats(
-                    phase=phase or "Conhecimento",
+            classes = [
+                schemas.ClassStats(
+                    class_nature=nature or "Não especificado",
                     count=count
                 )
-                for phase, count in phase_stats
+                for nature, count in class_stats_query
             ]
 
             # Timeline - processes by distribution month
@@ -100,6 +133,7 @@ class StatsService:
                 tribunals=tribunals,
                 phases=phases,
                 timeline=timeline,
+                classes=classes,
                 last_updated=last_updated
             )
 
