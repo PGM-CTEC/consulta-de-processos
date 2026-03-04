@@ -51,6 +51,7 @@ class Settings(BaseSettings):
 
     # Bulk Processing (Story: PERF-ARCH-001)
     BULK_MAX_CONCURRENT: int = 10  # Max concurrent DataJud API calls
+    BULK_REQUEST_DELAY: float = 0.2  # Segundos entre chamadas DataJud no bulk (evita throttling)
 
     # Authentication (optional, disabled by default for development)
     REQUIRE_AUTH: bool = False

@@ -81,6 +81,7 @@ async def run_bulk_job(
     numbers: list[str],
     db_factory: Callable,
     max_concurrent: int,
+    request_delay: float = 0.0,
 ) -> None:
     """
     Background coroutine that processes all numbers and updates the job in place.
@@ -105,11 +106,14 @@ async def run_bulk_job(
 
         async def fetch_one(number: str):
             async with semaphore:
+                if request_delay > 0:
+                    await asyncio.sleep(request_delay)
                 try:
                     process = await service.get_or_update_process(number)
                     if process:
-                        # Serialize while session is open to avoid DetachedInstanceError
-                        serialized = schemas.ProcessResponse.model_validate(process)
+                        # Serialize com schema leve (sem raw_data/movements) para
+                        # reduzir tamanho da resposta de ~100 KB para ~1 KB por processo
+                        serialized = schemas.ProcessBulkResult.model_validate(process)
                         return ("success", number, serialized)
                     return ("success", number, None)
                 except Exception as e:

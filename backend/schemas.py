@@ -99,6 +99,21 @@ class BulkJobStatusResponse(BaseModel):
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
 
+class ProcessBulkResult(BaseModel):
+    """Schema leve para resultados de busca em lote — omite raw_data e movements."""
+    id: int
+    number: str
+    tribunal_name: Optional[str] = None
+    court: Optional[str] = None
+    court_unit: Optional[str] = None
+    phase: Optional[str] = None
+    phase_warning: Optional[str] = None
+    class_nature: Optional[str] = None
+    last_update: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
 class BulkJobResultsResponse(BaseModel):
     """Full results response with pagination."""
     job_id: str
@@ -106,7 +121,7 @@ class BulkJobResultsResponse(BaseModel):
     total: int
     processed: int
     failures: List[str]
-    results: List[ProcessResponse]
+    results: List[ProcessBulkResult]
     page: int
     per_page: int
     total_pages: int

@@ -267,6 +267,7 @@ async def submit_bulk_job(
             numbers=body.numbers,
             db_factory=SessionLocal,
             max_concurrent=settings.BULK_MAX_CONCURRENT,
+            request_delay=settings.BULK_REQUEST_DELAY,
         )
     )
     return schemas.BulkJobStatusResponse(
