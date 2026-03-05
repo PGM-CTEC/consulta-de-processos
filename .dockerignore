@@ -1,10 +1,15 @@
-# .dockerignore (raiz)
+# .dockerignore (raiz) — usado pelo build context do backend (context: .)
 .git
 .github
 *.md
 docs/
+e2e/
+scripts/
+alembic/
 node_modules/
-frontend/node_modules/
+frontend/
+backend/tests/
+backend/logs/
 __pycache__/
 *.pyc
 *.pyo
@@ -14,3 +19,4 @@ htmlcov/
 .env
 *.env
 consulta_processual.db
+data/

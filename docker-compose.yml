@@ -4,21 +4,25 @@ version: '3.9'
 services:
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .                        # Raiz do projeto (preserva pacote backend/)
+      dockerfile: backend/Dockerfile
     container_name: consulta-processo-backend
     ports:
       - "8000:8000"
+    env_file:
+      - backend/.env                    # Carrega DATAJUD_API_KEY e outras secrets
     environment:
-      - DATABASE_URL=sqlite:///./data/consulta_processual.db
+      - DATABASE_URL=sqlite:///./data/consulta_processual.db  # Sobrepõe .env → volume persistente
       - ENVIRONMENT=development
       - LOG_LEVEL=INFO
+      - ALLOWED_ORIGINS=http://localhost,http://localhost:80
     volumes:
-      - ./data:/app/data  # Persistência do SQLite
+      - ./data:/app/data                # Persistência do SQLite
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
+      start_period: 30s
       retries: 3
     restart: unless-stopped
 
