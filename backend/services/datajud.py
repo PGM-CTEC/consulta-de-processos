@@ -17,7 +17,7 @@ except ImportError:
 
 from ..config import settings
 from ..exceptions import DataJudAPIException, InvalidProcessNumberException
-from ..patterns.circuit_breaker import CircuitBreaker, get_registry
+from ..patterns.circuit_breaker import get_registry
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,8 @@ class DataJudClient:
         self.api_key = settings.DATAJUD_API_KEY
         self.base_url = settings.DATAJUD_BASE_URL
         self.timeout = settings.DATAJUD_TIMEOUT
-        self._breaker = get_registry().create(
+        existing = get_registry().get("datajud-api")
+        self._breaker = existing if existing else get_registry().create(
             name="datajud-api",
             failure_threshold=5,
             recovery_timeout=60,
@@ -238,11 +239,13 @@ class DataJudClient:
                 return []
             if response.status_code == 401:
                 logger.error("DataJud API authentication failed (401)")
+                self._breaker.record_failure()
                 raise DataJudAPIException(
                     "Falha na autenticação com DataJud API. Verifique a chave de API."
                 )
             if response.status_code == 429:
                 logger.error("DataJud API rate limit exceeded (429)")
+                self._breaker.record_failure()
                 raise DataJudAPIException(
                     "Limite de requisições ao DataJud excedido. Tente novamente mais tarde."
                 )
