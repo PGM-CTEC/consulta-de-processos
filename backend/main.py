@@ -151,6 +151,10 @@ async def add_security_headers(request: Request, call_next):
         "font-src 'self'; "
         "frame-ancestors 'none';"
     )
+    # Ensure JSON responses declare UTF-8 charset to prevent encoding issues (acentos, etc)
+    content_type = response.headers.get("content-type", "")
+    if "application/json" in content_type and "charset" not in content_type:
+        response.headers["content-type"] = f"{content_type}; charset=utf-8"
     return response
 
 @app.get("/health", tags=["health"])

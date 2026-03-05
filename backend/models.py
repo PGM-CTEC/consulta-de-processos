@@ -109,7 +109,7 @@ def _serialize(obj):
         if isinstance(val, datetime):
             val = val.isoformat()
         result[col.name] = val
-    return _json.dumps(result)
+    return _json.dumps(result, ensure_ascii=False)
 
 
 @event.listens_for(Process, 'after_insert')
@@ -144,7 +144,7 @@ def _audit_process_update(mapper, connection, target):
             "old_values": _json.dumps({
                 k: str(v) if not isinstance(v, (str, int, float, bool, type(None))) else v
                 for k, v in old.items()
-            }),
+            }, ensure_ascii=False),
             "new_values": _serialize(target),
             "timestamp": datetime.utcnow(),
         }
