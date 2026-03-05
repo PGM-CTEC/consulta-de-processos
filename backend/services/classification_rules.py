@@ -389,8 +389,28 @@ class ClassificadorFases:
         return processo.classe_codigo in CodigosCNJ.CLASSES_EXECUCAO
     
     def _verificar_transito_julgado(self, processo: ProcessoJudicial) -> bool:
-        """Verifica se há trânsito em julgado."""
-        return processo.tem_movimento({CodigosCNJ.TRANSITO_JULGADO})
+        """
+        Verifica se há trânsito em julgado.
+        Considera:
+        1. Movimento explícito de Trânsito em Julgado (848)
+        2. Baixa das instâncias superiores (60303 - Retorno dos Autos)
+        3. Menção textual a certidão/trânsito na movimentação
+        """
+        if processo.tem_movimento({CodigosCNJ.TRANSITO_JULGADO}):
+            return True
+            
+        # Verificar baixa de instâncias superiores (Retorno de Autos)
+        if processo.tem_movimento({CodigosCNJ.RETORNO_AUTOS}):
+            return True
+            
+        # Buscar por menção textual expressa na movimentação
+        termos_transito = ["trânsito em julgado", "transitou em julgado", "certidão de trânsito"]
+        for mov in processo.movimentos:
+            texto_mov = f"{mov.descricao} {mov.complementos}".lower()
+            if any(termo in texto_mov for termo in termos_transito):
+                return True
+                
+        return False
     
     def _verificar_sentenca(self, processo: ProcessoJudicial, grau: GrauJurisdicao = None) -> bool:
         """Verifica se há sentença proferida (opcionalmente em grau específico)."""

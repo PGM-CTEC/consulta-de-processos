@@ -100,6 +100,64 @@ def test_classificacao_conhecimento_transito_julgado():
     resultado = classificador.classificar(processo)
     assert resultado.fase == FaseProcessual.CONHECIMENTO_SENTENCA_COM_TRANSITO
 
+def test_classificacao_conhecimento_transito_texto():
+    processo = ProcessoJudicial(
+        numero="4444444-44.4444.4.44.4444",
+        classe_codigo=7,
+        classe_descricao="Procedimento Comum",
+        grau_atual=GrauJurisdicao.G1,
+        situacao="MOVIMENTO",
+        movimentos=[
+            MovimentoProcessual(
+                codigo=246,
+                descricao="Sentença Proferida",
+                data=datetime(2023, 1, 1),
+                grau=GrauJurisdicao.G1
+            ),
+            MovimentoProcessual(
+                codigo=1,
+                descricao="Certidão de Trânsito em Julgado",
+                data=datetime(2023, 2, 1),
+                grau=GrauJurisdicao.G1
+            )
+        ]
+    )
+    classificador = ClassificadorFases()
+    resultado = classificador.classificar(processo)
+    assert resultado.fase == FaseProcessual.CONHECIMENTO_SENTENCA_COM_TRANSITO
+
+def test_classificacao_conhecimento_transito_retorno_autos():
+    processo = ProcessoJudicial(
+        numero="5555555-55.5555.5.55.5555",
+        classe_codigo=7,
+        classe_descricao="Procedimento Comum",
+        grau_atual=GrauJurisdicao.G2,
+        situacao="MOVIMENTO",
+        movimentos=[
+            MovimentoProcessual(
+                codigo=50,
+                descricao="Acórdão",
+                data=datetime(2023, 1, 1),
+                grau=GrauJurisdicao.G2
+            ),
+            MovimentoProcessual(
+                codigo=970,
+                descricao="Remetidos os autos ao tribunal",
+                data=datetime(2023, 2, 1),
+                grau=GrauJurisdicao.G1
+            ),
+            MovimentoProcessual(
+                codigo=60303,
+                descricao="Retorno dos Autos",
+                data=datetime(2023, 5, 1),
+                grau=GrauJurisdicao.G2
+            )
+        ]
+    )
+    classificador = ClassificadorFases()
+    resultado = classificador.classificar(processo)
+    assert resultado.fase == FaseProcessual.CONHECIMENTO_RECURSO_2INST_TRANSITADO
+
 if __name__ == "__main__":
     # Manually run tests if executed as script
     try:
@@ -111,6 +169,10 @@ if __name__ == "__main__":
         print("test_classificacao_conhecimento_sentenca_sem_transito: OK")
         test_classificacao_conhecimento_transito_julgado()
         print("test_classificacao_conhecimento_transito_julgado: OK")
+        test_classificacao_conhecimento_transito_texto()
+        print("test_classificacao_conhecimento_transito_texto: OK")
+        test_classificacao_conhecimento_transito_retorno_autos()
+        print("test_classificacao_conhecimento_transito_retorno_autos: OK")
         print("All manual tests passed!")
     except AssertionError as e:
         print(f"Test failed: {e}")
