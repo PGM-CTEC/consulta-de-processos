@@ -75,7 +75,11 @@ class SearchHistory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     number = Column(String, index=True, nullable=False)
-    court = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="found")  # "found", "not_found", "error"
+    error_type = Column(String, nullable=True)  # "not_found", "invalid_format", "api_error", "network_error"
+    error_message = Column(Text, nullable=True)  # Detalhes do erro
+    tribunal_expected = Column(String, nullable=True)  # Tribunal inferido pelo número CNJ
+    court = Column(String, nullable=True)  # Tribunal real (quando encontrado)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
