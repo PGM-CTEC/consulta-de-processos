@@ -3,6 +3,101 @@ import asyncio
 from ..services.datajud import DataJudClient
 
 
+def _make_hit(grau: str, movimentos: list) -> dict:
+    return {"_source": {"grau": grau, "movimentos": movimentos}}
+
+
+# ── Baixa Definitiva (código 22) ─────────────────────────────────────────────
+
+def test_select_skips_baixa_definitiva_prefers_active():
+    """Quando G1 tem Baixa Definitiva e G2 não tem, deve selecionar G2."""
+    client = DataJudClient()
+    hits = [
+        _make_hit("G1", [
+            {"codigo": 22, "dataHora": "2023-06-01T00:00:00Z"},  # Baixa Definitiva
+            {"codigo": 848, "dataHora": "2022-01-01T00:00:00Z"},
+        ]),
+        _make_hit("G2", [
+            {"codigo": 848, "dataHora": "2021-05-10T12:30:00Z"},
+        ]),
+    ]
+
+    selected, meta = client._select_latest_instance(hits)
+
+    assert selected.get("grau") == "G2"
+    assert meta["selected_by"] == "skip_baixa_definitiva"
+
+
+def test_select_skips_baixa_definitiva_multiple_active():
+    """Entre dois ativos, seleciona o com movimento mais recente."""
+    client = DataJudClient()
+    hits = [
+        _make_hit("G1", [{"codigo": 848, "dataHora": "2020-01-01T00:00:00Z"}]),
+        _make_hit("G2", [{"codigo": 848, "dataHora": "2023-09-01T00:00:00Z"}]),
+        _make_hit("SUP", [{"codigo": 22, "dataHora": "2022-06-01T00:00:00Z"}]),  # baixada
+    ]
+
+    selected, meta = client._select_latest_instance(hits)
+
+    assert selected.get("grau") == "G2"
+    assert meta["selected_by"] == "skip_baixa_definitiva"
+
+
+def test_select_falls_back_when_all_have_baixa_definitiva():
+    """Se todas as instâncias têm Baixa Definitiva, usa a mais recente como fallback."""
+    client = DataJudClient()
+    hits = [
+        _make_hit("G1", [{"codigo": 22, "dataHora": "2020-01-01T00:00:00Z"}]),
+        _make_hit("G2", [{"codigo": 22, "dataHora": "2023-12-31T00:00:00Z"}]),
+    ]
+
+    selected, meta = client._select_latest_instance(hits)
+
+    assert selected.get("grau") == "G2"  # mais recente mesmo com baixa
+    assert meta["selected_by"] == "latest_movement_or_timestamp_all_baixada"
+
+
+def test_has_baixa_definitiva_checks_only_last_5():
+    """Código 22 fora dos últimos 5 movimentos não deve ser detectado."""
+    client = DataJudClient()
+    # 22 aparece no 6º movimento mais recente (antigo) — não deve contar
+    movimentos = [
+        {"codigo": 22,  "dataHora": "2015-01-01T00:00:00Z"},  # 6º mais recente
+        {"codigo": 848, "dataHora": "2018-01-01T00:00:00Z"},
+        {"codigo": 848, "dataHora": "2019-01-01T00:00:00Z"},
+        {"codigo": 848, "dataHora": "2020-01-01T00:00:00Z"},
+        {"codigo": 848, "dataHora": "2021-01-01T00:00:00Z"},
+        {"codigo": 848, "dataHora": "2022-01-01T00:00:00Z"},
+    ]
+    source = {"movimentos": movimentos}
+    assert client._has_baixa_definitiva(source) is False
+
+
+def test_has_baixa_definitiva_detects_code_22_in_last_5():
+    """Código 22 dentro dos últimos 5 movimentos deve ser detectado."""
+    client = DataJudClient()
+    movimentos = [
+        {"codigo": 848, "dataHora": "2022-01-01T00:00:00Z"},
+        {"codigo": 22,  "dataHora": "2023-06-01T00:00:00Z"},  # 2º mais recente → detectado
+        {"codigo": 848, "dataHora": "2021-01-01T00:00:00Z"},
+        {"codigo": 848, "dataHora": "2020-01-01T00:00:00Z"},
+    ]
+    source = {"movimentos": movimentos}
+    assert client._has_baixa_definitiva(source) is True
+
+
+def test_summarize_instance_exposes_has_baixa_definitiva():
+    """_summarize_instance deve incluir o campo has_baixa_definitiva."""
+    client = DataJudClient()
+    source_baixada = {"grau": "G1", "movimentos": [{"codigo": 22, "dataHora": "2023-01-01T00:00:00Z"}]}
+    source_ativa = {"grau": "G2", "movimentos": [{"codigo": 848, "dataHora": "2023-01-01T00:00:00Z"}]}
+
+    assert client._summarize_instance(source_baixada)["has_baixa_definitiva"] is True
+    assert client._summarize_instance(source_ativa)["has_baixa_definitiva"] is False
+
+
+# ── Testes originais (mantidos) ───────────────────────────────────────────────
+
 def test_select_latest_instance_by_movement():
     client = DataJudClient()
     hits = [

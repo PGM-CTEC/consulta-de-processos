@@ -148,12 +148,27 @@ class DataJudClient:
             "orgao_julgador": orgao.get("nome") or orgao.get("codigo"),
             "latest_movement_at": latest_movement.isoformat() if latest_movement else None,
             "updated_at": source.get("dataHoraUltimaAtualizacao") or source.get("@timestamp"),
+            "has_baixa_definitiva": self._has_baixa_definitiva(source),
         }
 
     def _instance_key(self, source: Dict[str, Any]) -> str:
         orgao = source.get("orgaoJulgador", {}) or {}
         orgao_id = orgao.get("codigo") or orgao.get("nome") or ""
         return f"{source.get('grau')}|{source.get('tribunal')}|{orgao_id}"
+
+    def _has_baixa_definitiva(self, source: Dict[str, Any]) -> bool:
+        """Verifica se algum dos últimos 5 movimentos é 'Baixa Definitiva' (código 22).
+
+        Instâncias com Baixa Definitiva já remeteram o processo para outra instância
+        e não devem ser selecionadas como padrão de visualização quando há alternativas.
+        """
+        movements = source.get("movimentos", []) or []
+        sorted_movs = sorted(
+            movements,
+            key=lambda m: self._parse_iso_datetime(m.get("dataHora")) or datetime.min,
+            reverse=True,
+        )[:5]
+        return any(m.get("codigo") == 22 for m in sorted_movs)
 
     def _select_latest_instance(
         self, hits: List[Dict[str, Any]]
@@ -162,18 +177,30 @@ class DataJudClient:
         if not sources:
             return {}, {}
 
-        # Default to index 0 if only one source
         selected_index = 0
+        selected_by = "single_hit"
+
         if len(sources) > 1:
-            selected_index = max(range(len(sources)), key=lambda i: self._instance_sort_key(sources[i]))
-        
+            # Prefer instances WITHOUT "Baixa Definitiva" in last 5 movements.
+            # A instance with Baixa Definitiva already remitted the case and is not active.
+            active_indices = [i for i, s in enumerate(sources) if not self._has_baixa_definitiva(s)]
+
+            if active_indices:
+                selected_index = max(active_indices, key=lambda i: self._instance_sort_key(sources[i]))
+                has_baixa_skipped = len(active_indices) < len(sources)
+                selected_by = "skip_baixa_definitiva" if has_baixa_skipped else "latest_movement_or_timestamp"
+            else:
+                # All instances have Baixa Definitiva — fall back to timestamp-based selection
+                selected_index = max(range(len(sources)), key=lambda i: self._instance_sort_key(sources[i]))
+                selected_by = "latest_movement_or_timestamp_all_baixada"
+
         selected = sources[selected_index]
         meta = {
             "instances_count": len(sources),
-            "selected_by": "latest_movement_or_timestamp" if len(sources) > 1 else "single_hit",
+            "selected_by": selected_by,
             "selected_index": selected_index,
             "instances": [self._summarize_instance(s) for s in sources],
-            "all_hits": [copy.deepcopy(s) for s in sources] # Copy to avoid circularity
+            "all_hits": [copy.deepcopy(s) for s in sources],
         }
         return copy.deepcopy(selected), meta
 
