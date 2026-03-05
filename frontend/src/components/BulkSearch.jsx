@@ -132,8 +132,8 @@ const VirtualResultsBody = ({ items }) => {
 
 // Interval (ms) between polling requests during bulk job processing.
 const POLL_INTERVAL_MS = 2000;
-// Maximum consecutive polling errors before stopping
-const MAX_POLL_ERRORS = 3;
+// Maximum consecutive polling errors before stopping (increased for resilience)
+const MAX_POLL_ERRORS = 8;
 
 const BulkSearch = () => {
     const [loading, setLoading] = useState(false);
@@ -212,6 +212,15 @@ const BulkSearch = () => {
                     }
                 }
             } catch (error) {
+                // If the server restarted and the job was lost (404), stop immediately
+                if (error?.response?.status === 404) {
+                    stopPolling();
+                    setLoading(false);
+                    trackSearch('bulk', false);
+                    setApiError('O servidor foi reiniciado e o job foi perdido. Por favor, inicie a busca novamente.');
+                    return;
+                }
+
                 pollErrorCount.current += 1;
                 console.error(`Erro ao verificar progresso (tentativa ${pollErrorCount.current}/${MAX_POLL_ERRORS}):`, error);
 
@@ -219,7 +228,7 @@ const BulkSearch = () => {
                 if (pollErrorCount.current >= MAX_POLL_ERRORS) {
                     stopPolling();
                     setLoading(false);
-                    setApiError('Erro ao verificar progresso do processamento. Verifique sua conexão com a internet.');
+                    setApiError('Erro ao verificar progresso do processamento. Verifique se o backend está rodando e tente novamente.');
                 }
                 // Otherwise, continue polling (transient error)
             }

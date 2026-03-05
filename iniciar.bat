@@ -56,7 +56,7 @@ REM ── Iniciar servidores ────────────────�
 echo  [3/3] Iniciando servidores...
 echo.
 
-start "Backend - Consulta Processual" /MIN /D "%BASE%" cmd /k "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+start "Backend - Consulta Processual" /MIN /D "%BASE%" cmd /k "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000"
 
 timeout /t 3 /nobreak >nul
 

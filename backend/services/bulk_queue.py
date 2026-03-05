@@ -137,12 +137,16 @@ async def run_bulk_job(
             else:
                 job.failures.append(number)
 
+        job.status = "done"
+        job.completed_at = datetime.now()
+        logger.info(
+            f"[bulk_job={job.job_id}] done — "
+            f"{job.results_count} ok, {job.failures_count} failed / {job.total} total"
+        )
+    except Exception as e:
+        job.status = "error"
+        job.error_message = str(e)
+        job.completed_at = datetime.now()
+        logger.error(f"[bulk_job={job.job_id}] fatal error: {e}", exc_info=True)
     finally:
         db.close()
-
-    job.status = "done"
-    job.completed_at = datetime.now()
-    logger.info(
-        f"[bulk_job={job.job_id}] done — "
-        f"{job.results_count} ok, {job.failures_count} failed / {job.total} total"
-    )
