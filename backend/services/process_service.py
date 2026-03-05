@@ -11,6 +11,7 @@ from .phase_analyzer import PhaseAnalyzer, DCP_WARNING_MESSAGE
 from .. import models, schemas
 from ..database import transaction_scope
 from ..exceptions import DataJudAPIException, ProcessNotFoundException
+from ..utils.string_cleaner import clean_orgao_name
 
 logger = logging.getLogger(__name__)
 
@@ -213,13 +214,14 @@ class ProcessService:
         class_name = class_node.get("nome", "N/A")
 
         # Tribunal
-        tribunal = data.get("tribunal", "N/A")
+        tribunal = clean_orgao_name(data.get("tribunal", "N/A"))
 
         # Court/Vara information
         root_orgao = data.get("orgaoJulgador", {}) or {}
         movements_data = data.get("movimentos", [])
         latest_orgao = self._get_latest_movement_orgao(movements_data) or root_orgao
         vara_name = latest_orgao.get("nome", "") if isinstance(latest_orgao, dict) else ""
+        vara_name = clean_orgao_name(vara_name)
         court_display = f"{tribunal} - {vara_name}" if vara_name else tribunal
 
         # Subject (first from assuntos list)
@@ -582,7 +584,7 @@ class ProcessService:
             "grau": grau,
             "grau_label": self._grau_label(grau),
             "tribunal": instance_data.get("tribunal", "N/A"),
-            "orgao_julgador": instance_data.get("orgao_julgador", "N/A"),
+            "orgao_julgador": clean_orgao_name(instance_data.get("orgao_julgador", "N/A")),
             "latest_movement_at": instance_data.get("latest_movement_at"),
             "updated_at": instance_data.get("updated_at")
         }
@@ -599,7 +601,7 @@ class ProcessService:
             "grau": grau,
             "grau_label": self._grau_label(grau),
             "tribunal": summarized.get("tribunal", "N/A"),
-            "orgao_julgador": summarized.get("orgao_julgador", "N/A"),
+            "orgao_julgador": clean_orgao_name(summarized.get("orgao_julgador", "N/A")),
             "latest_movement_at": summarized.get("latest_movement_at"),
             "updated_at": summarized.get("updated_at"),
         }
