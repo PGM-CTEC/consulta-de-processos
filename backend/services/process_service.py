@@ -67,6 +67,7 @@ class ProcessService:
 
         if not api_data:
             # Process not found in DataJud
+            self._record_history_not_found(process_number, error_type="not_found")
             return None
 
         # Transform and Save with transaction management
@@ -80,30 +81,71 @@ class ProcessService:
 
     def _record_history(self, process: models.Process):
         """
-        Record the search in history, avoiding duplicates.
-        If process already exists in history, update its timestamp instead of creating duplicate.
+        Record a found process in history, avoiding duplicates.
+        If already exists, update timestamp and court info.
         """
         try:
-            # Check if process already exists in history
             existing = self.db.query(models.SearchHistory).filter(
                 models.SearchHistory.number == process.number
             ).first()
 
             if existing:
-                # Update timestamp to move to top of recent searches
                 existing.created_at = func.now()
-                existing.court = process.court  # Update court info if changed
+                existing.status = "found"
+                existing.court = process.court
+                existing.error_type = None
+                existing.error_message = None
             else:
-                # Create new history entry
                 history_entry = models.SearchHistory(
                     number=process.number,
-                    court=process.court
+                    status="found",
+                    court=process.court,
+                    tribunal_expected=process.tribunal_name,
                 )
                 self.db.add(history_entry)
 
             self.db.commit()
         except Exception as e:
             logger.error(f"Error recording history for {process.number}: {e}")
+            self.db.rollback()
+
+    def _record_history_not_found(self, process_number: str, error_type: str = "not_found", error_message: str = None):
+        """
+        Record a failed search (not found or API error) in history.
+        Attempts to infer expected tribunal from CNJ number.
+        """
+        try:
+            tribunal_expected = None
+            try:
+                alias = self.client._get_tribunal_alias(process_number)
+                tribunal_expected = alias.replace("api_publica_", "").upper()
+            except Exception:
+                pass
+
+            existing = self.db.query(models.SearchHistory).filter(
+                models.SearchHistory.number == process_number
+            ).first()
+
+            if existing:
+                existing.created_at = func.now()
+                existing.status = error_type
+                existing.error_type = error_type
+                existing.error_message = error_message
+                if tribunal_expected:
+                    existing.tribunal_expected = tribunal_expected
+            else:
+                history_entry = models.SearchHistory(
+                    number=process_number,
+                    status=error_type,
+                    error_type=error_type,
+                    error_message=error_message,
+                    tribunal_expected=tribunal_expected,
+                )
+                self.db.add(history_entry)
+
+            self.db.commit()
+        except Exception as e:
+            logger.error(f"Error recording failure history for {process_number}: {e}")
             self.db.rollback()
 
     def get_from_db(self, process_number: str) -> Optional[models.Process]:

@@ -34,6 +34,10 @@ class ProcessBase(BaseModel):
 class HistoryResponse(BaseModel):
     id: int
     number: str
+    status: str = "found"           # "found", "not_found", "api_error", "network_error"
+    error_type: Optional[str] = None
+    error_message: Optional[str] = None
+    tribunal_expected: Optional[str] = None
     court: Optional[str] = None
     created_at: datetime
 
