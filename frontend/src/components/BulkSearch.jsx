@@ -64,6 +64,7 @@ FailureRow.displayName = 'FailureRow';
 
 /**
  * VirtualResultsBody — renders a virtualised list of ResultRows inside a scrollable container.
+ * Includes its own sticky thead so columns stay aligned with the data rows.
  * Used when paginatedResults.length > VIRTUAL_THRESHOLD.
  */
 const VirtualResultsBody = ({ items }) => {
@@ -82,11 +83,17 @@ const VirtualResultsBody = ({ items }) => {
             style={{ height: '480px', overflowY: 'auto' }}
             data-testid="virtual-scroll-container"
         >
-            <table
-                className="w-full text-left border-collapse"
-                style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}
-            >
-                <tbody>
+            <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 z-10">
+                    <tr>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '25%' }}>Processo Judicial</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '20%' }}>Tribunal</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '25%' }}>Órgão Judicial / Vara</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '15%' }}>Fase Atual</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '15%' }}>Status</th>
+                    </tr>
+                </thead>
+                <tbody style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
                     {virtualizer.getVirtualItems().map((virtualRow) => {
                         const result = items[virtualRow.index];
                         return (
@@ -290,7 +297,13 @@ const BulkSearch = () => {
             try {
                 if (extension === 'txt') {
                     detectedNumbers = content.split('\n').map(n => n.trim()).filter(n => n.length > 0);
-                } else if (extension === 'csv' || extension === 'xlsx') {
+                } else if (extension === 'csv') {
+                    const workbook = XLSX.read(content, { type: 'string' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    detectedNumbers = jsonData.map(row => row[0]?.toString().trim()).filter(n => n && n.length > 0);
+                } else if (extension === 'xlsx') {
                     const workbook = XLSX.read(content, { type: 'binary' });
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
@@ -313,9 +326,10 @@ const BulkSearch = () => {
             }
         };
 
-        if (extension === 'txt') {
+        if (extension === 'txt' || extension === 'csv') {
             reader.readAsText(file);
         } else {
+            // xlsx requires binary string for the XLSX library
             reader.readAsBinaryString(file);
         }
     };
@@ -347,7 +361,7 @@ const BulkSearch = () => {
                 <div className="p-6 bg-gradient-to-r from-violet-600 to-indigo-600">
                     <h2 id="bulk-search-title" className="text-xl font-bold text-white flex items-center">
                         <Upload className="mr-2 h-6 w-6" />
-                        Busca em Lote (Milhares de Processos)
+                        Busca em Lote
                     </h2>
                     <p className="text-violet-100 text-sm mt-1">
                         Insira os números abaixo ou faça o upload de um arquivo.
@@ -500,33 +514,44 @@ const BulkSearch = () => {
 
                     {/* Results table */}
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">
-                                <tr>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Processo Judicial</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Tribunal</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Órgão Judicial / Vara</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Fase Atual</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Status</th>
-                                </tr>
-                            </thead>
-                            {!useVirtual && (
+                        {useVirtual ? (
+                            <VirtualResultsBody items={paginatedItems} />
+                        ) : (
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">
+                                    <tr>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Processo Judicial</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Tribunal</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Órgão Judicial / Vara</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Fase Atual</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Status</th>
+                                    </tr>
+                                </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                     {paginatedItems.map((p) => (
                                         <ResultRow key={p.number} result={p} />
                                     ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+
+                    {/* Failures section — rendered once after all results, not repeated per page */}
+                    {results.failures.length > 0 && (
+                        <div className="border-t border-gray-100 dark:border-slate-700 px-6 py-4">
+                            <h3 className="text-sm font-bold text-red-600 dark:text-red-400 mb-3 flex items-center gap-2">
+                                <XCircle className="h-4 w-4" />
+                                Não localizados ({results.failures.length})
+                            </h3>
+                            <table className="w-full text-left border-collapse">
+                                <tbody className="divide-y divide-red-50 dark:divide-slate-700">
                                     {results.failures.map((num) => (
                                         <FailureRow key={`failure-${num}`} number={num} />
                                     ))}
                                 </tbody>
-                            )}
-                        </table>
-
-                        {/* Virtual scroll — only for large pages */}
-                        {useVirtual && (
-                            <VirtualResultsBody items={paginatedItems} />
-                        )}
-                    </div>
+                            </table>
+                        </div>
+                    )}
 
                     {/* Pagination controls */}
                     {totalItems > 0 && (
