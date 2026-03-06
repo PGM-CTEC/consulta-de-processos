@@ -44,7 +44,11 @@
       "Bash(git pull origin main)",
       "Bash(npm run dev)",
       "Bash(cmd.exe /c iniciar.bat)",
-      "Bash(npm ls react react-dom)"
+      "Bash(npm ls react react-dom)",
+      "Bash(npm run dev -- --port 5173 --strictPort)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(''total_processes:'', d[''total_processes''], ''| tribunals:'', len\\(d[''tribunals'']\\), ''| phases:'', len\\(d[''phases'']\\)\\)\")",
+      "Bash(taskkill /PID 14784 /F)",
+      "Bash(cmd //c \"taskkill /PID 14784 /F\")"
     ]
   },
   "hooks": {

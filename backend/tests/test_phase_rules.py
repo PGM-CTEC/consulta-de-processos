@@ -48,7 +48,7 @@ def test_instance_logic_consistency():
 
     Processo com sentença (246) + remessa ao tribunal (970) deve ser classificado
     na fase de recurso pendente em 2ª instância (Fase 04), não como arquivado.
-    Código 246 não é baixa definitiva.
+    O Retorno dos Autos (60303) indica a baixa das instâncias superiores e trânsito.
     """
     movements = [
         {"codigo": 26, "nome": "Distribuído", "dataHora": "2024-01-01"},
@@ -64,7 +64,8 @@ def test_instance_logic_consistency():
     assert auto_phase == "04 Conhecimento - Recurso 2ª Instância - Pendente Julgamento"
 
     movements.insert(0, {"codigo": 60303, "nome": "Retorno dos Autos", "dataHora": "2024-12-01"})
-    assert PhaseAnalyzer.analyze(7, movements) == "04 Conhecimento - Recurso 2ª Instância - Pendente Julgamento"
+    # Com a nova regra, Retorno dos Autos = trânsito em julgado
+    assert PhaseAnalyzer.analyze(7, movements) == "06 Conhecimento - Recurso 2ª Instância - Transitado em Julgado"
 
 
 def test_desapropriacao_fase_execucao():
