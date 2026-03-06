@@ -48,7 +48,21 @@
       "Bash(npm run dev -- --port 5173 --strictPort)",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(''total_processes:'', d[''total_processes''], ''| tribunals:'', len\\(d[''tribunals'']\\), ''| phases:'', len\\(d[''phases'']\\)\\)\")",
       "Bash(taskkill /PID 14784 /F)",
-      "Bash(cmd //c \"taskkill /PID 14784 /F\")"
+      "Bash(cmd //c \"taskkill /PID 14784 /F\")",
+      "Bash(powershell -NoProfile -Command \"Test-NetConnection -ComputerName localhost -Port 8000 -InformationLevel Quiet; if \\($?\\) { Write-Host ''Backend respondendo''; } else { Write-Host ''Backend nao respondeu'' }\")",
+      "Bash(powershell -NoProfile -Command \":*)",
+      "Bash(PORT=8080)",
+      "Bash(cmd /c \"iniciar.bat --debug 2>&1\")",
+      "Bash(cmd /c \"ftype exefile | findstr .bat >nul && echo OK || echo Erro\")",
+      "Bash(cmd /c teste-iniciar.bat)",
+      "Bash(tasklist)",
+      "Bash(taskkill /F /IM node.exe /T)",
+      "Bash(cmd /c \"taskkill /F /IM node.exe\")",
+      "Bash(timeout 10 cmd /c debug-backend.bat)",
+      "Bash(cmd /c test-backend.bat)",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File iniciar.ps1)",
+      "Skill(commit-commands:commit-push-pr)",
+      "Skill(commit-commands:commit-push-pr:*)"
     ]
   },
   "hooks": {
