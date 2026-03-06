@@ -173,7 +173,7 @@ class ProcessService:
             )
 
             # Extract and parse fields from DataJud response
-            parsed_data = self._parse_datajud_response(data)
+            parsed_data = self._parse_datajud_response(data, process_number)
 
             if not process:
                 # Create new process
@@ -204,10 +204,13 @@ class ProcessService:
         self.db.refresh(process)
         return process
 
-    def _parse_datajud_response(self, data: dict) -> dict:
+    def _parse_datajud_response(self, data: dict, process_number: str = "") -> dict:
         """
         Parse DataJud API response into database fields.
         Handles all field extraction with proper error handling.
+
+        When multiple instances are available, performs unified phase analysis
+        considering all instances together. Otherwise falls back to single-instance analysis.
         """
         # Class information
         class_node = data.get("classe", {})
@@ -234,18 +237,38 @@ class ProcessService:
             "distribution date"
         )
 
-        # Phase Analysis - using injected dependency
+        # Phase Analysis - with support for unified multi-instance analysis
         class_code = class_node.get("codigo")
-        phase = self.phase_analyzer.analyze(
-            class_code,
-            movements_data,
-            tribunal,
-            data.get("grau", "G1"),
-            raw_data=data
-        )
-
         raw_payload = dict(data)
         meta = raw_payload.get("__meta__") or {}
+        all_hits = meta.get("all_hits") or []
+
+        # If multiple instances available, use unified analysis
+        if all_hits and len(all_hits) > 1:
+            phase = self.phase_analyzer.analyze_unified(
+                all_instances=all_hits,
+                process_number=process_number,
+                tribunal=tribunal
+            )
+            meta["phase_analysis_mode"] = "unified"
+            meta["phase_instances_analyzed"] = len(all_hits)
+            logger.info(f"Unified phase analysis for {process_number}: {len(all_hits)} instances")
+        else:
+            # Single instance or no meta - fallback to original analysis
+            phase = self.phase_analyzer.analyze(
+                class_code,
+                movements_data,
+                tribunal,
+                data.get("grau", "G1"),
+                process_number=process_number,
+                raw_data=data
+            )
+            meta["phase_analysis_mode"] = "single_instance"
+            meta["phase_instances_analyzed"] = 1
+
+        # Store unified phase in meta for reuse in get_process_instance()
+        meta["unified_phase"] = phase
+
         selected_index = meta.get("selected_index", 0)
         source_grau = None
         instances = meta.get("instances") or []
@@ -425,6 +448,10 @@ class ProcessService:
         """
         Retrieve a specific instance of the process from the stored raw_data.
         Does NOT update the main database record, just returns the parsed view.
+
+        IMPORTANT: The phase returned is ALWAYS the unified phase (analyzed across all instances),
+        not the per-instance phase. This ensures the phase displayed is consistent regardless
+        of which instance the user is viewing.
         """
         process = self.get_from_db(process_number)
         if not process or not process.raw_data:
@@ -448,13 +475,19 @@ class ProcessService:
             raise ProcessNotFoundException(f"{process_number} (Instância {instance_index} não encontrada)")
 
         target_instance = all_hits[instance_index]
-        
-        # Parse this specific instance
-        parsed_data = self._parse_datajud_response(target_instance)
-        
+
+        # Parse this specific instance (but don't recalculate phase)
+        parsed_data = self._parse_datajud_response(target_instance, process_number)
+
+        # Override phase with unified phase (cached in meta) for consistency
+        # The phase reflects the process as a whole, not this individual instance
+        unified_phase = meta.get("unified_phase")
+        if unified_phase:
+            parsed_data["phase"] = unified_phase
+
         # Parse movements for this instance
         movements_list = self._parse_movements_list(target_instance.get("movimentos", []))
-        
+
         # Construct response compatible with ProcessResponse
         # We use the main process ID for compatibility, but this is a transient view
         return {
