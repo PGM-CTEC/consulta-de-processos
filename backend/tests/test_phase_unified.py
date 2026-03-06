@@ -256,3 +256,97 @@ class TestPhaseUnifiedEdgeCases:
         except TypeError:
             # Aceitar exceção de timezone (edge case conhecido)
             pass
+
+
+class TestAusenciaRetornoDatajud:
+    """
+    Testes para a regra de 'Ausência retorno Datajud 1ª instância'.
+
+    Cenário: processo com número final ≠ 0000 (tramitou em G1), mas o DataJud
+    só retornou instância G2 com baixa — a 1ª instância não atualizou o sistema.
+    """
+
+    @staticmethod
+    def _g2_com_baixa(class_code: int = 7) -> dict:
+        return {
+            "grau": "G2",
+            "classe": {"codigo": class_code, "nome": "Procedimento Comum"},
+            "tribunal": "TJRJ",
+            "movimentos": [
+                {"codigo": 22, "nome": "Baixa Definitiva", "dataHora": "2024-06-01T10:00:00Z"}
+            ],
+            "dataHoraUltimaAtualizacao": "2024-06-01T10:00:00Z"
+        }
+
+    def test_retorna_ausencia_quando_somente_g2_com_baixa_e_final_nao_zero(self):
+        """Deve retornar 'Ausência retorno Datajud 1ª instância' quando todas as condições são satisfeitas."""
+        result = PhaseAnalyzer.analyze_unified(
+            [self._g2_com_baixa()],
+            process_number="0001234-56.2020.8.19.0001",  # final = 0001, ≠ 0000
+            tribunal="TJRJ"
+        )
+        assert result == "Ausência retorno Datajud 1ª instância"
+
+    def test_nao_aplica_quando_final_e_0000(self):
+        """Processo originário do tribunal (0000) não deve acionar a regra."""
+        result = PhaseAnalyzer.analyze_unified(
+            [self._g2_com_baixa()],
+            process_number="0001234-56.2020.8.19.0000",  # final = 0000
+            tribunal="TJRJ"
+        )
+        assert result != "Ausência retorno Datajud 1ª instância"
+
+    def test_nao_aplica_quando_ha_instancia_g1(self):
+        """Quando há instância G1 presente, a regra não deve ser ativada."""
+        g1 = {
+            "grau": "G1",
+            "classe": {"codigo": 7, "nome": "Procedimento Comum"},
+            "tribunal": "TJRJ",
+            "movimentos": [
+                {"codigo": 246, "nome": "Sentença", "dataHora": "2023-01-01T10:00:00Z"}
+            ],
+            "dataHoraUltimaAtualizacao": "2023-01-01T10:00:00Z"
+        }
+        result = PhaseAnalyzer.analyze_unified(
+            [self._g2_com_baixa(), g1],
+            process_number="0001234-56.2020.8.19.0001",
+            tribunal="TJRJ"
+        )
+        assert result != "Ausência retorno Datajud 1ª instância"
+
+    def test_nao_aplica_quando_g2_sem_baixa(self):
+        """G2 sem baixa (recurso pendente) não deve acionar a regra."""
+        g2_sem_baixa = {
+            "grau": "G2",
+            "classe": {"codigo": 7, "nome": "Procedimento Comum"},
+            "tribunal": "TJRJ",
+            "movimentos": [
+                {"codigo": 26, "nome": "Distribuído", "dataHora": "2024-01-01T10:00:00Z"}
+            ],
+            "dataHoraUltimaAtualizacao": "2024-01-01T10:00:00Z"
+        }
+        result = PhaseAnalyzer.analyze_unified(
+            [g2_sem_baixa],
+            process_number="0001234-56.2020.8.19.0001",
+            tribunal="TJRJ"
+        )
+        assert result != "Ausência retorno Datajud 1ª instância"
+
+    def test_nao_aplica_sem_numero_processo(self):
+        """Sem número de processo não deve acionar a regra."""
+        result = PhaseAnalyzer.analyze_unified(
+            [self._g2_com_baixa()],
+            process_number="",
+            tribunal="TJRJ"
+        )
+        assert result != "Ausência retorno Datajud 1ª instância"
+
+    def test_aplica_com_numero_formato_variado(self):
+        """Deve funcionar com diferentes formatos de número CNJ."""
+        # Sem formatação (só dígitos, final ≠ 0000)
+        result = PhaseAnalyzer.analyze_unified(
+            [self._g2_com_baixa()],
+            process_number="00012345620208190005",  # final = 0005
+            tribunal="TJRJ"
+        )
+        assert result == "Ausência retorno Datajud 1ª instância"

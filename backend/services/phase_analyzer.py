@@ -161,6 +161,51 @@ class PhaseAnalyzer:
         return result
 
     @staticmethod
+    def _process_number_ends_with_nonzero(process_number: str) -> bool:
+        """
+        Verifica se os últimos 4 dígitos do número CNJ são diferentes de '0000'.
+        No formato CNJ (NNNNNNN-DD.AAAA.J.TT.OOOO), OOOO=0000 indica processo
+        originário do tribunal. OOOO≠0000 indica que tramitou em 1ª instância.
+        """
+        if not process_number:
+            return False
+        digits_only = ''.join(filter(str.isdigit, process_number))
+        if len(digits_only) >= 4:
+            return digits_only[-4:] != "0000"
+        return False
+
+    @staticmethod
+    def _has_only_g2_instances(all_instances: List[Dict[str, Any]]) -> bool:
+        """
+        Retorna True se há pelo menos uma instância G2/TR e nenhuma G1/JE.
+        Indica que o DataJud não retornou dados de 1ª instância.
+        """
+        has_g2 = False
+        for inst in all_instances:
+            grau_str = (inst.get("grau", "") or "").upper()
+            if grau_str in ("G2", "TR"):
+                has_g2 = True
+            elif grau_str in ("G1", "JE"):
+                return False
+        return has_g2
+
+    @staticmethod
+    def _g2_has_baixa_arquivamento(all_instances: List[Dict[str, Any]]) -> bool:
+        """
+        Verifica se alguma instância G2/TR possui baixa definitiva não revertida.
+        Indica que o tribunal baixou os autos de volta para a origem.
+        """
+        for inst in all_instances:
+            grau_str = (inst.get("grau", "") or "").upper()
+            if grau_str not in ("G2", "TR"):
+                continue
+            movs_raw = inst.get("movimentos", []) or []
+            movs = PhaseAnalyzer._adapt_movements(movs_raw, GrauJurisdicao.G2)
+            if PhaseAnalyzer._instance_has_baixa(movs):
+                return True
+        return False
+
+    @staticmethod
     def _instance_has_baixa(movimentos: List[MovimentoProcessual]) -> bool:
         """Verifica se uma instância tem baixa definitiva não revertida."""
         movs_baixa = [m for m in movimentos if m.codigo in CODIGOS_BAIXA]
@@ -306,6 +351,24 @@ class PhaseAnalyzer:
             String da fase no formato "XX Descrição" (ex: "04 Conhecimento - Recurso 2ª Instância...")
         """
         try:
+            # Verificar ausência de retorno da 1ª instância no DataJud.
+            # Condições (todas obrigatórias):
+            #   1. Número do processo com final ≠ "0000" → tramitou em G1
+            #   2. DataJud retornou apenas instâncias G2/TR (sem G1 nem JE)
+            #   3. A instância G2 tem baixa/arquivamento dos autos
+            # Indica que o tribunal baixou os autos para a origem, mas a 1ª
+            # instância ainda não atualizou o DataJud com sua movimentação.
+            if (
+                PhaseAnalyzer._process_number_ends_with_nonzero(process_number)
+                and PhaseAnalyzer._has_only_g2_instances(all_instances)
+                and PhaseAnalyzer._g2_has_baixa_arquivamento(all_instances)
+            ):
+                logger.info(
+                    f"Processo {process_number}: Ausência retorno Datajud 1a instancia "
+                    f"(somente G2 com baixa, numero final != 0000)"
+                )
+                return "Ausência retorno Datajud 1ª instância"
+
             movements, effective_grau, situacao, class_code, class_desc = \
                 PhaseAnalyzer._merge_instance_movements(all_instances)
 
