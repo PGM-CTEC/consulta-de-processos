@@ -1,5 +1,6 @@
 import re
 import logging
+import unicodedata
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,26 @@ _COMPILED_PATTERNS = [
     for bad, good in _REPLACEMENTS.items()
 ]
 
+def remove_accents(text: str) -> str:
+    """
+    Remove diacritical marks (accents) from a string.
+    Converts "Câmara" to "Camara", "São" to "Sao", etc.
+
+    This prevents encoding issues with special characters that the API may return.
+    """
+    if not text or not isinstance(text, str):
+        return text
+
+    # Normalize to NFD (decompose accented characters)
+    nfd = unicodedata.normalize('NFD', text)
+
+    # Filter out combining marks (diacriticals)
+    return ''.join(
+        char for char in nfd
+        if unicodedata.category(char) != 'Mn'
+    )
+
+
 def clean_orgao_name(name: str) -> str:
     if not name or not isinstance(name, str):
         return name
@@ -72,9 +93,13 @@ def clean_orgao_name(name: str) -> str:
             elif matched_str.istitle() or (len(matched_str) > 0 and matched_str[0].isupper()):
                 return good.title()
             return good
-            
+
         fixed_name = pattern.sub(repl_func, fixed_name)
-        
+
+    # Pass 4: Final fallback - remove any remaining accents to prevent encoding errors
+    # This ensures no character encoding issues reach the frontend
+    fixed_name = remove_accents(fixed_name)
+
     return fixed_name
 
 if __name__ == "__main__":
