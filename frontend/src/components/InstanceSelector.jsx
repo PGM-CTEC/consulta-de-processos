@@ -116,18 +116,13 @@ const InstanceSelector = ({ processNumber, onInstanceChange, meta }) => {
     list.find((instance) => instance.index === selectedIndex) ||
     list.find((instance) => instance.index === fallbackSelectedIndex) ||
     list[0];
-  const missingExpected = Array.isArray(instances?.missing_expected_instances)
-    ? instances.missing_expected_instances
-    : [];
-  // Mostra apenas slots que têm instância ou estão explicitamente ausentes (missing_expected).
-  // Slots de rito completamente diferente (ex: G1/G2 num processo JE/TR) são ocultados.
+  // Mostra apenas slots que têm instância (sem slots missing/vazios).
   const slots = SLOT_ORDER
     .map((grau) => ({
       grau,
       instance: list.find((item) => item.grau === grau),
-      missing: missingExpected.includes(grau),
     }))
-    .filter((slot) => slot.instance || slot.missing);
+    .filter((slot) => slot.instance);
 
   const gridCols = slots.length <= 2 ? 'md:grid-cols-2' : 'md:grid-cols-3';
 
@@ -157,25 +152,6 @@ const InstanceSelector = ({ processNumber, onInstanceChange, meta }) => {
 
       <div className={`grid grid-cols-1 ${gridCols} gap-3`}>
         {slots.map((slot) => {
-          if (!slot.instance) {
-            return (
-              <div
-                key={slot.grau}
-                className="rounded-xl border border-dashed border-gray-300 bg-white/70 p-3 text-left"
-              >
-                <span className="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-bold bg-gray-100 text-gray-700">
-                  {GRAU_LABELS[slot.grau]}
-                </span>
-                <p className="mt-2 text-sm font-medium text-gray-700">Nao disponivel</p>
-                <p className="mt-1 text-xs text-gray-500">
-                  {slot.missing
-                    ? 'Nao retornada pela fonte DataJud.'
-                    : 'Nao identificada para este processo.'}
-                </p>
-              </div>
-            );
-          }
-
           const isActive = selectedInstance?.index === slot.instance.index;
           return (
             <button
