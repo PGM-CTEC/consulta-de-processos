@@ -33,6 +33,13 @@ _REPLACEMENTS = {
     "TRIBUNAL DE JUSTI\ufffdA": "TRIBUNAL DE JUSTIÇA",
     "JUSTI\ufffdA": "JUSTIÇA",
     "8\ufffd": "8ª",
+    # Corrupção específica: caracteres inválidos (U+00BD = vulgar fraction, etc)
+    "CIZ½MARA": "CÂMARA",
+    "CIZ½VEL": "CÍVEL",
+    "CIZ½VELS": "CÍVELS",
+    "PIZ½BLICA": "PÚBLICA",
+    "PIZ½BLICAS": "PÚBLICAS",
+    "PIZ½BLICOS": "PÚBLICOS",
 }
 
 _COMPILED_PATTERNS = [
@@ -82,7 +89,7 @@ def clean_orgao_name(name: str) -> str:
     except (UnicodeEncodeError, UnicodeDecodeError):
         pass
 
-    # Pass 3: Dictionary replacements
+    # Pass 3: Dictionary replacements (corrects corrupted encoding with accents preserved)
     for pattern, good in _COMPILED_PATTERNS:
         def repl_func(match):
             matched_str = match.group(0)
@@ -95,10 +102,6 @@ def clean_orgao_name(name: str) -> str:
             return good
 
         fixed_name = pattern.sub(repl_func, fixed_name)
-
-    # Pass 4: Final fallback - remove any remaining accents to prevent encoding errors
-    # This ensures no character encoding issues reach the frontend
-    fixed_name = remove_accents(fixed_name)
 
     return fixed_name
 
