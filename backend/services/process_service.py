@@ -583,7 +583,7 @@ class ProcessService:
             "index": index,
             "grau": grau,
             "grau_label": self._grau_label(grau),
-            "tribunal": instance_data.get("tribunal", "N/A"),
+            "tribunal": clean_orgao_name(instance_data.get("tribunal", "N/A")),
             "orgao_julgador": clean_orgao_name(instance_data.get("orgao_julgador", "N/A")),
             "latest_movement_at": instance_data.get("latest_movement_at"),
             "updated_at": instance_data.get("updated_at")
@@ -600,7 +600,7 @@ class ProcessService:
             "index": index,
             "grau": grau,
             "grau_label": self._grau_label(grau),
-            "tribunal": summarized.get("tribunal", "N/A"),
+            "tribunal": clean_orgao_name(summarized.get("tribunal", "N/A")),
             "orgao_julgador": clean_orgao_name(summarized.get("orgao_julgador", "N/A")),
             "latest_movement_at": summarized.get("latest_movement_at"),
             "updated_at": summarized.get("updated_at"),
