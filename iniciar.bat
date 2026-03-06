@@ -44,14 +44,16 @@ if %DEBUG% EQU 1 echo  [DEBUG] Verificando ocupacao das portas...
 set PORT_8000_USED=0
 set PORT_5173_USED=0
 
-for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /R " :8000 .*LISTENING"') do (
+netstat -ano 2>nul | findstr /R " :8000 .*LISTENING" >nul
+if %ERRORLEVEL% EQU 0 (
     set PORT_8000_USED=1
-    if %DEBUG% EQU 1 echo  [DEBUG] Porta 8000 ja em uso (PID: %%a^)
+    if %DEBUG% EQU 1 echo  [DEBUG] Porta 8000 ja em uso
 )
 
-for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /R " :5173 .*LISTENING"') do (
+netstat -ano 2>nul | findstr /R " :5173 .*LISTENING" >nul
+if %ERRORLEVEL% EQU 0 (
     set PORT_5173_USED=1
-    if %DEBUG% EQU 1 echo  [DEBUG] Porta 5173 ja em uso (PID: %%a^)
+    if %DEBUG% EQU 1 echo  [DEBUG] Porta 5173 ja em uso
 )
 
 REM ── Encerrar instâncias anteriores nas portas 8000 e 5173 ───────
@@ -61,6 +63,7 @@ if !PORT_8000_USED! EQU 1 (
         if %DEBUG% EQU 1 echo  [DEBUG] Matando processo PID %%a na porta 8000
         taskkill /F /PID %%a >nul 2>&1
     )
+    timeout /t 1 /nobreak >nul
 )
 
 if !PORT_5173_USED! EQU 1 (
@@ -68,6 +71,7 @@ if !PORT_5173_USED! EQU 1 (
         if %DEBUG% EQU 1 echo  [DEBUG] Matando processo PID %%a na porta 5173
         taskkill /F /PID %%a >nul 2>&1
     )
+    timeout /t 1 /nobreak >nul
 )
 
 REM ── Aguardar portas ficarem livres ──────────────────────────────
@@ -150,7 +154,7 @@ set /a TRIES+=1
 
 if %DEBUG% EQU 1 echo  [DEBUG] Tentativa !TRIES!/30 de conectar ao backend...
 
-powershell -command "try { $r = Invoke-WebRequest http://localhost:8000/health -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+powershell -NoProfile -Command "try { $null = Invoke-WebRequest -Uri 'http://localhost:8000/health' -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
 
 if %ERRORLEVEL% EQU 0 goto backend_ready
 if !TRIES! GEQ 30 (
@@ -181,7 +185,7 @@ set /a TRIES+=1
 
 if %DEBUG% EQU 1 echo  [DEBUG] Tentativa !TRIES!/30 de conectar ao frontend...
 
-powershell -command "try { $r = Invoke-WebRequest http://localhost:5173 -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+powershell -NoProfile -Command "try { $null = Invoke-WebRequest -Uri 'http://localhost:5173' -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
 
 if %ERRORLEVEL% EQU 0 goto frontend_ready
 if !TRIES! GEQ 30 (

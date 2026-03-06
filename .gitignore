@@ -33,8 +33,8 @@ wildcard_output.txt
 probe_output.txt
 process_dump.json
 
-# Windows launchers
-*.bat
+# Windows launchers (BUT keep iniciar.bat and encerrar.bat)
+# *.bat  # Commented out to allow iniciar.bat and encerrar.bat
 
 # Coverage reports
 htmlcov/
