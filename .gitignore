@@ -63,6 +63,10 @@ Thumbs.db
 playwright-report/
 test-results/
 
+# Database files (local instances, should not be committed)
+*.db
+*.db-journal
+
 # Generated scripts
 PULL_REQUEST_SUMMARY.md
 create_pr.py
