@@ -18,6 +18,7 @@ from .services.stats_service import StatsService
 from .services.sql_integration_service import SQLIntegrationService
 from .services.metrics_service import get_metrics_service
 from .services.bulk_queue import bulk_job_manager, run_bulk_job
+from .services.dependency_container import get_fusion_service
 from . import schemas
 from .config import settings
 from .error_handlers import register_exception_handlers
@@ -375,6 +376,37 @@ async def import_from_sql(request: schemas.SQLImportRequest, db: Session = Depen
         numbers,
         max_concurrent=settings.BULK_MAX_CONCURRENT
     )
+
+
+@app.get("/fusion/test", tags=["fusion"])
+async def test_fusion_connection(numero_cnj: str) -> dict:
+    """
+    Testa a integração Fusion consultando um processo pelo número CNJ.
+    Útil para verificar cookie de sessão e conectividade.
+
+    Args:
+        numero_cnj: número CNJ para testar (com ou sem formatação).
+    """
+    fusion_service = get_fusion_service()
+    result = await fusion_service.get_document_tree(numero_cnj)
+
+    if result is None:
+        return {
+            "success": False,
+            "message": "Processo não encontrado no Fusion/PAV",
+            "numero_cnj": numero_cnj,
+        }
+
+    return {
+        "success": True,
+        "message": f"Processo encontrado via {result.fonte}",
+        "numero_cnj": numero_cnj,
+        "fonte": result.fonte,
+        "classe_processual": result.classe_processual,
+        "sistema": result.sistema,
+        "total_movimentos": len(result.movimentos),
+        "neo_id": result.neo_id,
+    }
 
 
 @app.get("/history", response_model=List[schemas.HistoryResponse])

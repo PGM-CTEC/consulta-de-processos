@@ -14,6 +14,10 @@ from sqlalchemy.orm import Session
 from .datajud import DataJudClient
 from .phase_analyzer import PhaseAnalyzer
 from .process_service import ProcessService
+from .fusion_api_client import FusionAPIClient
+from .fusion_sql_client import FusionSQLClient
+from .fusion_service import FusionService
+from ..config import settings
 
 
 class ServiceContainer:
@@ -103,3 +107,22 @@ def create_process_service(
         client=client or DataJudClient(),
         phase_analyzer=phase_analyzer or PhaseAnalyzer,
     )
+
+
+def get_fusion_service() -> FusionService:
+    """Factory para FusionService — lê config e constrói os clientes."""
+    api_client = FusionAPIClient(
+        base_url=settings.FUSION_PAV_BASE_URL,
+        session_cookie=settings.FUSION_PAV_SESSION_COOKIE,
+        timeout=settings.FUSION_PAV_TIMEOUT,
+    )
+    sql_client = None
+    if settings.fusion_sql_configured:
+        sql_client = FusionSQLClient(
+            host=settings.FUSION_SQL_HOST,
+            port=settings.FUSION_SQL_PORT,
+            database=settings.FUSION_SQL_DATABASE,
+            user=settings.FUSION_SQL_USER,
+            password=settings.FUSION_SQL_PASSWORD,
+        )
+    return FusionService(sql_client=sql_client, api_client=api_client)
