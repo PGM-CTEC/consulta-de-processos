@@ -22,7 +22,8 @@ export function prepareExportData(results) {
     'Número': p.number,
     'Tribunal': p.tribunal_name || p.court?.split(' - ')[0] || 'N/A',
     'Sede / Vara': p.court_unit || p.court?.split(' - ')[1] || p.court || 'N/A',
-    'Fase Atual': normalizePhase(p.phase, p.class_nature)
+    'Fase Atual': normalizePhase(p.phase, p.class_nature),
+    'Fonte da Fase': p.phase_source || 'datajud'
   }));
 }
 
@@ -33,7 +34,7 @@ export function prepareExportData(results) {
  * @returns {string} CSV content as string
  */
 export function generateCSV(data) {
-  const headers = ['Número', 'Tribunal', 'Sede / Vara', 'Fase Atual'];
+  const headers = ['Número', 'Tribunal', 'Sede / Vara', 'Fase Atual', 'Fonte da Fase'];
   const csvContent = [
     headers.join(','),
     ...data.map(row => Object.values(row).map(v => `"${v}"`).join(','))
