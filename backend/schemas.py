@@ -30,6 +30,7 @@ class ProcessBase(BaseModel):
     distribution_date: Optional[datetime] = None
     phase: Optional[str] = None
     phase_warning: Optional[str] = None
+    phase_source: Optional[str] = None
 
 class HistoryResponse(BaseModel):
     id: int
@@ -39,6 +40,7 @@ class HistoryResponse(BaseModel):
     error_message: Optional[str] = None
     tribunal_expected: Optional[str] = None
     court: Optional[str] = None
+    phase_source: Optional[str] = None
     created_at: datetime
 
     class Config:
