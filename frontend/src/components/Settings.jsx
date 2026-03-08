@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Loader2, Play, CheckCircle2, Database } from 'lucide-react';
+import { Loader2, Play, CheckCircle2, Database, Globe } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
-import { testSQLConnection, importFromSQL } from '../services/api';
+import { testSQLConnection, importFromSQL, testFusionConnection } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { sqlConfigSchema } from '../lib/validationSchemas';
 
@@ -16,6 +16,10 @@ const SettingsComponent = () => {
     const [testing, setTesting] = useState(false);
     const [importing, setImporting] = useState(false);
     const [showConfig, setShowConfig] = useState(true);
+    const [fusionCookie, setFusionCookie] = useState('');
+    const [testingFusion, setTestingFusion] = useState(false);
+    const [fusionResult, setFusionResult] = useState(null);
+    const [fusionTestCnj, setFusionTestCnj] = useState('');
 
     const {
         register,
@@ -51,6 +55,28 @@ const SettingsComponent = () => {
         }
     };
 
+    const handleTestFusion = async () => {
+        if (!fusionTestCnj.trim()) {
+            toast.error('Informe um número CNJ para testar.');
+            return;
+        }
+        setTestingFusion(true);
+        setFusionResult(null);
+        try {
+            const result = await testFusionConnection(fusionTestCnj.trim());
+            setFusionResult(result);
+            if (result.success) {
+                toast.success(result.message);
+            } else {
+                toast.error(result.message);
+            }
+        } catch {
+            toast.error('Erro ao testar conexão com Fusion/PAV.');
+        } finally {
+            setTestingFusion(false);
+        }
+    };
+
     const handleImport = async () => {
         if (!confirm('Deseja iniciar a importação de processos via SQL? Isso pode levar alguns minutos.')) return;
         setImporting(true);
@@ -71,6 +97,77 @@ const SettingsComponent = () => {
             <div className="text-center space-y-2">
                 <h2 className="text-3xl font-extrabold text-gray-900">Configurações do Sistema</h2>
                 <p className="text-gray-500">Configure as integrações de dados e inteligência artificial.</p>
+            </div>
+
+            {/* Fusion/PAV Integration */}
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                <div className="p-4 bg-amber-50 border-b border-amber-100 flex items-center space-x-2">
+                    <Globe className="h-5 w-5 text-amber-600" />
+                    <h3 className="font-bold text-amber-800">Integração Fusion/PAV</h3>
+                    <span className="ml-auto px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700 border border-amber-300">Fallback DataJud</span>
+                </div>
+                <div className="p-6 space-y-4">
+                    <p className="text-sm text-gray-500">
+                        Configure o cookie de sessão PAV para ativar a consulta Fusion como fallback quando um processo
+                        não for encontrado no DataJud. O cookie é usado apenas no servidor — não é armazenado no frontend.
+                    </p>
+                    <div className="space-y-1">
+                        <label htmlFor="fusion-cookie" className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                            Cookie de Sessão PAV (FUSION_PAV_SESSION_COOKIE)
+                        </label>
+                        <input
+                            id="fusion-cookie"
+                            type="password"
+                            value={fusionCookie}
+                            onChange={(e) => setFusionCookie(e.target.value)}
+                            className={fieldClass}
+                            placeholder="Cole aqui o valor do cookie de sessão do PAV"
+                        />
+                        <p className="text-xs text-gray-400">
+                            Defina via variável de ambiente <code className="bg-gray-100 px-1 rounded">FUSION_PAV_SESSION_COOKIE</code> no servidor para persistência.
+                        </p>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label htmlFor="fusion-cnj" className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                            Testar com número CNJ
+                        </label>
+                        <div className="flex space-x-2">
+                            <input
+                                id="fusion-cnj"
+                                type="text"
+                                value={fusionTestCnj}
+                                onChange={(e) => setFusionTestCnj(e.target.value)}
+                                className={`${fieldClass} flex-1`}
+                                placeholder="0000000-00.0000.8.19.0000"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleTestFusion}
+                                disabled={testingFusion}
+                                className="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-amber-600 transition-all flex items-center space-x-2 disabled:opacity-50"
+                            >
+                                {testingFusion ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                <span>Testar</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {fusionResult && (
+                        <div className={`p-4 rounded-lg border text-sm ${fusionResult.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                            <p className="font-bold">{fusionResult.success ? '✓ Encontrado' : '✗ Não encontrado'}</p>
+                            <p>{fusionResult.message}</p>
+                            {fusionResult.success && (
+                                <ul className="mt-2 space-y-0.5 text-xs">
+                                    <li><span className="font-medium">Fonte:</span> {fusionResult.fonte}</li>
+                                    <li><span className="font-medium">Classe:</span> {fusionResult.classe_processual}</li>
+                                    <li><span className="font-medium">Sistema:</span> {fusionResult.sistema}</li>
+                                    <li><span className="font-medium">Movimentos:</span> {fusionResult.total_movimentos}</li>
+                                </ul>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* SQL Extraction Configuration */}
