@@ -264,10 +264,19 @@ function ProcessDetails({ data }) {
                         <FileText className="h-5 w-5 text-violet-500 mt-1" aria-hidden="true" />
                         <div>
                             <p className="text-xs text-gray-500 uppercase font-semibold">Fase Atual</p>
-                            <div className="mt-1">
+                            <div className="mt-1 flex items-center flex-wrap gap-1.5">
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPhaseColorClasses(correctedPhase, activeData.class_nature)}`}>
                                     {correctedPhase}
                                 </span>
+                                {/* Badge de origem da fase */}
+                                {activeData.phase_source && activeData.phase_source !== 'datajud' && (
+                                    <span
+                                        className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-800 border border-amber-300"
+                                        title="Fase classificada via PAV/Fusion — processo não encontrado no DataJud"
+                                    >
+                                        Fusion
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -455,6 +464,7 @@ ProcessDetails.propTypes = {
         court: PropTypes.string,
         distribution_date: PropTypes.string,
         phase: PropTypes.string,
+        phase_source: PropTypes.string,
         movements: PropTypes.arrayOf(
             PropTypes.shape({
                 id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
