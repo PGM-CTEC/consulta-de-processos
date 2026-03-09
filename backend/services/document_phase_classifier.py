@@ -122,22 +122,25 @@ class DocumentPhaseClassifier:
             (i for i, n in enumerate(nomes) if _ANCHOR_SENTENCA.match(n)), None
         )
 
+        # P4: Remessa / recurso para instância superior
+        remessa_idx = next(
+            (i for i, n in enumerate(nomes) if _ANCHOR_REMESSA.search(n)), None
+        )
+
         if transito_idx is not None:
-            # Trânsito encontrado
-            if sentenca_idx is not None:
-                # Sentença também existe → fase 03
-                return "03"
-            # Trânsito sem sentença explícita → fase 03 (documento independente)
             return "03"
 
         if sentenca_idx is not None:
-            # Sentença sem trânsito → fase 02
+            # Se há remessa mais recente que a sentença (índice menor = mais recente),
+            # o processo foi remetido à instância superior após a sentença → fase 04
+            if remessa_idx is not None and remessa_idx < sentenca_idx:
+                return "04"
+            # Sentença sem remessa posterior nem trânsito → fase 02
             return "02"
 
-        # P4: Remessa / recurso para instância superior
-        for nome in nomes:
-            if _ANCHOR_REMESSA.search(nome):
-                return "04"
+        # Remessa sem sentença prévia (enviado antes de sentença)
+        if remessa_idx is not None:
+            return "04"
 
         # P5: Suspensão
         for nome in nomes:
