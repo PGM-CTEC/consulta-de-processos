@@ -37,6 +37,10 @@ export default defineConfig(({ mode }) => {
           target: target,
           changeOrigin: true,
         },
+        '/fusion': {
+          target: target,
+          changeOrigin: true,
+        },
         '/sql': {
           target: target,
           changeOrigin: true,
