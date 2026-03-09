@@ -8,8 +8,38 @@ Enables:
 - Clear dependency declaration
 """
 
+import logging
+import pathlib
 from typing import Optional
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
+
+# Arquivo de persistência local do cookie PAV (git-ignorado).
+# Salvo na raiz do projeto (onde o servidor é iniciado).
+_PAV_SESSION_FILE = pathlib.Path(".pav_session")
+
+
+def _load_persisted_cookie() -> str:
+    """Carrega o cookie PAV salvo no arquivo local, se existir."""
+    try:
+        if _PAV_SESSION_FILE.exists():
+            cookie = _PAV_SESSION_FILE.read_text(encoding="utf-8").strip()
+            if cookie and "JSESSIONID" in cookie:
+                logger.info(f"Cookie PAV carregado do arquivo ({cookie[-8:]})")
+                return cookie
+    except Exception as e:
+        logger.warning(f"Não foi possível carregar cookie PAV salvo: {e}")
+    return ""
+
+
+def _persist_cookie(cookie: str) -> None:
+    """Salva o cookie PAV no arquivo local para sobreviver reinícios."""
+    try:
+        _PAV_SESSION_FILE.write_text(cookie, encoding="utf-8")
+        logger.info(f"Cookie PAV persistido em {_PAV_SESSION_FILE}")
+    except Exception as e:
+        logger.warning(f"Não foi possível persistir cookie PAV: {e}")
 
 from .datajud import DataJudClient
 from .phase_analyzer import PhaseAnalyzer
@@ -114,10 +144,13 @@ _fusion_api_client_singleton: Optional[FusionAPIClient] = None
 
 
 def _create_fusion_service() -> tuple[FusionService, FusionAPIClient]:
-    """Cria instâncias de FusionService e FusionAPIClient."""
+    """Cria instâncias de FusionService e FusionAPIClient.
+    Prioridade do cookie: arquivo .pav_session > variável de ambiente."""
+    # Carrega cookie persistido (sobrevive reinícios); fallback para .env
+    cookie = _load_persisted_cookie() or settings.FUSION_PAV_SESSION_COOKIE
     api_client = FusionAPIClient(
         base_url=settings.FUSION_PAV_BASE_URL,
-        session_cookie=settings.FUSION_PAV_SESSION_COOKIE,
+        session_cookie=cookie,
         timeout=settings.FUSION_PAV_TIMEOUT,
     )
     sql_client = None
@@ -155,6 +188,7 @@ def get_fusion_api_client() -> Optional[FusionAPIClient]:
 def update_fusion_cookie(new_cookie: str) -> None:
     """
     Atualiza o cookie de sessão PAV no singleton em runtime.
+    Persiste em arquivo local para sobreviver reinícios do servidor.
     Não requer reinicialização do servidor.
     """
     global _fusion_api_client_singleton
@@ -162,3 +196,4 @@ def update_fusion_cookie(new_cookie: str) -> None:
         get_fusion_service()  # inicializa o singleton
     if _fusion_api_client_singleton:
         _fusion_api_client_singleton.update_cookie(new_cookie)
+        _persist_cookie(new_cookie)

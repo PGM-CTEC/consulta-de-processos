@@ -97,3 +97,5 @@ logs/
 .flaskenv*
 !.env.project
 !.env.vault
+# Cookie de sessão PAV (runtime, não versionar)
+.pav_session
