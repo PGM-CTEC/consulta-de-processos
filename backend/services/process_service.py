@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import logging
 from datetime import datetime
 from typing import Optional
@@ -82,6 +83,20 @@ class ProcessService:
             # não encontrado em nenhuma fonte
             self._record_history_not_found(process_number, error_type="not_found")
             return None
+
+        # Enriquece com Fusion quando DataJud retornou dados mas sem a 1ª instância,
+        # e o número do processo tem OOOO != "0000" (tramitou em 1ª instância)
+        if self.fusion_service and self._should_enrich_with_fusion(process_number, api_data):
+            try:
+                fusion_result = await self.fusion_service.get_document_tree(process_number)
+                if fusion_result:
+                    api_data = self._enrich_api_data_with_fusion(api_data, fusion_result)
+                    logger.info(
+                        f"Processo {process_number} enriquecido com Fusion "
+                        f"(1ª instância ausente no DataJud)"
+                    )
+            except Exception as e:
+                logger.warning(f"Falha ao enriquecer {process_number} com Fusion: {e}")
 
         # Transform and Save with transaction management
         process = self._save_process_data(process_number, api_data)
@@ -307,6 +322,13 @@ class ProcessService:
                 "Atenção: o DataJud localizou apenas a 2ª instância (Turma Recursal). "
                 "A 1ª instância (Juizado Especial) pode estar tramitando ativamente "
                 "no sistema do tribunal e não foi localizada na base pública do DataJud/CNJ."
+            )
+            meta["phase_warning"] = phase_warning
+
+        if meta.get("fusion_g1_enriched") and not phase_warning:
+            phase_warning = (
+                "Informação: dados da 1ª instância complementados via Fusion/PAV "
+                "por ausência na base pública do DataJud/CNJ."
             )
             meta["phase_warning"] = phase_warning
 
@@ -718,3 +740,87 @@ class ProcessService:
             f"fase={phase}, fonte={fusion_result.fonte}"
         )
         return process
+
+    @staticmethod
+    def _should_enrich_with_fusion(process_number: str, api_data: dict) -> bool:
+        """
+        Retorna True quando o DataJud retornou dados mas sem a 1ª instância,
+        e o processo é elegível para enriquecimento via Fusion.
+
+        Condições (ambas necessárias):
+        1. Últimos 4 dígitos do número CNJ (OOOO) != "0000"
+        2. DataJud não retornou G1 ou JE (missing_expected_instances contém "G1" ou "JE")
+        """
+        clean = "".join(filter(str.isdigit, process_number))
+        if len(clean) != 20 or clean[16:20] == "0000":
+            return False
+        meta = api_data.get("__meta__") or {}
+        missing = meta.get("missing_expected_instances") or []
+        return "G1" in missing or "JE" in missing
+
+    @staticmethod
+    def _build_synthetic_g1_hit(fusion_result) -> dict:
+        """
+        Constrói um hit sintético no formato DataJud a partir de dados do Fusion.
+        Representa a 1ª instância ausente no DataJud para análise unificada de fase.
+        """
+        movimentos = []
+        for m in (fusion_result.movimentos or []):
+            data_hora = None
+            m_data = getattr(m, "data", None)
+            if m_data and m_data != datetime.min:
+                try:
+                    data_hora = m_data.isoformat()
+                except Exception:
+                    pass
+            movimentos.append({
+                "nome": getattr(m, "tipo_cnj", None) or getattr(m, "tipo_local", None) or "",
+                "codigo": 0,
+                "dataHora": data_hora,
+            })
+        return {
+            "grau": "G1",
+            "tribunal": fusion_result.sistema or "",
+            "orgaoJulgador": {"nome": fusion_result.sistema or "Fusion/PAV"},
+            "classe": {
+                "nome": fusion_result.classe_processual or "",
+                "codigo": None,
+            },
+            "movimentos": movimentos,
+            "__source__": "fusion",
+        }
+
+    def _enrich_api_data_with_fusion(self, api_data: dict, fusion_result) -> dict:
+        """
+        Enriquece dados do DataJud com informações do Fusion para a 1ª instância ausente.
+
+        - Adiciona hit sintético G1 ao all_hits para análise unificada de fase.
+        - Atualiza a classe processual com o dado da 1ª instância (Fusion).
+        - Remove G1/JE de missing_expected_instances (agora cobertos via Fusion).
+        """
+        enriched = copy.deepcopy(api_data)
+        meta = enriched.setdefault("__meta__", {})
+
+        synthetic_g1 = self._build_synthetic_g1_hit(fusion_result)
+        all_hits = list(meta.get("all_hits") or [])
+        all_hits.append(synthetic_g1)
+        meta["all_hits"] = all_hits
+        meta["instances_count"] = len(all_hits)
+        meta["fusion_g1_enriched"] = True
+        meta["fusion_fonte"] = fusion_result.fonte
+        meta["fusion_classe_processual"] = fusion_result.classe_processual
+
+        # Usa classe processual da 1ª instância (Fusion) como classe principal
+        if fusion_result.classe_processual:
+            meta["datajud_classe_original"] = (enriched.get("classe") or {}).get("nome", "")
+            enriched["classe"] = {
+                "nome": fusion_result.classe_processual,
+                "codigo": None,
+            }
+
+        # Remove G1/JE do missing (cobertos agora via Fusion)
+        missing = [m for m in (meta.get("missing_expected_instances") or []) if m not in ("G1", "JE")]
+        meta["missing_expected_instances"] = missing
+        meta["source_limited"] = bool(missing)
+
+        return enriched
