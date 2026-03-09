@@ -43,6 +43,7 @@ class Process(Base, SoftDeleteMixin):
     distribution_date = Column(DateTime(timezone=True), nullable=True)
     phase = Column(String, nullable=True)
     phase_warning = Column(String, nullable=True)  # Aviso de classificação incerta (ex: DCP TJRJ)
+    phase_source = Column(String(20), nullable=True, server_default="datajud")  # datajud | fusion_api | fusion_sql
     last_update = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     # Raw JSON data from DataJud for future proofing
@@ -80,6 +81,7 @@ class SearchHistory(Base):
     error_message = Column(Text, nullable=True)  # Detalhes do erro
     tribunal_expected = Column(String, nullable=True)  # Tribunal inferido pelo número CNJ
     court = Column(String, nullable=True)  # Tribunal real (quando encontrado)
+    phase_source = Column(String(20), nullable=True)  # datajud | fusion_api | fusion_sql | null
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

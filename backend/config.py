@@ -64,6 +64,34 @@ class Settings(BaseSettings):
     # Monitoring (optional)
     SENTRY_DSN: str = ""  # Empty = Sentry disabled
 
+    # --- Fusion / PAV Integration ---
+    FUSION_ENABLED: bool = True
+    FUSION_PAV_BASE_URL: str = "https://pav.procuradoria.rio"
+    FUSION_PAV_SESSION_COOKIE: str = ""  # Cookie JSESSIONID da sessão PAV
+    FUSION_PAV_TIMEOUT: int = 30
+
+    # SQL Server direto (opcional — se vazio, usa apenas API REST)
+    FUSION_SQL_HOST: str = ""
+    FUSION_SQL_PORT: int = 1433
+    FUSION_SQL_DATABASE: str = ""
+    FUSION_SQL_USER: str = ""
+    FUSION_SQL_PASSWORD: str = ""
+
+    @property
+    def fusion_sql_configured(self) -> bool:
+        """True se todas as credenciais SQL Server estiverem configuradas."""
+        return all([
+            self.FUSION_SQL_HOST,
+            self.FUSION_SQL_DATABASE,
+            self.FUSION_SQL_USER,
+            self.FUSION_SQL_PASSWORD,
+        ])
+
+    @property
+    def fusion_api_configured(self) -> bool:
+        """True se o cookie de sessão PAV estiver configurado."""
+        return bool(self.FUSION_PAV_SESSION_COOKIE)
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

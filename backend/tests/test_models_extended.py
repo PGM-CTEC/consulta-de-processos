@@ -392,3 +392,40 @@ class TestDatabaseIntegrity:
 
         assert retrieved1.id == retrieved2.id
         assert retrieved1.phase == retrieved2.phase
+
+
+class TestPhaseSourceField:
+    """Tests for phase_source field on Process and SearchHistory."""
+
+    def test_process_phase_source_defaults_to_datajud(self, test_db):
+        """TC-1: Process.phase_source defaults to 'datajud'."""
+        process = models.Process(
+            number="0000001-01.2020.8.19.0001",
+            phase_source="datajud"
+        )
+        test_db.add(process)
+        test_db.commit()
+        test_db.refresh(process)
+        assert process.phase_source == "datajud"
+
+    def test_process_phase_source_accepts_fusion_api(self, test_db):
+        """TC-2: Process.phase_source accepts 'fusion_api'."""
+        process = models.Process(
+            number="0000001-01.2020.8.19.0002",
+            phase_source="fusion_api"
+        )
+        test_db.add(process)
+        test_db.commit()
+        test_db.refresh(process)
+        assert process.phase_source == "fusion_api"
+
+    def test_search_history_phase_source_nullable(self, test_db):
+        """TC-3: SearchHistory.phase_source is nullable."""
+        history = models.SearchHistory(
+            number="0000001-01.2020.8.19.0003",
+            status="not_found"
+        )
+        test_db.add(history)
+        test_db.commit()
+        test_db.refresh(history)
+        assert history.phase_source is None

@@ -116,4 +116,11 @@ export const getAlerts = async (limit = 20) => {
     return response.data;
 };
 
+export const testFusionConnection = async (numeroCnj) => {
+    const response = await api.get('/fusion/test', {
+        params: { numero_cnj: numeroCnj }
+    });
+    return response.data;
+};
+
 export default api;

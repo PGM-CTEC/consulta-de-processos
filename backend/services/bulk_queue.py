@@ -82,6 +82,7 @@ async def run_bulk_job(
     db_factory: Callable,
     max_concurrent: int,
     request_delay: float = 0.0,
+    fusion_service=None,
 ) -> None:
     """
     Background coroutine that processes all numbers and updates the job in place.
@@ -102,7 +103,7 @@ async def run_bulk_job(
 
     db = db_factory()
     try:
-        service = ProcessService(db)
+        service = ProcessService(db, fusion_service=fusion_service)
 
         async def fetch_one(number: str):
             async with semaphore:

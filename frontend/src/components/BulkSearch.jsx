@@ -33,9 +33,20 @@ const ResultRow = React.memo(({ result }) => (
             {result.court_unit || result.court?.split(' - ')[1] || result.court || 'N/A'}
         </td>
         <td className="px-6 py-4">
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(result.phase, result.class_nature)}`}>
-                {getPhaseDisplayName(result.phase, result.class_nature)}
-            </span>
+            <div className="flex items-center flex-wrap gap-1">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(result.phase, result.class_nature)}`}>
+                    {getPhaseDisplayName(result.phase, result.class_nature)}
+                </span>
+                {/* Badge Fusion para resultados em massa */}
+                {result.phase_source && result.phase_source !== 'datajud' && (
+                    <span
+                        className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-700 border border-amber-200"
+                        title={`Classificado via ${result.phase_source}`}
+                    >
+                        F
+                    </span>
+                )}
+            </div>
         </td>
         <td className="px-6 py-4">
             <div className="flex items-center text-green-600 dark:text-green-400 text-xs font-semibold">
@@ -119,9 +130,19 @@ const VirtualResultsBody = ({ items }) => {
                                     {result.court_unit || result.court?.split(' - ')[1] || result.court || 'N/A'}
                                 </td>
                                 <td className="px-6 py-4" style={{ width: '15%' }}>
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(result.phase, result.class_nature)}`}>
-                                        {getPhaseDisplayName(result.phase, result.class_nature)}
-                                    </span>
+                                    <div className="flex items-center flex-wrap gap-1">
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(result.phase, result.class_nature)}`}>
+                                            {getPhaseDisplayName(result.phase, result.class_nature)}
+                                        </span>
+                                        {result.phase_source && result.phase_source !== 'datajud' && (
+                                            <span
+                                                className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-700 border border-amber-200"
+                                                title={`Classificado via ${result.phase_source}`}
+                                            >
+                                                F
+                                            </span>
+                                        )}
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4" style={{ width: '15%' }}>
                                     <div className="flex items-center text-green-600 dark:text-green-400 text-xs font-semibold">

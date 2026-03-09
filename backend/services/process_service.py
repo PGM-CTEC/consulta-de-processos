@@ -8,6 +8,9 @@ from sqlalchemy import func
 
 from .datajud import DataJudClient
 from .phase_analyzer import PhaseAnalyzer, DCP_WARNING_MESSAGE
+from .fusion_service import FusionService
+from .fusion_api_client import FusionResult
+from .document_phase_classifier import DocumentPhaseClassifier
 from .. import models, schemas
 from ..database import transaction_scope
 from ..exceptions import DataJudAPIException, ProcessNotFoundException
@@ -20,7 +23,8 @@ class ProcessService:
         self,
         db: Session,
         client: Optional[DataJudClient] = None,
-        phase_analyzer: Optional[PhaseAnalyzer] = None
+        phase_analyzer: Optional[PhaseAnalyzer] = None,
+        fusion_service: Optional[FusionService] = None
     ):
         """
         Initialize ProcessService with dependency injection.
@@ -29,15 +33,18 @@ class ProcessService:
             db: SQLAlchemy database session
             client: DataJudClient instance (optional, defaults to DataJudClient())
             phase_analyzer: PhaseAnalyzer instance (optional, defaults to PhaseAnalyzer)
+            fusion_service: FusionService instance for fallback to Fusion/PAV
 
         This enables:
         - Testing with mock clients
         - Swapping implementations
         - Reduced coupling to external services
+        - Fallback to Fusion/PAV when DataJud returns not_found
         """
         self.db = db
         self.client = client or DataJudClient()
         self.phase_analyzer = phase_analyzer or PhaseAnalyzer
+        self.fusion_service = fusion_service
 
     async def get_or_update_process(self, process_number: str) -> Optional[models.Process]:
         """
@@ -67,7 +74,12 @@ class ProcessService:
             raise DataJudAPIException("Erro ao buscar processo") from e
 
         if not api_data:
-            # Process not found in DataJud
+            # Process not found in DataJud — try Fusion as fallback
+            if self.fusion_service:
+                fusion_result = await self.fusion_service.get_document_tree(process_number)
+                if fusion_result and fusion_result.movimentos:
+                    return await self._save_fusion_result(process_number, fusion_result)
+            # não encontrado em nenhuma fonte
             self._record_history_not_found(process_number, error_type="not_found")
             return None
 
@@ -638,3 +650,71 @@ class ProcessService:
             "latest_movement_at": summarized.get("latest_movement_at"),
             "updated_at": summarized.get("updated_at"),
         }
+
+    async def _save_fusion_result(
+        self, process_number: str, fusion_result: FusionResult
+    ) -> models.Process:
+        """Salva resultado do Fusion no banco e retorna o processo."""
+        phase = DocumentPhaseClassifier.classify(
+            fusion_result.movimentos,
+            fusion_result.classe_processual,
+        )
+
+        with transaction_scope(self.db):
+            process = (
+                self.db.query(models.Process)
+                .filter(models.Process.number == process_number)
+                .with_for_update()
+                .first()
+            )
+
+            if not process:
+                process = models.Process(
+                    number=process_number,
+                    class_nature=fusion_result.classe_processual,
+                    tribunal_name=fusion_result.sistema,
+                    phase=phase,
+                    phase_source=fusion_result.fonte,
+                )
+                self.db.add(process)
+            else:
+                process.phase = phase
+                process.phase_source = fusion_result.fonte
+                if fusion_result.classe_processual:
+                    process.class_nature = fusion_result.classe_processual
+
+            self.db.flush()
+
+        # Registrar no histórico com phase_source
+        try:
+            existing = self.db.query(models.SearchHistory).filter(
+                models.SearchHistory.number == process_number
+            ).first()
+
+            if existing:
+                existing.created_at = func.now()
+                existing.status = "found"
+                existing.phase_source = fusion_result.fonte
+                existing.court = fusion_result.sistema
+                existing.error_type = None
+                existing.error_message = None
+            else:
+                history_entry = models.SearchHistory(
+                    number=process_number,
+                    status="found",
+                    court=fusion_result.sistema,
+                    tribunal_expected=fusion_result.sistema,
+                    phase_source=fusion_result.fonte,
+                )
+                self.db.add(history_entry)
+
+            self.db.commit()
+        except Exception as e:
+            logger.error(f"Error recording history for {process_number}: {e}")
+            self.db.rollback()
+
+        logger.info(
+            f"Processo {process_number} classificado via Fusion: "
+            f"fase={phase}, fonte={fusion_result.fonte}"
+        )
+        return process

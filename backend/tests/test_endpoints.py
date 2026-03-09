@@ -52,6 +52,7 @@ class TestGetProcessEndpoint:
                 judge=None,
                 phase="02",
                 phase_warning=None,
+                phase_source=None,
                 distribution_date=None,
                 last_update=datetime(2024, 1, 1, tzinfo=timezone.utc),
                 raw_data={},
@@ -101,6 +102,7 @@ class TestGetProcessEndpoint:
                 judge=None,
                 phase="02",
                 phase_warning=None,
+                phase_source=None,
                 distribution_date=None,
                 last_update=datetime(2024, 1, 1, tzinfo=timezone.utc),
                 raw_data={},
@@ -136,6 +138,7 @@ class TestBulkProcessesEndpoint:
         m.distribution_date = None
         m.phase = None
         m.phase_warning = None
+        m.phase_source = None
         m.last_update = datetime(2024, 1, 1, tzinfo=timezone.utc)
         m.raw_data = None
         m.deleted_at = None
