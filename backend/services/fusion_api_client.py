@@ -65,7 +65,11 @@ class FusionAPIClient:
         self._session_cookie = session_cookie
         self._http = httpx.AsyncClient(
             timeout=timeout,
-            headers={"Cookie": session_cookie} if session_cookie else {},
+            headers={
+                "Cookie": session_cookie,
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json, text/plain, */*",
+            } if session_cookie else {},
             follow_redirects=True,
         )
 

@@ -19,6 +19,7 @@ from .services.sql_integration_service import SQLIntegrationService
 from .services.metrics_service import get_metrics_service
 from .services.bulk_queue import bulk_job_manager, run_bulk_job
 from .services.dependency_container import get_fusion_service
+from .services.fusion_service import FusionService
 from . import schemas
 from .config import settings
 from .error_handlers import register_exception_handlers
@@ -220,12 +221,18 @@ async def receive_logs(logs: List[dict]):
 
 @app.get("/processes/{number}", response_model=schemas.ProcessResponse)
 @limiter.limit("100/minute")
-async def get_process(number: str, request: Request, db: Session = Depends(get_db)):
+async def get_process(
+    number: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    fusion_service: FusionService = Depends(get_fusion_service),
+):
     """
     Retrieve a single process by its CNJ number.
     Fetches from DataJud API and stores in local database.
+    Falls back to Fusion/PAV if not found in DataJud.
     """
-    service = ProcessService(db)
+    service = ProcessService(db, fusion_service=fusion_service)
     process = await service.get_or_update_process(number)
     if not process:
         raise ProcessNotFoundException(number)
@@ -253,7 +260,10 @@ async def get_process_instance_detail(number: str, index: int, db: Session = Dep
 @app.post("/processes/bulk", response_model=schemas.BulkProcessResponse)
 @limiter.limit("50/minute")
 async def get_processes_bulk(
-    request: Request, body: schemas.BulkProcessRequest, db: Session = Depends(get_db)
+    request: Request,
+    body: schemas.BulkProcessRequest,
+    db: Session = Depends(get_db),
+    fusion_service: FusionService = Depends(get_fusion_service),
 ):
     """
     Retrieve multiple processes by their CNJ numbers in parallel.
@@ -262,7 +272,7 @@ async def get_processes_bulk(
 
     Story: PERF-ARCH-001 - Async Bulk Processing
     """
-    service = ProcessService(db)
+    service = ProcessService(db, fusion_service=fusion_service)
     return await service.get_bulk_processes(
         body.numbers,
         max_concurrent=settings.BULK_MAX_CONCURRENT
@@ -290,6 +300,7 @@ async def submit_bulk_job(
             db_factory=SessionLocal,
             max_concurrent=settings.BULK_MAX_CONCURRENT,
             request_delay=settings.BULK_REQUEST_DELAY,
+            fusion_service=get_fusion_service() if settings.fusion_api_configured else None,
         )
     )
     return schemas.BulkJobStatusResponse(
