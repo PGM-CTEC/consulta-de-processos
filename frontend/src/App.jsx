@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { Search, Database, Layers, BarChart3, Sun, Moon } from 'lucide-react';
+import { Search, Database, Layers, BarChart3, Settings, Sun, Moon } from 'lucide-react';
 import SearchProcess from './components/SearchProcess';
 import LoadingFallback from './components/LoadingFallback';
 import FeedbackButton from './components/FeedbackButton';
@@ -15,11 +15,12 @@ const ProcessDetails = lazy(() => import('./components/ProcessDetails'));
 const BulkSearch = lazy(() => import('./components/BulkSearch'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const PhaseReference = lazy(() => import('./components/PhaseReference'));
+const SettingsComponent = lazy(() => import('./components/Settings'));
 
 function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('single'); // 'single' | 'bulk' | 'analytics' | 'history'
+  const [activeTab, setActiveTab] = useState('single'); // 'single' | 'bulk' | 'analytics' | 'history' | 'settings'
   const [showPhasesModal, setShowPhasesModal] = useState(false);
   const { labels, loading: labelsLoading } = useLabels();
   const { isDark, toggleTheme } = useTheme();
@@ -92,6 +93,7 @@ function App() {
                 { id: 'bulk',      label: labels.nav.bulk,      icon: Layers    },
                 { id: 'analytics', label: labels.nav.analytics, icon: BarChart3 },
                 { id: 'history',   label: labels.nav.history,   icon: Database  },
+                { id: 'settings',  label: 'Configurações',      icon: Settings  },
               ].map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
@@ -192,6 +194,19 @@ function App() {
               className="animate-in fade-in slide-in-from-bottom-4 duration-700"
             >
               <HistoryTab labels={labels} onProcessView={handleViewFromHistory} />
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div
+              id="tab-panel-settings"
+              role="tabpanel"
+              aria-labelledby="tab-settings"
+              className="animate-in fade-in slide-in-from-bottom-4 duration-700"
+            >
+              <Suspense fallback={<LoadingFallback message="Carregando configurações..." />}>
+                <SettingsComponent />
+              </Suspense>
             </div>
           )}
 
