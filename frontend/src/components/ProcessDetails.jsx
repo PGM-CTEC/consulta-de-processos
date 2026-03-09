@@ -265,7 +265,7 @@ function ProcessDetails({ data }) {
                         <div>
                             <p className="text-xs text-gray-500 uppercase font-semibold">Fase Atual</p>
                             <div className="mt-1 flex items-center flex-wrap gap-1.5">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPhaseColorClasses(correctedPhase, activeData.class_nature)}`}>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${correctedPhase === 'Indefinido' ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-300 dark:border-gray-600' : getPhaseColorClasses(correctedPhase, activeData.class_nature)}`}>
                                     {correctedPhase}
                                 </span>
                                 {/* Badge de origem da fase */}
@@ -278,6 +278,13 @@ function ProcessDetails({ data }) {
                                     </span>
                                 )}
                             </div>
+                            {/* Aviso quando fase não pôde ser determinada */}
+                            {activeData.phase_warning && (
+                                <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                                    <span aria-hidden="true">⚠</span>
+                                    {activeData.phase_warning}
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -464,6 +471,7 @@ ProcessDetails.propTypes = {
         court: PropTypes.string,
         distribution_date: PropTypes.string,
         phase: PropTypes.string,
+        phase_warning: PropTypes.string,
         phase_source: PropTypes.string,
         movements: PropTypes.arrayOf(
             PropTypes.shape({

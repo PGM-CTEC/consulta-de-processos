@@ -304,6 +304,11 @@ export function hasDefinitiveBaixa(movements) {
  * @returns {string} Nome oficial da fase
  */
 export function normalizePhaseWithMovements(phaseInput, classNature = null, movements = null) {
+  // Respeita phase_override do backend (ex: "Indefinido" quando 1ª instância ausente)
+  if (phaseInput === 'Indefinido') {
+    return 'Indefinido';
+  }
+
   // Se há movimento de baixa definitiva, força Fase 15
   if (movements && hasDefinitiveBaixa(movements)) {
     return VALID_PHASES.ARQUIVADO.name;
