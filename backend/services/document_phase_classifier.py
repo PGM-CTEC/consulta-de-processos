@@ -40,9 +40,11 @@ _ANCHOR_TRANSITO = re.compile(
 )
 
 # Fase 02 / 03 — Sentença pura (NÃO "despacho / sentenca / decisao")
-# Aceita: "Sentença", "Sentença de Mérito", "Sentença Homologatória", "Sentença Parcial"
-# Rejeita: "Despacho / Sentença / Decisão"
-_ANCHOR_SENTENCA = re.compile(r'^sentenca(\s+(de\s+merito|homologatoria|parcial|condenatoria|declaratoria|constitutiva))?$')
+# Aceita: "Sentença", "Sentença de Mérito", "Minutar Sentença", "Sentença Parcial", etc.
+# Rejeita: "Despacho / Sentença / Decisão" (nome genérico do DCP)
+_ANCHOR_SENTENCA = re.compile(
+    r'^(minutar\s+)?sentenca(\s+(de\s+merito|homologatoria|parcial|condenatoria|declaratoria|constitutiva))?$'
+)
 
 # Fase 04+ — Remessa / recurso para instância superior
 _ANCHOR_REMESSA = re.compile(r'(remessa\b|declinio\s+de\s+competencia|redistribuicao)')
@@ -131,6 +133,11 @@ class DocumentPhaseClassifier:
         if sentenca_idx is not None:
             # Sentença sem trânsito → fase 02
             return "02"
+
+        # P4: Remessa / recurso para instância superior
+        for nome in nomes:
+            if _ANCHOR_REMESSA.search(nome):
+                return "04"
 
         # P5: Suspensão
         for nome in nomes:

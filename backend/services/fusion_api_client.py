@@ -2,9 +2,24 @@
 FusionAPIClient — consome a API REST do PAV/Fusion para obter
 árvore de documentos de um processo por número CNJ.
 
-Endpoint descoberto:
-GET https://pav.procuradoria.rio/services/custom-consulta-rapida-de-procesos/
-    dados-da-consulta/{numero_cnj_sem_formatacao}
+Endpoint:
+GET {base_url}/services/arquivos/arvore-processo-by-sistema/{numero_cnj_sem_formatacao}
+
+Estrutura da resposta:
+{
+  "processo": { "sucesso": true, "numeroJudicial": "...", ... },
+  "tribunal": [
+    {
+      "descricaoSistema": "TRT - Primeira Instância",
+      "classeProcessual": "...",
+      "documentos": [
+        { "tipo": "7007", "nomeArquivo": "Minutar Sentença", "dataAutuacao": "25/05/2015 15:31", ... },
+        ...
+      ]
+    },
+    ...
+  ]
+}
 """
 import re
 import logging
@@ -55,10 +70,7 @@ class FusionAPIClient:
     Requer cookie de sessão JSESSIONID configurado.
     """
 
-    _ENDPOINT = (
-        "/services/custom-consulta-rapida-de-procesos"
-        "/dados-da-consulta/{cnj}"
-    )
+    _ENDPOINT = "/services/arquivos/arvore-processo-by-sistema/{cnj}"
 
     def __init__(self, base_url: str, session_cookie: str, timeout: int = 30):
         self._base_url = base_url.rstrip("/")
@@ -134,36 +146,41 @@ class FusionAPIClient:
 
         data = response.json()
 
-        if not data.get("encontradoTribunal", False):
-            logger.info(f"Processo {cnj_digits} não encontrado no tribunal via PAV")
+        if not data.get("processo", {}).get("sucesso", False):
+            logger.info(f"Processo {cnj_digits} não encontrado no PAV (sucesso=false)")
+            return None
+
+        if not data.get("tribunal"):
+            logger.info(f"Processo {cnj_digits} sem tribunais no PAV")
             return None
 
         return self._parse(data, numero_cnj)
 
     def _parse(self, data: dict, numero_cnj: str) -> FusionResult:
-        """Converte resposta JSON do PAV em FusionResult."""
-        dados_pav = data.get("dadosPAV", {})
-        dados_gerais = data.get("dadosGerais", {})
+        """Converte resposta JSON do PAV (arvore-processo-by-sistema) em FusionResult."""
+        tribunais = data.get("tribunal", [])
+        primeiro_tribunal = tribunais[0] if tribunais else {}
 
         movimentos = []
-        for m in data.get("movimentos", []):
-            try:
-                movimentos.append(FusionMovimento(
-                    data=_parse_date(m.get("dataDoMovimento", "")),
-                    tipo_local=m.get("tipoMovimentoLocal", ""),
-                    tipo_cnj=m.get("tipoMovimentoCNJ", ""),
-                ))
-            except Exception as e:
-                logger.warning(f"Erro ao parsear movimento {m}: {e}")
+        for tribunal in tribunais:
+            for doc in tribunal.get("documentos", []):
+                try:
+                    movimentos.append(FusionMovimento(
+                        data=_parse_date(doc.get("dataAutuacao", "")),
+                        tipo_local=doc.get("nomeArquivo", ""),
+                        tipo_cnj=doc.get("tipo", ""),
+                    ))
+                except Exception as e:
+                    logger.warning(f"Erro ao parsear documento {doc}: {e}")
 
         # Ordenar ASC por data
         movimentos.sort(key=lambda m: m.data)
 
         return FusionResult(
             numero_cnj=numero_cnj,
-            neo_id=dados_pav.get("wfProcessNeoId") or dados_pav.get("neoId"),
-            classe_processual=dados_gerais.get("classeProcessual", ""),
-            sistema=dados_gerais.get("descricaoSistema", ""),
+            neo_id=None,  # Não disponível neste endpoint
+            classe_processual=primeiro_tribunal.get("classeProcessual", ""),
+            sistema=primeiro_tribunal.get("descricaoSistema", ""),
             movimentos=movimentos,
             fonte="fusion_api",
         )
