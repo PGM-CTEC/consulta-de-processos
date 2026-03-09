@@ -109,8 +109,12 @@ def create_process_service(
     )
 
 
-def get_fusion_service() -> FusionService:
-    """Factory para FusionService — lê config e constrói os clientes."""
+_fusion_service_singleton: Optional[FusionService] = None
+_fusion_api_client_singleton: Optional[FusionAPIClient] = None
+
+
+def _create_fusion_service() -> tuple[FusionService, FusionAPIClient]:
+    """Cria instâncias de FusionService e FusionAPIClient."""
     api_client = FusionAPIClient(
         base_url=settings.FUSION_PAV_BASE_URL,
         session_cookie=settings.FUSION_PAV_SESSION_COOKIE,
@@ -125,4 +129,36 @@ def get_fusion_service() -> FusionService:
             user=settings.FUSION_SQL_USER,
             password=settings.FUSION_SQL_PASSWORD,
         )
-    return FusionService(sql_client=sql_client, api_client=api_client)
+    return FusionService(sql_client=sql_client, api_client=api_client), api_client
+
+
+def get_fusion_service() -> FusionService:
+    """
+    Retorna o singleton FusionService.
+    Na primeira chamada, cria e armazena a instância.
+    Garante que update_cookie() afete todas as requisições subsequentes.
+    """
+    global _fusion_service_singleton, _fusion_api_client_singleton
+    if _fusion_service_singleton is None:
+        _fusion_service_singleton, _fusion_api_client_singleton = _create_fusion_service()
+    return _fusion_service_singleton
+
+
+def get_fusion_api_client() -> Optional[FusionAPIClient]:
+    """Retorna o FusionAPIClient singleton (para uso no keepalive e update de cookie)."""
+    global _fusion_api_client_singleton
+    if _fusion_api_client_singleton is None:
+        get_fusion_service()  # inicializa o singleton
+    return _fusion_api_client_singleton
+
+
+def update_fusion_cookie(new_cookie: str) -> None:
+    """
+    Atualiza o cookie de sessão PAV no singleton em runtime.
+    Não requer reinicialização do servidor.
+    """
+    global _fusion_api_client_singleton
+    if _fusion_api_client_singleton is None:
+        get_fusion_service()  # inicializa o singleton
+    if _fusion_api_client_singleton:
+        _fusion_api_client_singleton.update_cookie(new_cookie)

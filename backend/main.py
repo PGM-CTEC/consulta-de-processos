@@ -18,7 +18,7 @@ from .services.stats_service import StatsService
 from .services.sql_integration_service import SQLIntegrationService
 from .services.metrics_service import get_metrics_service
 from .services.bulk_queue import bulk_job_manager, run_bulk_job
-from .services.dependency_container import get_fusion_service
+from .services.dependency_container import get_fusion_service, get_fusion_api_client, update_fusion_cookie
 from .services.fusion_service import FusionService
 from . import schemas
 from .config import settings
@@ -417,6 +417,54 @@ async def test_fusion_connection(numero_cnj: str) -> dict:
         "sistema": result.sistema,
         "total_movimentos": len(result.movimentos),
         "neo_id": result.neo_id,
+    }
+
+
+@app.patch("/fusion/cookie", tags=["fusion"])
+async def update_fusion_cookie_endpoint(payload: dict) -> dict:
+    """
+    Atualiza o cookie de sessão PAV em runtime sem reiniciar o servidor.
+    Chamado pelo bookmarklet quando o usuário está logado no PAV.
+
+    Body: {"cookie": "JSESSIONID=ABC123..."}
+    """
+    new_cookie = payload.get("cookie", "").strip()
+    if not new_cookie:
+        return {"success": False, "message": "Cookie não informado."}
+    if "JSESSIONID" not in new_cookie:
+        return {"success": False, "message": "Cookie inválido — deve conter JSESSIONID."}
+
+    update_fusion_cookie(new_cookie)
+    preview = new_cookie[-8:] if len(new_cookie) > 8 else new_cookie
+    return {
+        "success": True,
+        "message": f"Cookie PAV atualizado (…{preview}).",
+    }
+
+
+@app.get("/fusion/status", tags=["fusion"])
+async def fusion_session_status() -> dict:
+    """
+    Retorna o status atual da sessão PAV: se há cookie configurado e
+    se a sessão está ativa (via check_session rápido).
+    """
+    api_client = get_fusion_api_client()
+    if api_client is None or not api_client.session_cookie:
+        return {
+            "configured": False,
+            "alive": False,
+            "message": "Cookie PAV não configurado.",
+        }
+
+    alive, status_code = await api_client.check_session()
+    cookie = api_client.session_cookie
+    preview = "…" + cookie[-8:] if len(cookie) > 8 else cookie
+    return {
+        "configured": True,
+        "alive": alive,
+        "status_code": status_code,
+        "cookie_preview": preview,
+        "message": "Sessão PAV ativa." if alive else f"Sessão PAV expirada (HTTP {status_code}).",
     }
 
 

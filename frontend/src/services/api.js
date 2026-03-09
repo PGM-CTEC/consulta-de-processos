@@ -123,4 +123,14 @@ export const testFusionConnection = async (numeroCnj) => {
     return response.data;
 };
 
+export const getFusionStatus = async () => {
+    const response = await api.get('/fusion/status');
+    return response.data;
+};
+
+export const updateFusionCookie = async (cookie) => {
+    const response = await api.patch('/fusion/cookie', { cookie });
+    return response.data;
+};
+
 export default api;

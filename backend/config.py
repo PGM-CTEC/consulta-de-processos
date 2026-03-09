@@ -29,8 +29,13 @@ class Settings(BaseSettings):
 
     @property
     def allowed_origins_list(self) -> List[str]:
-        """Convert comma-separated origins to list."""
-        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
+        """Convert comma-separated origins to list.
+        Inclui automaticamente a URL do PAV para suporte ao bookmarklet de cookie."""
+        origins = [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
+        pav = self.FUSION_PAV_BASE_URL.rstrip("/") if hasattr(self, "FUSION_PAV_BASE_URL") else ""
+        if pav and pav not in origins:
+            origins.append(pav)
+        return origins
 
     # Database (loaded from secrets manager)
     DATABASE_URL: str = "sqlite:///./consulta_processual.db"
