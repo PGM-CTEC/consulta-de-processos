@@ -724,6 +724,13 @@ class ProcessService:
                 .first()
             )
 
+            # Serializa movimentos Fusion para persistência em raw_data
+            fusion_movs_json = [
+                {"date": m.data.isoformat(), "description": m.tipo_local, "code": m.tipo_cnj}
+                for m in fusion_result.movimentos
+            ]
+            fusion_raw = {"__meta__": {"fusion_movements": fusion_movs_json, "fusion_fonte": fusion_result.fonte}}
+
             if not process:
                 process = models.Process(
                     number=process_number,
@@ -731,11 +738,13 @@ class ProcessService:
                     tribunal_name=fusion_result.sistema,
                     phase=phase,
                     phase_source=fusion_result.fonte,
+                    raw_data=fusion_raw,
                 )
                 self.db.add(process)
             else:
                 process.phase = phase
                 process.phase_source = fusion_result.fonte
+                process.raw_data = fusion_raw
                 if fusion_result.classe_processual:
                     process.class_nature = fusion_result.classe_processual
 
@@ -843,6 +852,10 @@ class ProcessService:
         meta["fusion_g1_enriched"] = True
         meta["fusion_fonte"] = fusion_result.fonte
         meta["fusion_classe_processual"] = fusion_result.classe_processual
+        meta["fusion_movements"] = [
+            {"date": m.data.isoformat(), "description": m.tipo_local, "code": m.tipo_cnj}
+            for m in fusion_result.movimentos
+        ]
 
         # Usa classe processual da 1ª instância (Fusion) como classe principal
         if fusion_result.classe_processual:

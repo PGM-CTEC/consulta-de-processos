@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { LoadingState, ErrorState } from './LoadingState';
-import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw } from 'lucide-react';
+import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw, ArrowDownUp, Database } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getPhaseColorClasses } from '../utils/phaseColors';
@@ -69,6 +69,8 @@ function ProcessDetails({ data }) {
     const [showAll, setShowAll] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDocTypes, setSelectedDocTypes] = useState([]); // Empty array means 'Todos'
+    const [movSort, setMovSort] = useState('desc');       // 'desc' | 'asc' — movimentações DataJud
+    const [fusionSort, setFusionSort] = useState('desc'); // 'desc' | 'asc' — movimentações Fusion
 
     const DOC_TYPES = useMemo(() => ({
         'Decisões': ['3', '193', '246', '80', '81'],
@@ -111,8 +113,21 @@ function ProcessDetails({ data }) {
             );
         }
 
-        return filtered;
-    }, [activeData?.movements, searchTerm, selectedDocTypes, DOC_TYPES]);
+        // Apply sort
+        return [...filtered].sort((a, b) => {
+            const diff = new Date(a.date) - new Date(b.date);
+            return movSort === 'desc' ? -diff : diff;
+        });
+    }, [activeData?.movements, searchTerm, selectedDocTypes, DOC_TYPES, movSort]);
+
+    const fusionMovements = useMemo(() => {
+        const movs = activeData?.fusion_movements;
+        if (!movs?.length) return [];
+        return [...movs].sort((a, b) => {
+            const diff = new Date(a.date) - new Date(b.date);
+            return fusionSort === 'desc' ? -diff : diff;
+        });
+    }, [activeData?.fusion_movements, fusionSort]);
 
     const toggleFilter = (type) => {
         if (type === 'Todos') {
@@ -290,18 +305,77 @@ function ProcessDetails({ data }) {
                 </div>
             </Card>
 
+            {/* Movimentações Fusion — exibido apenas quando há dados do PAV */}
+            {fusionMovements.length > 0 && (
+                <Card className="p-0">
+                <CardContent className="p-6" aria-labelledby="fusion-movements-heading">
+                    <div className="flex items-center justify-between mb-5">
+                        <h2 id="fusion-movements-heading" className="text-lg font-bold text-gray-900 flex items-center mb-0">
+                            <Database className="mr-2 h-5 w-5 text-amber-500" aria-hidden="true" />
+                            Movimentações Fusion
+                            <span className="ml-2 px-2 py-0.5 bg-amber-50 text-amber-600 rounded text-xs font-bold border border-amber-200">
+                                {fusionMovements.length}
+                            </span>
+                            <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-semibold border border-amber-200">
+                                PAV
+                            </span>
+                        </h2>
+                        <button
+                            onClick={() => setFusionSort(s => s === 'desc' ? 'asc' : 'desc')}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                            title={fusionSort === 'desc' ? 'Ordenado: mais recente primeiro' : 'Ordenado: mais antigo primeiro'}
+                        >
+                            <ArrowDownUp className="h-3.5 w-3.5" />
+                            {fusionSort === 'desc' ? 'Mais recente' : 'Mais antigo'}
+                        </button>
+                    </div>
+                    <ol className="relative border-l-2 border-amber-100 ml-3 space-y-6 pl-8 pb-2 list-none">
+                        {fusionMovements.map((mov, idx) => (
+                            <li key={idx} className="relative">
+                                <span className="absolute -left-[41px] top-1 h-5 w-5 rounded-full border-4 border-white bg-amber-400 shadow-sm" aria-hidden="true" />
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
+                                    <div className="flex-1 pr-4">
+                                        <p className="text-base font-medium text-gray-900">{mov.description || '—'}</p>
+                                        {mov.code && (
+                                            <p className="text-sm text-gray-500 mt-1 uppercase tracking-tight font-semibold">Tipo: {mov.code}</p>
+                                        )}
+                                    </div>
+                                    <time
+                                        dateTime={mov.date}
+                                        className="text-xs font-mono text-amber-600 whitespace-nowrap bg-amber-50 px-2 py-1 rounded mt-2 sm:mt-0 font-bold"
+                                    >
+                                        {format(new Date(mov.date), "dd MMM yyyy, HH:mm", { locale: ptBR })}
+                                    </time>
+                                </div>
+                            </li>
+                        ))}
+                    </ol>
+                </CardContent>
+                </Card>
+            )}
+
             {/* Timeline */}
             <Card className="p-0">
             <CardContent className="p-6" aria-labelledby="movements-heading">
                 <div className="flex flex-col space-y-4 mb-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <h2 id="movements-heading" className="text-lg font-bold text-gray-900 flex items-center mb-0">
-                            <FileText className="mr-2 h-5 w-5 text-indigo-600" aria-hidden="true" />
-                            Movimentações
-                            <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs font-bold">
-                                {filteredMovements.length}
-                            </span>
-                        </h2>
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <h2 id="movements-heading" className="text-lg font-bold text-gray-900 flex items-center mb-0">
+                                <FileText className="mr-2 h-5 w-5 text-indigo-600" aria-hidden="true" />
+                                Movimentações
+                                <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs font-bold">
+                                    {filteredMovements.length}
+                                </span>
+                            </h2>
+                            <button
+                                onClick={() => setMovSort(s => s === 'desc' ? 'asc' : 'desc')}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
+                                title={movSort === 'desc' ? 'Ordenado: mais recente primeiro' : 'Ordenado: mais antigo primeiro'}
+                            >
+                                <ArrowDownUp className="h-3.5 w-3.5" />
+                                {movSort === 'desc' ? 'Mais recente' : 'Mais antigo'}
+                            </button>
+                        </div>
 
                         {/* Filter Input */}
                         <div className="relative max-w-sm w-full">

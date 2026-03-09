@@ -1,10 +1,15 @@
-from pydantic import BaseModel, field_validator, Field
+from pydantic import BaseModel, field_validator, Field, model_validator
 from typing import List, Optional, Any
 from datetime import datetime
 from .validators import ProcessNumberValidator
 from .exceptions import ValidationException
 
 class MovementBase(BaseModel):
+    date: datetime
+    description: str
+    code: Optional[str] = None
+
+class FusionMovimentoResponse(BaseModel):
     date: datetime
     description: str
     code: Optional[str] = None
@@ -55,9 +60,19 @@ class ProcessResponse(ProcessBase):
     last_update: datetime
     raw_data: Optional[Any] = None
     movements: List[MovementResponse] = []
+    fusion_movements: List[FusionMovimentoResponse] = []
 
     class Config:
         from_attributes = True
+
+    @model_validator(mode='after')
+    def extract_fusion_movements(self):
+        if self.raw_data and isinstance(self.raw_data, dict):
+            meta = self.raw_data.get('__meta__') or {}
+            raw_movs = meta.get('fusion_movements') or []
+            if raw_movs:
+                self.fusion_movements = [FusionMovimentoResponse(**m) for m in raw_movs]
+        return self
 
 class BulkProcessRequest(BaseModel):
     numbers: List[str] = Field(..., min_length=1, max_length=1000, description="List of process numbers (max 1000)")
