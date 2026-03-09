@@ -73,6 +73,41 @@ class FusionAPIClient:
             follow_redirects=True,
         )
 
+    def update_cookie(self, new_cookie: str) -> None:
+        """
+        Atualiza o cookie de sessão PAV em runtime sem recriar o cliente HTTP.
+        Permite renovar a sessão sem reiniciar o servidor.
+        """
+        self._session_cookie = new_cookie
+        self._http.headers["Cookie"] = new_cookie
+        logger.info("FusionAPIClient: cookie de sessão PAV atualizado")
+
+    @property
+    def session_cookie(self) -> str:
+        """Retorna o cookie de sessão atual (para uso no keepalive)."""
+        return self._session_cookie
+
+    async def check_session(self) -> tuple[bool, int]:
+        """
+        Verifica se a sessão PAV está ativa fazendo um ping leve.
+        Usa o endpoint dados-da-consulta com CNJ inválido — apenas para
+        resetar o timeout de inatividade do servidor.
+
+        Returns:
+            (is_alive: bool, status_code: int)
+        """
+        if not self._session_cookie:
+            return False, 0
+
+        url = self._base_url + self._ENDPOINT.format(cnj="00000000000000000000")
+        try:
+            response = await self._http.get(url)
+            alive = response.status_code < 400
+            return alive, response.status_code
+        except httpx.RequestError as e:
+            logger.warning(f"FusionAPIClient.check_session error: {e}")
+            return False, -1
+
     async def get_document_tree(self, numero_cnj: str) -> Optional[FusionResult]:
         """
         Busca árvore de documentos pelo número CNJ.

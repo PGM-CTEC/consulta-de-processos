@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Loader2, Play, CheckCircle2, Database, Globe } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Loader2, Play, CheckCircle2, Database, Globe, RefreshCw, BookmarkIcon, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
-import { testSQLConnection, importFromSQL, testFusionConnection } from '../services/api';
+import { testSQLConnection, importFromSQL, testFusionConnection, getFusionStatus, updateFusionCookie } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { sqlConfigSchema } from '../lib/validationSchemas';
 
@@ -20,6 +20,49 @@ const SettingsComponent = () => {
     const [testingFusion, setTestingFusion] = useState(false);
     const [fusionResult, setFusionResult] = useState(null);
     const [fusionTestCnj, setFusionTestCnj] = useState('');
+    const [fusionStatus, setFusionStatus] = useState(null);
+    const [loadingStatus, setLoadingStatus] = useState(false);
+    const [updatingCookie, setUpdatingCookie] = useState(false);
+
+    const backendOrigin = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8000';
+
+    const bookmarkletCode = `javascript:(function(){var c=document.cookie.split(';').find(function(s){return s.trim().startsWith('JSESSIONID=')});if(!c){alert('JSESSIONID não encontrado. Verifique se você está logado no PAV.');return;}fetch('${backendOrigin}/fusion/cookie',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({cookie:c.trim()})}).then(function(r){return r.json()}).then(function(d){alert(d.success?'✓ '+d.message:'✗ '+d.message)}).catch(function(){alert('✗ Backend não encontrado em ${backendOrigin}');});})();`;
+
+    const loadFusionStatus = useCallback(async () => {
+        setLoadingStatus(true);
+        try {
+            const data = await getFusionStatus();
+            setFusionStatus(data);
+        } catch {
+            setFusionStatus({ configured: false, alive: false, message: 'Erro ao verificar status.' });
+        } finally {
+            setLoadingStatus(false);
+        }
+    }, []);
+
+    useEffect(() => { loadFusionStatus(); }, [loadFusionStatus]);
+
+    const handleUpdateCookie = async () => {
+        if (!fusionCookie.trim()) {
+            toast.error('Cole o cookie JSESSIONID antes de atualizar.');
+            return;
+        }
+        setUpdatingCookie(true);
+        try {
+            const result = await updateFusionCookie(fusionCookie.trim());
+            if (result.success) {
+                toast.success(result.message);
+                setFusionCookie('');
+                await loadFusionStatus();
+            } else {
+                toast.error(result.message);
+            }
+        } catch {
+            toast.error('Erro ao atualizar cookie.');
+        } finally {
+            setUpdatingCookie(false);
+        }
+    };
 
     const {
         register,
@@ -106,33 +149,109 @@ const SettingsComponent = () => {
                     <h3 className="font-bold text-amber-800">Integração Fusion/PAV</h3>
                     <span className="ml-auto px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700 border border-amber-300">Fallback DataJud</span>
                 </div>
-                <div className="p-6 space-y-4">
-                    <p className="text-sm text-gray-500">
-                        Configure o cookie de sessão PAV para ativar a consulta Fusion como fallback quando um processo
-                        não for encontrado no DataJud. O cookie é usado apenas no servidor — não é armazenado no frontend.
-                    </p>
-                    <div className="space-y-1">
-                        <label htmlFor="fusion-cookie" className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                            Cookie de Sessão PAV (FUSION_PAV_SESSION_COOKIE)
-                        </label>
-                        <input
-                            id="fusion-cookie"
-                            type="password"
-                            value={fusionCookie}
-                            onChange={(e) => setFusionCookie(e.target.value)}
-                            className={fieldClass}
-                            placeholder="Cole aqui o valor do cookie de sessão do PAV"
-                        />
-                        <p className="text-xs text-gray-400">
-                            Defina via variável de ambiente <code className="bg-gray-100 px-1 rounded">FUSION_PAV_SESSION_COOKIE</code> no servidor para persistência.
-                        </p>
+                <div className="p-6 space-y-5">
+
+                    {/* Status da sessão */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            {loadingStatus ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                            ) : fusionStatus?.alive ? (
+                                <Wifi className="h-4 w-4 text-green-500" />
+                            ) : (
+                                <WifiOff className="h-4 w-4 text-red-400" />
+                            )}
+                            <span className={`text-sm font-medium ${fusionStatus?.alive ? 'text-green-700' : 'text-red-600'}`}>
+                                {loadingStatus ? 'Verificando…' : (fusionStatus?.message ?? 'Status desconhecido')}
+                            </span>
+                            {fusionStatus?.cookie_preview && (
+                                <code className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{fusionStatus.cookie_preview}</code>
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={loadFusionStatus}
+                            disabled={loadingStatus}
+                            className="p-1.5 text-gray-400 hover:text-amber-600 transition-colors rounded"
+                            title="Verificar novamente"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${loadingStatus ? 'animate-spin' : ''}`} />
+                        </button>
                     </div>
 
-                    <div className="space-y-1">
-                        <label htmlFor="fusion-cnj" className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                            Testar com número CNJ
-                        </label>
-                        <div className="flex space-x-2">
+                    {/* Aviso quando sessão expirada */}
+                    {fusionStatus && !fusionStatus.alive && (
+                        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                            <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                            <span>Sessão PAV expirada. Use o bookmarklet abaixo estando logado no PAV, ou cole o cookie manualmente.</span>
+                        </div>
+                    )}
+
+                    {/* Bookmarklet */}
+                    <div className="space-y-2">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                            <BookmarkIcon className="h-3.5 w-3.5" />
+                            Atualização automática via Bookmarklet
+                        </p>
+                        <p className="text-xs text-gray-500">
+                            Arraste o botão abaixo para a barra de favoritos do Chrome. Quando precisar renovar a sessão,
+                            abra o PAV, clique no favorito — o cookie é enviado automaticamente para o backend.
+                        </p>
+                        <a
+                            href={bookmarkletCode}
+                            draggable="true"
+                            onClick={(e) => e.preventDefault()}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-lg cursor-grab active:cursor-grabbing select-none transition-colors"
+                            title="Arraste para a barra de favoritos"
+                        >
+                            <BookmarkIcon className="h-4 w-4" />
+                            Renovar Sessão PAV
+                        </a>
+                        <p className="text-xs text-gray-400">↑ Arraste este botão para a barra de favoritos. Não clique aqui.</p>
+                    </div>
+
+                    <hr className="border-gray-100" />
+
+                    {/* Atualização manual */}
+                    <div className="space-y-2">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Atualização manual do cookie</p>
+                        <p className="text-xs text-gray-400">
+                            Abra o PAV no Chrome → F12 → Application → Cookies → copie o valor de <code className="bg-gray-100 px-1 rounded">JSESSIONID</code>.
+                        </p>
+                        <div className="flex gap-2">
+                            <input
+                                id="fusion-cookie"
+                                type="password"
+                                value={fusionCookie}
+                                onChange={(e) => setFusionCookie(e.target.value)}
+                                onPaste={(e) => {
+                                    const pasted = e.clipboardData.getData('text');
+                                    if (pasted && !pasted.includes('JSESSIONID')) {
+                                        setFusionCookie('JSESSIONID=' + pasted.trim());
+                                        e.preventDefault();
+                                    }
+                                }}
+                                className={`${fieldClass} flex-1`}
+                                placeholder="JSESSIONID=ABC123… (ou só o valor)"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleUpdateCookie}
+                                disabled={updatingCookie || !fusionCookie.trim()}
+                                className="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-amber-600 transition-all flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap"
+                            >
+                                {updatingCookie ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                Atualizar
+                            </button>
+                        </div>
+                    </div>
+
+                    <hr className="border-gray-100" />
+
+                    {/* Teste de conexão */}
+                    <div className="space-y-2">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Testar conexão com número CNJ</p>
+                        <div className="flex gap-2">
                             <input
                                 id="fusion-cnj"
                                 type="text"
@@ -145,28 +264,27 @@ const SettingsComponent = () => {
                                 type="button"
                                 onClick={handleTestFusion}
                                 disabled={testingFusion}
-                                className="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-amber-600 transition-all flex items-center space-x-2 disabled:opacity-50"
+                                className="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-amber-600 transition-all flex items-center gap-1.5 disabled:opacity-50"
                             >
                                 {testingFusion ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                                 <span>Testar</span>
                             </button>
                         </div>
+                        {fusionResult && (
+                            <div className={`p-3 rounded-lg border text-sm ${fusionResult.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                                <p className="font-bold">{fusionResult.success ? '✓ Encontrado' : '✗ Não encontrado'}</p>
+                                <p>{fusionResult.message}</p>
+                                {fusionResult.success && (
+                                    <ul className="mt-2 space-y-0.5 text-xs">
+                                        <li><span className="font-medium">Fonte:</span> {fusionResult.fonte}</li>
+                                        <li><span className="font-medium">Classe:</span> {fusionResult.classe_processual}</li>
+                                        <li><span className="font-medium">Sistema:</span> {fusionResult.sistema}</li>
+                                        <li><span className="font-medium">Movimentos:</span> {fusionResult.total_movimentos}</li>
+                                    </ul>
+                                )}
+                            </div>
+                        )}
                     </div>
-
-                    {fusionResult && (
-                        <div className={`p-4 rounded-lg border text-sm ${fusionResult.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-                            <p className="font-bold">{fusionResult.success ? '✓ Encontrado' : '✗ Não encontrado'}</p>
-                            <p>{fusionResult.message}</p>
-                            {fusionResult.success && (
-                                <ul className="mt-2 space-y-0.5 text-xs">
-                                    <li><span className="font-medium">Fonte:</span> {fusionResult.fonte}</li>
-                                    <li><span className="font-medium">Classe:</span> {fusionResult.classe_processual}</li>
-                                    <li><span className="font-medium">Sistema:</span> {fusionResult.sistema}</li>
-                                    <li><span className="font-medium">Movimentos:</span> {fusionResult.total_movimentos}</li>
-                                </ul>
-                            )}
-                        </div>
-                    )}
                 </div>
             </div>
 
