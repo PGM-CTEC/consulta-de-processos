@@ -300,7 +300,7 @@ async def submit_bulk_job(
             db_factory=SessionLocal,
             max_concurrent=settings.BULK_MAX_CONCURRENT,
             request_delay=settings.BULK_REQUEST_DELAY,
-            fusion_service=get_fusion_service() if settings.fusion_api_configured else None,
+            fusion_service=get_fusion_service() if get_fusion_api_client() and get_fusion_api_client().session_cookie else None,
         )
     )
     return schemas.BulkJobStatusResponse(
