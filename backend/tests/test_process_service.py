@@ -62,15 +62,12 @@ class TestProcessServiceGetOrUpdateProcess:
         asyncio.run(run_test())
 
     def test_get_or_update_process_api_error_fallback_to_cache(self, process_service, sample_process_db):
-        """TC-4: Fallback to cached data when API error occurs."""
+        """TC-4: Erros de API propagam exceção (sem fallback de cache)."""
         async def run_test():
             with patch.object(process_service.client, 'get_process', new_callable=AsyncMock) as mock_get:
                 mock_get.side_effect = DataJudAPIException("API timeout")
-                result = await process_service.get_or_update_process("00000001010000100001")
-
-                # Should return cached version
-                assert result is not None
-                assert result.number == "00000001010000100001"
+                with pytest.raises(DataJudAPIException):
+                    await process_service.get_or_update_process("00000001010000100001")
 
         asyncio.run(run_test())
 
@@ -85,14 +82,12 @@ class TestProcessServiceGetOrUpdateProcess:
         asyncio.run(run_test())
 
     def test_get_or_update_process_unexpected_error_with_cache(self, process_service, sample_process_db):
-        """TC-6: Handle unexpected errors with fallback to cache."""
+        """TC-6: Erros inesperados propagam exceção (sem fallback de cache)."""
         async def run_test():
             with patch.object(process_service.client, 'get_process', new_callable=AsyncMock) as mock_get:
                 mock_get.side_effect = Exception("Unexpected error")
-                result = await process_service.get_or_update_process("00000001010000100001")
-
-                assert result is not None
-                assert result.number == "00000001010000100001"
+                with pytest.raises(DataJudAPIException):
+                    await process_service.get_or_update_process("00000001010000100001")
 
         asyncio.run(run_test())
 

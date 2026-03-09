@@ -54,24 +54,15 @@ class ProcessService:
         2. Parses and saves to DB with proper transaction management
         3. Returns the updated object
         """
-        # Fetch fresh data from API
+        # Fetch fresh data from API — sem fallback de cache: toda consulta deve
+        # refletir o estado atual das fontes (DataJud / Fusion).
         try:
             api_data = await self.client.get_process(process_number)
         except DataJudAPIException as e:
-            # DataJud API specific errors - try to return local copy if exists
             logger.warning(f"DataJud API error for {process_number}: {e.message}")
-            local_process = self.get_from_db(process_number)
-            if local_process:
-                logger.info(f"Returning cached data for {process_number}")
-                return local_process
             raise
         except Exception as e:
-            # Unexpected errors - try local copy as fallback
             logger.error(f"Unexpected error fetching {process_number}: {str(e)}")
-            local_process = self.get_from_db(process_number)
-            if local_process:
-                logger.info(f"Returning cached data for {process_number} after error")
-                return local_process
             raise DataJudAPIException("Erro ao buscar processo") from e
 
         if not api_data:
