@@ -3,7 +3,7 @@ import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, Chev
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useForm } from 'react-hook-form';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
-import { bulkSubmit, getBulkJob } from '../services/api';
+import { bulkSubmit, getBulkJob, getFusionStatus } from '../services/api';
 import * as XLSX from 'xlsx';
 import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
 import { exporters } from '../utils/exportHelpers';
@@ -64,7 +64,7 @@ const FailureRow = React.memo(({ number }) => (
     <tr className="bg-red-50/20 dark:bg-red-900/20">
         <td className="px-6 py-4 font-mono text-sm text-red-700 dark:text-red-400 font-bold">{number}</td>
         <td colSpan="3" className="px-6 py-4 text-xs text-red-500 dark:text-red-400 italic font-medium">
-            Não localizado nos sistemas DataJud
+            Não localizado (DataJud / PAV)
         </td>
         <td className="px-6 py-4">
             <XCircle className="h-4 w-4 text-red-500 dark:text-red-400" />
@@ -169,6 +169,7 @@ const BulkSearch = () => {
     const [apiError, setApiError] = useState(null);
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [dragging, setDragging] = useState(false);
+    const [fusionUnavailableWarning, setFusionUnavailableWarning] = useState(false);
     // Queue-based bulk job state
     const [job, setJob] = useState(null);         // current job metadata
     const pollRef = useRef(null);                 // interval handle
@@ -232,8 +233,13 @@ const BulkSearch = () => {
                     setLoading(false);
                     if (status.status === 'done') {
                         trackSearch('bulk', true);
-                        // Load all results (first page) and merge with job data
                         setResults({ results: status.results, failures: status.failures });
+                        // Se há falhas, verificar se a sessão PAV estava ativa
+                        if (status.failures?.length > 0) {
+                            getFusionStatus().then(fs => {
+                                setFusionUnavailableWarning(!fs?.configured);
+                            }).catch(() => {});
+                        }
                     } else {
                         trackSearch('bulk', false);
                         setApiError('O processamento em lote falhou. Tente novamente.');
@@ -273,6 +279,7 @@ const BulkSearch = () => {
         setApiError(null);
         setResults(null);
         setJob(null);
+        setFusionUnavailableWarning(false);
         stopPolling();
 
         try {
@@ -560,6 +567,15 @@ const BulkSearch = () => {
                     {/* Failures section — rendered once after all results, not repeated per page */}
                     {results.failures.length > 0 && (
                         <div className="border-t border-gray-100 dark:border-slate-700 px-6 py-4">
+                            {fusionUnavailableWarning && (
+                                <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
+                                    <span>
+                                        <strong>Sessão PAV não configurada.</strong> Os processos não localizados podem existir apenas no sistema PAV.
+                                        Configure o cookie de sessão na aba <strong>Configurações</strong> e refaça a busca.
+                                    </span>
+                                </div>
+                            )}
                             <h3 className="text-sm font-bold text-red-600 dark:text-red-400 mb-3 flex items-center gap-2">
                                 <XCircle className="h-4 w-4" />
                                 Não localizados ({results.failures.length})
