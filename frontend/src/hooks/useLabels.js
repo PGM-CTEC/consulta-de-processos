@@ -31,7 +31,7 @@ const DEFAULT_LABELS = {
 
 export function useLabels() {
     const [labels, setLabels] = useState(DEFAULT_LABELS);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         async function loadLabels() {
