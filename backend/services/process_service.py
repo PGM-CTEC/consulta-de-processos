@@ -93,22 +93,37 @@ class ProcessService:
             f"fusion_service={'sim' if self.fusion_service else 'NÃO CONFIGURADO'} | "
             f"missing_instances={_missing_check}"
         )
-        if self.fusion_service and self._should_enrich_with_fusion(process_number, api_data):
-            try:
-                fusion_result = await self.fusion_service.get_document_tree(process_number)
-                if fusion_result:
-                    api_data = self._enrich_api_data_with_fusion(api_data, fusion_result)
-                    logger.info(
-                        f"Processo {process_number} enriquecido com Fusion "
-                        f"(1ª instância ausente no DataJud)"
-                    )
-                else:
-                    logger.warning(
-                        f"Processo {process_number}: Fusion ativado mas processo "
-                        f"NÃO encontrado no Fusion/PAV — mantendo dados apenas do DataJud"
-                    )
-            except Exception as e:
-                logger.warning(f"Falha ao enriquecer {process_number} com Fusion: {e}")
+        if self._should_enrich_with_fusion(process_number, api_data):
+            _fusion_unavailable = False
+            if self.fusion_service:
+                try:
+                    fusion_result = await self.fusion_service.get_document_tree(process_number)
+                    if fusion_result:
+                        api_data = self._enrich_api_data_with_fusion(api_data, fusion_result)
+                        logger.info(
+                            f"Processo {process_number} enriquecido com Fusion "
+                            f"(1ª instância ausente no DataJud)"
+                        )
+                    else:
+                        _fusion_unavailable = True
+                        logger.warning(
+                            f"Processo {process_number}: Fusion ativado mas processo "
+                            f"NÃO encontrado no Fusion/PAV — fase marcada como Indefinido"
+                        )
+                except Exception as e:
+                    _fusion_unavailable = True
+                    logger.warning(f"Falha ao enriquecer {process_number} com Fusion: {e}")
+            else:
+                _fusion_unavailable = True
+                logger.warning(
+                    f"Processo {process_number}: 1ª instância ausente no DataJud e "
+                    f"Fusion não configurado — fase marcada como Indefinido"
+                )
+            if _fusion_unavailable:
+                api_data = copy.deepcopy(api_data)
+                _meta_ov = api_data.setdefault("__meta__", {})
+                _meta_ov["phase_override"] = "Indefinido"
+                _meta_ov["phase_override_reason"] = "first_instance_unavailable"
 
         # Transform and Save with transaction management
         process = self._save_process_data(process_number, api_data)
@@ -282,8 +297,17 @@ class ProcessService:
         meta = raw_payload.get("__meta__") or {}
         all_hits = meta.get("all_hits") or []
 
+        # Phase override — 1ª instância esperada mas indisponível (Fusion falhou/ausente)
+        if meta.get("phase_override"):
+            phase = meta["phase_override"]
+            meta["phase_analysis_mode"] = "override"
+            meta["phase_instances_analyzed"] = 0
+            logger.info(
+                f"Phase override '{phase}' para {process_number}: "
+                f"{meta.get('phase_override_reason')}"
+            )
         # If multiple instances available, use unified analysis
-        if all_hits and len(all_hits) > 1:
+        elif all_hits and len(all_hits) > 1:
             phase = self.phase_analyzer.analyze_unified(
                 all_instances=all_hits,
                 process_number=process_number,
@@ -341,6 +365,13 @@ class ProcessService:
             phase_warning = (
                 "Informação: dados da 1ª instância complementados via Fusion/PAV "
                 "por ausência na base pública do DataJud/CNJ."
+            )
+            meta["phase_warning"] = phase_warning
+
+        if meta.get("phase_override_reason") == "first_instance_unavailable" and not phase_warning:
+            phase_warning = (
+                "Não foi possível obter dados da 1ª instância. "
+                "Tente consultar novamente."
             )
             meta["phase_warning"] = phase_warning
 
