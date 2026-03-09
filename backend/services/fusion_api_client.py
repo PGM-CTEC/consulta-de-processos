@@ -102,8 +102,8 @@ class FusionAPIClient:
     async def check_session(self) -> tuple[bool, int]:
         """
         Verifica se a sessão PAV está ativa fazendo um ping leve.
-        Usa o endpoint dados-da-consulta com CNJ inválido — apenas para
-        resetar o timeout de inatividade do servidor.
+        Usa o endpoint arvore-processo-by-sistema com CNJ dummy — apenas para
+        checar autenticação e resetar o timeout de inatividade do servidor.
 
         Returns:
             (is_alive: bool, status_code: int)
@@ -114,7 +114,10 @@ class FusionAPIClient:
         url = self._base_url + self._ENDPOINT.format(cnj="00000000000000000000")
         try:
             response = await self._http.get(url)
-            alive = response.status_code < 400
+            # 401/403 = sessão inválida/expirada.
+            # Qualquer outro status (200, 404, 400…) = sessão ativa,
+            # pois o endpoint pode retornar não-2xx para CNJ dummy mesmo com sessão válida.
+            alive = response.status_code not in (401, 403)
             return alive, response.status_code
         except httpx.RequestError as e:
             logger.warning(f"FusionAPIClient.check_session error: {e}")
