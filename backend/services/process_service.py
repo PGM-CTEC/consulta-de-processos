@@ -86,6 +86,13 @@ class ProcessService:
 
         # Enriquece com Fusion quando DataJud retornou dados mas sem a 1ª instância,
         # e o número do processo tem OOOO != "0000" (tramitou em 1ª instância)
+        _meta_check = (api_data.get("__meta__") or {})
+        _missing_check = _meta_check.get("missing_expected_instances") or []
+        logger.info(
+            f"[Fusion-check] {process_number} | "
+            f"fusion_service={'sim' if self.fusion_service else 'NÃO CONFIGURADO'} | "
+            f"missing_instances={_missing_check}"
+        )
         if self.fusion_service and self._should_enrich_with_fusion(process_number, api_data):
             try:
                 fusion_result = await self.fusion_service.get_document_tree(process_number)
@@ -94,6 +101,11 @@ class ProcessService:
                     logger.info(
                         f"Processo {process_number} enriquecido com Fusion "
                         f"(1ª instância ausente no DataJud)"
+                    )
+                else:
+                    logger.warning(
+                        f"Processo {process_number}: Fusion ativado mas processo "
+                        f"NÃO encontrado no Fusion/PAV — mantendo dados apenas do DataJud"
                     )
             except Exception as e:
                 logger.warning(f"Falha ao enriquecer {process_number} com Fusion: {e}")
