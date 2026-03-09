@@ -19,14 +19,18 @@ class TestStatsServiceBasics:
     """Tests for basic statistics (3 tests)."""
 
     def test_get_database_stats_empty_database(self, test_db):
-        """TC-1: Get stats from empty database returns zero counts."""
+        """TC-1: Get stats from empty database returns zero counts.
+
+        StatsService (BI-002) always returns all 15 phases for the dashboard,
+        even when the database is empty — all with count == 0.
+        """
         service = StatsService(test_db)
         stats = service.get_database_stats()
 
         assert stats.total_processes == 0
         assert stats.total_movements == 0
         assert len(stats.tribunals) == 0
-        assert len(stats.phases) == 0
+        assert all(p.count == 0 for p in stats.phases)
         assert len(stats.timeline) == 0
         assert stats.last_updated is None
 
@@ -168,7 +172,10 @@ class TestStatsServicePhases:
     """Tests for phase statistics (3 tests)."""
 
     def test_phase_grouping_and_count(self, test_db):
-        """TC-7: Phases are properly grouped and counted."""
+        """TC-7: Phases are properly grouped and counted.
+
+        StatsService (BI-002) returns all 15 phases; only 4 should have count > 0.
+        """
         phases = ["01", "02", "03", "04"]
         process_id = 0
         for phase in phases:
@@ -184,12 +191,17 @@ class TestStatsServicePhases:
         service = StatsService(test_db)
         stats = service.get_database_stats()
 
-        assert len(stats.phases) == 4
-        for phase_stat in stats.phases:
+        phases_with_data = [p for p in stats.phases if p.count > 0]
+        assert len(phases_with_data) == 4
+        for phase_stat in phases_with_data:
             assert phase_stat.count == 2
 
     def test_phase_sorted_by_count_descending(self, test_db):
-        """TC-8: Phases sorted by count descending."""
+        """TC-8: Phase counts are correctly aggregated.
+
+        StatsService (BI-002) sorts phases by code ascending (01, 02, 03...),
+        not by count. This test verifies correct count aggregation per phase.
+        """
         # Phase 01 with 5, Phase 02 with 3, Phase 03 with 1
         for i in range(5):
             process = models.Process(
@@ -215,13 +227,19 @@ class TestStatsServicePhases:
         service = StatsService(test_db)
         stats = service.get_database_stats()
 
-        assert stats.phases[0].phase == "01"
-        assert stats.phases[0].count == 5
-        assert stats.phases[1].phase == "02"
-        assert stats.phases[1].count == 3
+        phase_01 = next(p for p in stats.phases if p.phase.startswith("01"))
+        phase_02 = next(p for p in stats.phases if p.phase.startswith("02"))
+        phase_03 = next(p for p in stats.phases if p.phase.startswith("03"))
+        assert phase_01.count == 5
+        assert phase_02.count == 3
+        assert phase_03.count == 1
 
     def test_phase_null_values_handled(self, test_db):
-        """TC-9: Null phase values are handled."""
+        """TC-9: Null phase values are handled.
+
+        StatsService (BI-002) always returns all 15 phases. Null phases are
+        excluded from counting — only phase 01 should have count > 0.
+        """
         process1 = models.Process(
             number="0000001-01.0000.1.00.0001",
             phase="01"
@@ -237,9 +255,11 @@ class TestStatsServicePhases:
         service = StatsService(test_db)
         stats = service.get_database_stats()
 
-        # Only phase 01 should be in results (nulls filtered out)
-        assert len(stats.phases) == 1
-        assert stats.phases[0].phase == "01"
+        # Only phase 01 should have count > 0 (nulls excluded from counting)
+        phase_01 = next(p for p in stats.phases if p.phase.startswith("01"))
+        assert phase_01.count == 1
+        phases_nonzero = [p for p in stats.phases if p.count > 0]
+        assert len(phases_nonzero) == 1
 
 
 class TestStatsServiceTimeline:
