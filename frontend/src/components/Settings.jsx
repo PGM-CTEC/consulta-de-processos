@@ -24,9 +24,18 @@ const SettingsComponent = () => {
     const [loadingStatus, setLoadingStatus] = useState(false);
     const [updatingCookie, setUpdatingCookie] = useState(false);
 
-    const backendOrigin = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8000';
+    const backendOrigin = (import.meta.env.VITE_API_BASE_URL === '/' ? window.location.origin : import.meta.env.VITE_BACKEND_URL) || window.location.origin;
 
     const bookmarkletCode = `javascript:(function(){var c=document.cookie.split(';').find(function(s){return s.trim().startsWith('JSESSIONID=')});if(!c){alert('JSESSIONID não encontrado. Verifique se você está logado no PAV.');return;}fetch('${backendOrigin}/fusion/cookie',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({cookie:c.trim()})}).then(function(r){return r.json()}).then(function(d){alert(d.success?'✓ '+d.message:'✗ '+d.message)}).catch(function(){alert('✗ Backend não encontrado em ${backendOrigin}');});})();`;
+
+    const [bookmarkletCopied, setBookmarkletCopied] = useState(false);
+
+    const handleCopyBookmarklet = () => {
+        navigator.clipboard.writeText(bookmarkletCode);
+        setBookmarkletCopied(true);
+        toast.success('Código do bookmarklet copiado! Cole em um novo favorito no navegador.');
+        setTimeout(() => setBookmarkletCopied(false), 3000);
+    };
 
     const loadFusionStatus = useCallback(async () => {
         setLoadingStatus(true);
@@ -194,20 +203,18 @@ const SettingsComponent = () => {
                             Atualização automática via Bookmarklet
                         </p>
                         <p className="text-xs text-gray-500">
-                            Arraste o botão abaixo para a barra de favoritos do Chrome. Quando precisar renovar a sessão,
-                            abra o PAV, clique no favorito — o cookie é enviado automaticamente para o backend.
+                            Clique em "Copiar Código" abaixo. Depois, no Chrome, clique na barra de favoritos com botão direito → "Adicionar página"
+                            e cole o código no campo URL. Quando precisar renovar a sessão, abra o PAV e clique no favorito.
                         </p>
-                        <a
-                            href={bookmarkletCode}
-                            draggable="true"
-                            onClick={(e) => e.preventDefault()}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-lg cursor-grab active:cursor-grabbing select-none transition-colors"
-                            title="Arraste para a barra de favoritos"
+                        <button
+                            type="button"
+                            onClick={handleCopyBookmarklet}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-lg transition-colors"
                         >
                             <BookmarkIcon className="h-4 w-4" />
-                            Renovar Sessão PAV
-                        </a>
-                        <p className="text-xs text-gray-400">↑ Arraste este botão para a barra de favoritos. Não clique aqui.</p>
+                            {bookmarkletCopied ? 'Copiado! ✓' : 'Copiar Código'}
+                        </button>
+                        <p className="text-xs text-gray-400">O código será copiado para a área de transferência. Cole em um novo favorito.</p>
                     </div>
 
                     <hr className="border-gray-100" />
