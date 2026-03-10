@@ -80,7 +80,7 @@ export const VALID_PHASES = {
   },
   EXECUCAO_SUSPENSA_PARCIAL: {
     code: '12',
-    name: 'Execução Suspensa Parcialmente (Impugnação Parcial)',
+    name: 'Execução Suspensa Parcialmente',
     type: 'Execução',
     color: 'yellow'
   },
@@ -164,10 +164,19 @@ export function normalizePhase(phaseInput, classNature = null) {
   const input = String(phaseInput).trim();
   const isExecution = classNature ? isExecutionClass(classNature) : false;
 
-  // Verifica se é um código (01-15)
+  // Verifica se é um código puro (01-15)
   if (/^0?\d{1,2}$/.test(input)) {
     const code = input.padStart(2, '0');
     return PHASE_BY_CODE[code]?.name || VALID_PHASES.CONHECIMENTO_ANTES_SENTENCA.name;
+  }
+
+  // Extrai código do início da string (ex: "02 Conhecimento - Sentença sem Trânsito em Julgado")
+  // Evita que palavras-chave como "trânsito" sobrescrevam o código numérico explícito
+  const codeAtStart = input.match(/^(\d{2})\s+/);
+  if (codeAtStart) {
+    const code = codeAtStart[1];
+    const phaseByCode = PHASE_BY_CODE[code];
+    if (phaseByCode) return phaseByCode.name;
   }
 
   // Normaliza traços/travessões para fazer comparação
@@ -210,6 +219,10 @@ export function normalizePhase(phaseInput, classNature = null) {
     return VALID_PHASES.EXECUCAO.name;
   }
 
+  // Helper: "transitado" ou "trânsito" sem "sem trânsito"/"sem transito" antes
+  const hasTransito = (inputLower.includes('transitado') || inputLower.includes('trânsito')) &&
+    !inputLower.includes('sem trânsito') && !inputLower.includes('sem transito');
+
   // Fases de Conhecimento (01-09)
   // Apenas processar como conhecimento se NÃO for classe de execução
   if (!isExecution) {
@@ -219,7 +232,7 @@ export function normalizePhase(phaseInput, classNature = null) {
 
       // Tribunais Superiores (07-09)
       if (inputLower.includes('superior') || inputLower.includes('stj') || inputLower.includes('stf')) {
-        if (inputLower.includes('transitado') || inputLower.includes('trânsito')) {
+        if (hasTransito) {
           return VALID_PHASES.CONHECIMENTO_RECURSO_SUP_TRANSITADO.name;
         }
         if (inputLower.includes('julgado')) {
@@ -231,7 +244,7 @@ export function normalizePhase(phaseInput, classNature = null) {
       // 2ª Instância (04-06)
       if (inputLower.includes('2ª') || inputLower.includes('segunda') ||
         inputLower.includes('recurso') || inputLower.includes('2.')) {
-        if (inputLower.includes('transitado') || inputLower.includes('trânsito')) {
+        if (hasTransito) {
           return VALID_PHASES.CONHECIMENTO_RECURSO_2_TRANSITADO.name;
         }
         if (inputLower.includes('julgado')) {
@@ -242,14 +255,14 @@ export function normalizePhase(phaseInput, classNature = null) {
 
       // 1ª Instância (01-03)
       if (inputLower.includes('sentença')) {
-        if (inputLower.includes('transitado') || inputLower.includes('trânsito')) {
+        if (hasTransito) {
           return VALID_PHASES.CONHECIMENTO_SENTENCA_COM_TRANSITO.name;
         }
         return VALID_PHASES.CONHECIMENTO_SENTENCA_SEM_TRANSITO.name;
       }
 
       // Se só menciona trânsito em julgado (sem mais contexto), assume G1 com trânsito
-      if (inputLower.includes('transitado') || inputLower.includes('trânsito')) {
+      if (hasTransito) {
         return VALID_PHASES.CONHECIMENTO_SENTENCA_COM_TRANSITO.name;
       }
     }
@@ -262,7 +275,9 @@ export function normalizePhase(phaseInput, classNature = null) {
 /**
  * Códigos de movimento CNJ que indicam baixa definitiva/arquivamento
  */
-const MOVIMENTO_BAIXA_CODES = [22, 246, 861, 865, 10965, 10966, 10967, 12618];
+// Sincronizado com backend/services/phase_analyzer.py: CODIGOS_BAIXA
+// NOTA: 246 = "Proferida Sentença" (CNJ) — NÃO é código de baixa
+const MOVIMENTO_BAIXA_CODES = [22, 861, 865, 10965, 10966, 10967, 12618];
 
 /**
  * Verifica se há movimento de baixa definitiva nos dados do processo
@@ -281,8 +296,9 @@ export function hasDefinitiveBaixa(movements) {
   if (!baixaMovement) return false;
 
   // Verificar se há desarquivamento posterior
+  // Sincronizado com backend/services/phase_analyzer.py: CODIGOS_REATIVACAO
   const baixaDate = new Date(baixaMovement.date || baixaMovement.dataHora);
-  const CODIGOS_DESARQUIVAMENTO = [900, 12617];
+  const CODIGOS_DESARQUIVAMENTO = [900, 12617, 849, 36];
 
   const hasDesarquivamento = movements.some(m => {
     const code = parseInt(m.code || m.codigo);

@@ -378,6 +378,7 @@ class ProcessService:
             "distribution_date": dist_date,
             "phase": phase,
             "phase_warning": phase_warning,
+            "phase_source": "datajud",
             "raw_data": raw_payload
         }
 

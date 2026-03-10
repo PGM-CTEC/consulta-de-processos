@@ -129,6 +129,7 @@ class ProcessBulkResult(BaseModel):
     court_unit: Optional[str] = None
     phase: Optional[str] = None
     phase_warning: Optional[str] = None
+    phase_source: Optional[str] = None
     class_nature: Optional[str] = None
     last_update: Optional[datetime] = None
 
