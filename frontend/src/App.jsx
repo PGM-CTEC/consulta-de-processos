@@ -4,6 +4,7 @@ import { Search, Database, Layers, BarChart3, Settings, Sun, Moon } from 'lucide
 import SearchProcess from './components/SearchProcess';
 import LoadingFallback from './components/LoadingFallback';
 import FeedbackButton from './components/FeedbackButton';
+import FusionOnlyBanner from './components/FusionOnlyBanner';
 import HistoryTab from './components/HistoryTab'; // Import direto para evitar erro com React 19
 import { searchProcess } from './services/api';
 import { useLabels } from './hooks/useLabels';
@@ -66,6 +67,9 @@ function App() {
       </a>
 
       <Toaster position="top-right" toastOptions={{ ariaLive: 'polite' }} />
+
+      {/* Fusion-Only Mode Banner — exibe aviso sobre classificação exclusiva via Fusion */}
+      <FusionOnlyBanner />
 
       {/* Header */}
       <header className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm">
