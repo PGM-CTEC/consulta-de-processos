@@ -8,9 +8,13 @@ export default defineConfig(({ mode }) => {
   const target = env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
   return {
-    plugins: [react()],
+    plugins: [react({ jsxRuntime: 'automatic' })],
     resolve: {
       dedupe: ['react', 'react-dom'],
+      alias: {
+        'react': 'react',
+        'react-dom': 'react-dom',
+      }
     },
     build: {
       // Simplificado para evitar problemas de duplicidade de instâncias de React (REM-037)
