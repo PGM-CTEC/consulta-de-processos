@@ -62,7 +62,8 @@
       "Bash(cmd /c test-backend.bat)",
       "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File iniciar.ps1)",
       "Skill(commit-commands:commit-push-pr)",
-      "Skill(commit-commands:commit-push-pr:*)"
+      "Skill(commit-commands:commit-push-pr:*)",
+      "Bash(npx vitest run src/tests/HistoryTab.test.jsx)"
     ]
   },
   "hooks": {

@@ -56,6 +56,19 @@ setup_access_logger()  # Initializes "access" logger used by RequestLoggerMiddle
 async def lifespan(app: FastAPI):
     # Create tables on startup
     models.Base.metadata.create_all(bind=engine)
+
+    # Migrate: add phase and classification_log columns to search_history if missing
+    from sqlalchemy import inspect as sa_inspect, text as sa_text
+    inspector = sa_inspect(engine)
+    existing_cols = {c["name"] for c in inspector.get_columns("search_history")}
+    with engine.connect() as conn:
+        if "phase" not in existing_cols:
+            conn.execute(sa_text("ALTER TABLE search_history ADD COLUMN phase VARCHAR"))
+            conn.commit()
+        if "classification_log" not in existing_cols:
+            conn.execute(sa_text("ALTER TABLE search_history ADD COLUMN classification_log TEXT"))
+            conn.commit()
+
     yield
 
 load_dotenv()
