@@ -277,7 +277,8 @@ export function normalizePhase(phaseInput, classNature = null) {
  */
 // Sincronizado com backend/services/phase_analyzer.py: CODIGOS_BAIXA
 // NOTA: 246 = "Proferida Sentença" (CNJ) — NÃO é código de baixa
-const MOVIMENTO_BAIXA_CODES = [22, 861, 865, 10965, 10966, 10967, 12618];
+// NOTA: 22 = "Definitivo" (CNJ) — NÃO é código de baixa, é apenas uma marcação de processo finalizado
+const MOVIMENTO_BAIXA_CODES = [861, 865, 10965, 10966, 10967, 12618];
 
 /**
  * Verifica se há movimento de baixa definitiva nos dados do processo
