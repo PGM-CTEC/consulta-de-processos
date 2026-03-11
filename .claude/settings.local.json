@@ -70,7 +70,10 @@
       "Bash(pytest tests/test_fusion_detect.py::test_detect_cookie_endpoint_exists -v)",
       "Bash(npm run lint)",
       "Bash(powershell -Command \"Stop-Process -Name python -Force -ErrorAction SilentlyContinue; sleep 2; Remove-Item ''C:/Projetos códigos/consulta-de-processos/consulta_processual.db'' -Force -ErrorAction SilentlyContinue; Write-Host ''✅ Banco deletado com sucesso''\")",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(lsof -ti:8000)",
+      "Bash(xargs kill:*)",
+      "Bash(pkill -f \"uvicorn.*main:app\")"
     ]
   },
   "hooks": {
