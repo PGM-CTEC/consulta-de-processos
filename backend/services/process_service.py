@@ -11,7 +11,8 @@ from .datajud import DataJudClient
 from .phase_analyzer import PhaseAnalyzer, DCP_WARNING_MESSAGE
 from .fusion_service import FusionService
 from .fusion_api_client import FusionResult
-from .document_phase_classifier import DocumentPhaseClassifier
+from .document_phase_classifier import DocumentPhaseClassifier, ClassificationResult
+import json as _json
 from .. import models, schemas
 from ..database import transaction_scope
 from ..exceptions import DataJudAPIException, ProcessNotFoundException
@@ -75,61 +76,99 @@ class ProcessService:
             self._record_history_not_found(process_number, error_type="not_found")
             return None
 
-        # Enriquece com Fusion quando DataJud retornou dados mas sem a 1ª instância,
-        # e o número do processo tem OOOO != "0000" (tramitou em 1ª instância)
-        _meta_check = (api_data.get("__meta__") or {})
-        _missing_check = _meta_check.get("missing_expected_instances") or []
-        logger.info(
-            f"[Fusion-check] {process_number} | "
-            f"fusion_service={'sim' if self.fusion_service else 'NÃO CONFIGURADO'} | "
-            f"missing_instances={_missing_check}"
-        )
-        if self._should_enrich_with_fusion(process_number, api_data):
-            _fusion_unavailable = False
-            if self.fusion_service:
-                try:
-                    fusion_result = await self.fusion_service.get_document_tree(process_number)
-                    if fusion_result:
-                        api_data = self._enrich_api_data_with_fusion(api_data, fusion_result)
-                        logger.info(
-                            f"Processo {process_number} enriquecido com Fusion "
-                            f"(1ª instância ausente no DataJud)"
-                        )
-                    else:
-                        _fusion_unavailable = True
-                        logger.warning(
-                            f"Processo {process_number}: Fusion ativado mas processo "
-                            f"NÃO encontrado no Fusion/PAV — fase marcada como Indefinido"
-                        )
-                except Exception as e:
-                    _fusion_unavailable = True
-                    logger.warning(f"Falha ao enriquecer {process_number} com Fusion: {e}")
-            else:
-                _fusion_unavailable = True
-                logger.warning(
-                    f"Processo {process_number}: 1ª instância ausente no DataJud e "
-                    f"Fusion não configurado — fase marcada como Indefinido"
+        # [FUSION-ONLY] Classifica fase exclusivamente via Fusion PAV.
+        # DataJud fornece dados cadastrais; a fase vem do DocumentPhaseClassifier.
+        api_data = copy.deepcopy(api_data)
+        _meta_fo = api_data.setdefault("__meta__", {})
+
+        if self.fusion_service:
+            try:
+                fusion_result = await self.fusion_service.get_document_tree(process_number)
+                if fusion_result and fusion_result.movimentos:
+                    classification = DocumentPhaseClassifier.classify_with_trace(
+                        fusion_result.movimentos,
+                        fusion_result.classe_processual
+                        or (api_data.get("classe") or {}).get("nome", ""),
+                    )
+                    fusion_phase = classification.phase
+                    _meta_fo["fusion_phase_override"] = fusion_phase
+                    _meta_fo["fusion_phase_source"] = fusion_result.fonte
+                    _meta_fo["fusion_movements"] = [
+                        {"date": m.data.isoformat(), "description": m.tipo_local, "code": m.tipo_cnj}
+                        for m in fusion_result.movimentos
+                    ]
+                    _meta_fo["fusion_fonte"] = fusion_result.fonte
+                    _meta_fo["fusion_classe_processual"] = fusion_result.classe_processual
+                    _meta_fo["fusion_classification_log"] = classification.to_dict()
+                    logger.info(
+                        f"[Fusion-only] {process_number}: fase={fusion_phase}, "
+                        f"fonte={fusion_result.fonte}, regra={classification.rule_applied}"
+                    )
+                else:
+                    _meta_fo["fusion_phase_override"] = "Indefinido"
+                    _meta_fo["fusion_phase_source"] = "fusion_api"
+                    _meta_fo["fusion_phase_warning"] = (
+                        "Processo não encontrado no Fusion/PAV. "
+                        "Fase indisponível neste modo de classificação."
+                    )
+                    _meta_fo["fusion_classification_log"] = {
+                        "phase": "Indefinido", "branch": None, "classe_normalizada": None,
+                        "total_movimentos": 0, "rule_applied": "fusion_not_found",
+                        "decisive_movement": None, "decisive_movement_date": None,
+                        "anchor_matches": {},
+                    }
+                    logger.warning(
+                        f"[Fusion-only] {process_number}: não encontrado no Fusion/PAV"
+                    )
+            except Exception as e:
+                _meta_fo["fusion_phase_override"] = "Indefinido"
+                _meta_fo["fusion_phase_source"] = "fusion_api"
+                _meta_fo["fusion_phase_warning"] = (
+                    f"Erro ao consultar Fusion/PAV: {e}. "
+                    "Fase indisponível neste modo de classificação."
                 )
-            if _fusion_unavailable:
-                api_data = copy.deepcopy(api_data)
-                _meta_ov = api_data.setdefault("__meta__", {})
-                _meta_ov["phase_override"] = "Indefinido"
-                _meta_ov["phase_override_reason"] = "first_instance_unavailable"
+                _meta_fo["fusion_classification_log"] = {
+                    "phase": "Indefinido", "branch": None, "classe_normalizada": None,
+                    "total_movimentos": 0, "rule_applied": "fusion_error",
+                    "decisive_movement": None, "decisive_movement_date": None,
+                    "anchor_matches": {},
+                }
+                logger.warning(f"[Fusion-only] {process_number}: erro Fusion: {e}")
+        else:
+            _meta_fo["fusion_phase_override"] = "Indefinido"
+            _meta_fo["fusion_phase_source"] = "datajud"
+            _meta_fo["fusion_phase_warning"] = (
+                "Serviço Fusion/PAV não configurado. "
+                "Fase indisponível neste modo de classificação."
+            )
+            _meta_fo["fusion_classification_log"] = {
+                "phase": "Indefinido", "branch": None, "classe_normalizada": None,
+                "total_movimentos": 0, "rule_applied": "fusion_unavailable",
+                "decisive_movement": None, "decisive_movement_date": None,
+                "anchor_matches": {},
+            }
 
         # Transform and Save with transaction management
         process = self._save_process_data(process_number, api_data)
 
         # Record search in history
         if process:
-            self._record_history(process)
+            self._record_history(
+                process,
+                classification_log=_meta_fo.get("fusion_classification_log"),
+            )
 
         return process
 
-    def _record_history(self, process: models.Process):
+    def _record_history(self, process: models.Process, classification_log: dict = None):
         """
         Record a found process in history, avoiding duplicates.
-        If already exists, update timestamp and court info.
+        If already exists, update timestamp, court info, phase and classification log.
         """
+        log_json = (
+            _json.dumps(classification_log, ensure_ascii=False)
+            if classification_log else None
+        )
         try:
             existing = self.db.query(models.SearchHistory).filter(
                 models.SearchHistory.number == process.number
@@ -139,6 +178,9 @@ class ProcessService:
                 existing.created_at = func.now()
                 existing.status = "found"
                 existing.court = process.court
+                existing.phase_source = process.phase_source
+                existing.phase = process.phase
+                existing.classification_log = log_json
                 existing.error_type = None
                 existing.error_message = None
             else:
@@ -147,6 +189,9 @@ class ProcessService:
                     status="found",
                     court=process.court,
                     tribunal_expected=process.tribunal_name,
+                    phase_source=process.phase_source,
+                    phase=process.phase,
+                    classification_log=log_json,
                 )
                 self.db.add(history_entry)
 
@@ -282,89 +327,28 @@ class ProcessService:
             "distribution date"
         )
 
-        # Phase Analysis - with support for unified multi-instance analysis
-        class_code = class_node.get("codigo")
+        # [FUSION-ONLY] Phase Analysis — usa exclusivamente a fase calculada
+        # pelo DocumentPhaseClassifier via Fusion PAV.
         raw_payload = dict(data)
         meta = raw_payload.get("__meta__") or {}
-        all_hits = meta.get("all_hits") or []
 
-        # Phase override — 1ª instância esperada mas indisponível (Fusion falhou/ausente)
-        if meta.get("phase_override"):
+        phase_source = meta.get("fusion_phase_source", "datajud")
+
+        if meta.get("fusion_phase_override"):
+            phase = meta["fusion_phase_override"]
+            meta["phase_analysis_mode"] = "fusion_only"
+        elif meta.get("phase_override"):
             phase = meta["phase_override"]
             meta["phase_analysis_mode"] = "override"
-            meta["phase_instances_analyzed"] = 0
-            logger.info(
-                f"Phase override '{phase}' para {process_number}: "
-                f"{meta.get('phase_override_reason')}"
-            )
-        # If multiple instances available, use unified analysis
-        elif all_hits and len(all_hits) > 1:
-            phase = self.phase_analyzer.analyze_unified(
-                all_instances=all_hits,
-                process_number=process_number,
-                tribunal=tribunal
-            )
-            meta["phase_analysis_mode"] = "unified"
-            meta["phase_instances_analyzed"] = len(all_hits)
-            logger.info(f"Unified phase analysis for {process_number}: {len(all_hits)} instances")
         else:
-            # Single instance or no meta - fallback to original analysis
-            phase = self.phase_analyzer.analyze(
-                class_code,
-                movements_data,
-                tribunal,
-                data.get("grau", "G1"),
-                process_number=process_number,
-                raw_data=data
-            )
-            meta["phase_analysis_mode"] = "single_instance"
-            meta["phase_instances_analyzed"] = 1
+            # Segurança: sem dados Fusion nem override → Indefinido
+            phase = "Indefinido"
+            meta["phase_analysis_mode"] = "fusion_only_fallback"
 
-        # Store unified phase in meta for reuse in get_process_instance()
         meta["unified_phase"] = phase
 
-        selected_index = meta.get("selected_index", 0)
-        source_grau = None
-        instances = meta.get("instances") or []
-        if isinstance(selected_index, int) and 0 <= selected_index < len(instances):
-            source_grau = (instances[selected_index] or {}).get("grau")
-        if not source_grau:
-            source_grau = raw_payload.get("grau")
-        meta["phase_source_instance_index"] = selected_index
-        meta["phase_source_grau"] = source_grau
-
-        # Injeta mensagem de aviso quando processo é DCP TJRJ antigo
-        phase_warning = None
-        if isinstance(phase, str) and phase.endswith(" *"):
-            phase_warning = DCP_WARNING_MESSAGE
-            meta["phase_warning"] = phase_warning
-
-        # Aviso quando apenas a Turma Recursal (TR = 2ª instância) foi localizada no
-        # DataJud sem a 1ª instância do Juizado Especial (JE).  O DataJud indexa o TR
-        # separado da tramitação no JE, e processos anteriores a ~2018 frequentemente
-        # não têm a 1ª instância exposta na base pública.
-        missing = meta.get("missing_expected_instances", [])
-        if "JE" in missing and not phase_warning:
-            phase_warning = (
-                "Atenção: o DataJud localizou apenas a 2ª instância (Turma Recursal). "
-                "A 1ª instância (Juizado Especial) pode estar tramitando ativamente "
-                "no sistema do tribunal e não foi localizada na base pública do DataJud/CNJ."
-            )
-            meta["phase_warning"] = phase_warning
-
-        if meta.get("fusion_g1_enriched") and not phase_warning:
-            phase_warning = (
-                "Informação: dados da 1ª instância complementados via Fusion/PAV "
-                "por ausência na base pública do DataJud/CNJ."
-            )
-            meta["phase_warning"] = phase_warning
-
-        if meta.get("phase_override_reason") == "first_instance_unavailable" and not phase_warning:
-            phase_warning = (
-                "Não foi possível obter dados da 1ª instância. "
-                "Tente consultar novamente."
-            )
-            meta["phase_warning"] = phase_warning
+        # Warning: usa aviso injetado pelo get_or_update_process()
+        phase_warning = meta.get("fusion_phase_warning")
 
         raw_payload["__meta__"] = meta
 
@@ -378,7 +362,7 @@ class ProcessService:
             "distribution_date": dist_date,
             "phase": phase,
             "phase_warning": phase_warning,
-            "phase_source": "datajud",
+            "phase_source": phase_source,
             "raw_data": raw_payload
         }
 
@@ -712,10 +696,11 @@ class ProcessService:
         self, process_number: str, fusion_result: FusionResult
     ) -> models.Process:
         """Salva resultado do Fusion no banco e retorna o processo."""
-        phase = DocumentPhaseClassifier.classify(
+        classification = DocumentPhaseClassifier.classify_with_trace(
             fusion_result.movimentos,
             fusion_result.classe_processual,
         )
+        phase = classification.phase
 
         with transaction_scope(self.db):
             process = (
@@ -751,7 +736,8 @@ class ProcessService:
 
             self.db.flush()
 
-        # Registrar no histórico com phase_source
+        # Registrar no histórico com phase_source e classification_log
+        log_json = _json.dumps(classification.to_dict(), ensure_ascii=False)
         try:
             existing = self.db.query(models.SearchHistory).filter(
                 models.SearchHistory.number == process_number
@@ -762,6 +748,8 @@ class ProcessService:
                 existing.status = "found"
                 existing.phase_source = fusion_result.fonte
                 existing.court = fusion_result.sistema
+                existing.phase = phase
+                existing.classification_log = log_json
                 existing.error_type = None
                 existing.error_message = None
             else:
@@ -771,6 +759,8 @@ class ProcessService:
                     court=fusion_result.sistema,
                     tribunal_expected=fusion_result.sistema,
                     phase_source=fusion_result.fonte,
+                    phase=phase,
+                    classification_log=log_json,
                 )
                 self.db.add(history_entry)
 
@@ -781,7 +771,7 @@ class ProcessService:
 
         logger.info(
             f"Processo {process_number} classificado via Fusion: "
-            f"fase={phase}, fonte={fusion_result.fonte}"
+            f"fase={phase}, fonte={fusion_result.fonte}, regra={classification.rule_applied}"
         )
         return process
 
