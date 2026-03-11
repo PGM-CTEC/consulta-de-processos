@@ -11,7 +11,8 @@ from .datajud import DataJudClient
 from .phase_analyzer import PhaseAnalyzer, DCP_WARNING_MESSAGE
 from .fusion_service import FusionService
 from .fusion_api_client import FusionResult
-from .document_phase_classifier import DocumentPhaseClassifier
+from .document_phase_classifier import DocumentPhaseClassifier, ClassificationResult
+import json as _json
 from .. import models, schemas
 from ..database import transaction_scope
 from ..exceptions import DataJudAPIException, ProcessNotFoundException
@@ -84,11 +85,12 @@ class ProcessService:
             try:
                 fusion_result = await self.fusion_service.get_document_tree(process_number)
                 if fusion_result and fusion_result.movimentos:
-                    fusion_phase = DocumentPhaseClassifier.classify(
+                    classification = DocumentPhaseClassifier.classify_with_trace(
                         fusion_result.movimentos,
                         fusion_result.classe_processual
                         or (api_data.get("classe") or {}).get("nome", ""),
                     )
+                    fusion_phase = classification.phase
                     _meta_fo["fusion_phase_override"] = fusion_phase
                     _meta_fo["fusion_phase_source"] = fusion_result.fonte
                     _meta_fo["fusion_movements"] = [
@@ -97,9 +99,10 @@ class ProcessService:
                     ]
                     _meta_fo["fusion_fonte"] = fusion_result.fonte
                     _meta_fo["fusion_classe_processual"] = fusion_result.classe_processual
+                    _meta_fo["fusion_classification_log"] = classification.to_dict()
                     logger.info(
                         f"[Fusion-only] {process_number}: fase={fusion_phase}, "
-                        f"fonte={fusion_result.fonte}"
+                        f"fonte={fusion_result.fonte}, regra={classification.rule_applied}"
                     )
                 else:
                     _meta_fo["fusion_phase_override"] = "Indefinido"
@@ -108,6 +111,12 @@ class ProcessService:
                         "Processo não encontrado no Fusion/PAV. "
                         "Fase indisponível neste modo de classificação."
                     )
+                    _meta_fo["fusion_classification_log"] = {
+                        "phase": "Indefinido", "branch": None, "classe_normalizada": None,
+                        "total_movimentos": 0, "rule_applied": "fusion_not_found",
+                        "decisive_movement": None, "decisive_movement_date": None,
+                        "anchor_matches": {},
+                    }
                     logger.warning(
                         f"[Fusion-only] {process_number}: não encontrado no Fusion/PAV"
                     )
@@ -118,6 +127,12 @@ class ProcessService:
                     f"Erro ao consultar Fusion/PAV: {e}. "
                     "Fase indisponível neste modo de classificação."
                 )
+                _meta_fo["fusion_classification_log"] = {
+                    "phase": "Indefinido", "branch": None, "classe_normalizada": None,
+                    "total_movimentos": 0, "rule_applied": "fusion_error",
+                    "decisive_movement": None, "decisive_movement_date": None,
+                    "anchor_matches": {},
+                }
                 logger.warning(f"[Fusion-only] {process_number}: erro Fusion: {e}")
         else:
             _meta_fo["fusion_phase_override"] = "Indefinido"
@@ -126,21 +141,34 @@ class ProcessService:
                 "Serviço Fusion/PAV não configurado. "
                 "Fase indisponível neste modo de classificação."
             )
+            _meta_fo["fusion_classification_log"] = {
+                "phase": "Indefinido", "branch": None, "classe_normalizada": None,
+                "total_movimentos": 0, "rule_applied": "fusion_unavailable",
+                "decisive_movement": None, "decisive_movement_date": None,
+                "anchor_matches": {},
+            }
 
         # Transform and Save with transaction management
         process = self._save_process_data(process_number, api_data)
 
         # Record search in history
         if process:
-            self._record_history(process)
+            self._record_history(
+                process,
+                classification_log=_meta_fo.get("fusion_classification_log"),
+            )
 
         return process
 
-    def _record_history(self, process: models.Process):
+    def _record_history(self, process: models.Process, classification_log: dict = None):
         """
         Record a found process in history, avoiding duplicates.
-        If already exists, update timestamp and court info.
+        If already exists, update timestamp, court info, phase and classification log.
         """
+        log_json = (
+            _json.dumps(classification_log, ensure_ascii=False)
+            if classification_log else None
+        )
         try:
             existing = self.db.query(models.SearchHistory).filter(
                 models.SearchHistory.number == process.number
@@ -150,6 +178,9 @@ class ProcessService:
                 existing.created_at = func.now()
                 existing.status = "found"
                 existing.court = process.court
+                existing.phase_source = process.phase_source
+                existing.phase = process.phase
+                existing.classification_log = log_json
                 existing.error_type = None
                 existing.error_message = None
             else:
@@ -158,6 +189,9 @@ class ProcessService:
                     status="found",
                     court=process.court,
                     tribunal_expected=process.tribunal_name,
+                    phase_source=process.phase_source,
+                    phase=process.phase,
+                    classification_log=log_json,
                 )
                 self.db.add(history_entry)
 
@@ -662,10 +696,11 @@ class ProcessService:
         self, process_number: str, fusion_result: FusionResult
     ) -> models.Process:
         """Salva resultado do Fusion no banco e retorna o processo."""
-        phase = DocumentPhaseClassifier.classify(
+        classification = DocumentPhaseClassifier.classify_with_trace(
             fusion_result.movimentos,
             fusion_result.classe_processual,
         )
+        phase = classification.phase
 
         with transaction_scope(self.db):
             process = (
@@ -701,7 +736,8 @@ class ProcessService:
 
             self.db.flush()
 
-        # Registrar no histórico com phase_source
+        # Registrar no histórico com phase_source e classification_log
+        log_json = _json.dumps(classification.to_dict(), ensure_ascii=False)
         try:
             existing = self.db.query(models.SearchHistory).filter(
                 models.SearchHistory.number == process_number
@@ -712,6 +748,8 @@ class ProcessService:
                 existing.status = "found"
                 existing.phase_source = fusion_result.fonte
                 existing.court = fusion_result.sistema
+                existing.phase = phase
+                existing.classification_log = log_json
                 existing.error_type = None
                 existing.error_message = None
             else:
@@ -721,6 +759,8 @@ class ProcessService:
                     court=fusion_result.sistema,
                     tribunal_expected=fusion_result.sistema,
                     phase_source=fusion_result.fonte,
+                    phase=phase,
+                    classification_log=log_json,
                 )
                 self.db.add(history_entry)
 
@@ -731,7 +771,7 @@ class ProcessService:
 
         logger.info(
             f"Processo {process_number} classificado via Fusion: "
-            f"fase={phase}, fonte={fusion_result.fonte}"
+            f"fase={phase}, fonte={fusion_result.fonte}, regra={classification.rule_applied}"
         )
         return process
 

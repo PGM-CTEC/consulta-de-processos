@@ -46,10 +46,23 @@ class HistoryResponse(BaseModel):
     tribunal_expected: Optional[str] = None
     court: Optional[str] = None
     phase_source: Optional[str] = None
+    phase: Optional[str] = None
+    classification_log: Optional[Any] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+    @model_validator(mode='after')
+    def parse_classification_log(self):
+        """Deserializa classification_log de JSON string (DB) para dict (API)."""
+        if isinstance(self.classification_log, str):
+            import json
+            try:
+                self.classification_log = json.loads(self.classification_log)
+            except (json.JSONDecodeError, TypeError):
+                self.classification_log = None
+        return self
 
 class ProcessCreate(ProcessBase):
     raw_data: Optional[Any] = None

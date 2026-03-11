@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Clock, Trash2, Copy, ExternalLink, FileText, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Clock, Trash2, Copy, ExternalLink, FileText, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { getHistory, clearHistory, searchProcess } from '../services/api';
+import { PHASE_BY_CODE } from '../constants/phases';
+import { getPhaseColorClasses } from '../utils/phaseColors';
 
 const STATUS_LABELS = {
     found: { label: 'Encontrado', icon: CheckCircle, cls: 'text-green-600 bg-green-50 border-green-200' },
@@ -17,6 +19,28 @@ const FILTERS = [
     { value: 'error', label: 'Erros' },
 ];
 
+const RULE_LABELS = {
+    P1_arquivamento: 'Arquivamento encontrado (prioridade máxima)',
+    P2_transito_em_julgado: 'Certidão/Trânsito em Julgado detectado',
+    P3_sentenca_com_remessa_posterior: 'Sentença + remessa posterior',
+    P3_sentenca_sem_transito: 'Sentença sem trânsito em julgado',
+    P4_remessa_sem_sentenca: 'Remessa/recurso sem sentença prévia',
+    P5_suspensao: 'Suspensão/sobrestamento detectado',
+    P6_fallback_antes_sentenca: 'Nenhuma âncora encontrada (fase inicial)',
+    E1_arquivamento: 'Arquivamento em execução',
+    E2_suspensao: 'Suspensão em execução',
+    E3_fallback: 'Execução em andamento (nenhuma âncora)',
+    empty_list_fallback: 'Lista de movimentos vazia',
+    fusion_not_found: 'Processo não encontrado no Fusion/PAV',
+    fusion_error: 'Erro ao consultar Fusion/PAV',
+    fusion_unavailable: 'Serviço Fusion/PAV não configurado',
+};
+
+const BRANCH_LABELS = {
+    conhecimento: 'Conhecimento',
+    execucao: 'Execução',
+};
+
 function StatusBadge({ status }) {
     const cfg = STATUS_LABELS[status] ?? STATUS_LABELS.found;
     const Icon = cfg.icon;
@@ -28,10 +52,98 @@ function StatusBadge({ status }) {
     );
 }
 
+function PhaseBadge({ phase }) {
+    if (!phase || phase === 'Indefinido') {
+        return (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-200">
+                Fase Indefinida
+            </span>
+        );
+    }
+    const code = String(phase).padStart(2, '0');
+    const phaseInfo = PHASE_BY_CODE[code];
+    const colorCls = getPhaseColorClasses(code);
+    return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${colorCls}`}>
+            {phaseInfo ? `${code} — ${phaseInfo.name}` : `Fase ${phase}`}
+        </span>
+    );
+}
+
+function ClassificationTrace({ log }) {
+    if (!log) return null;
+
+    return (
+        <div className="px-6 pb-4 bg-gray-50 border-t border-gray-100 animate-in fade-in duration-200">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 py-3 text-xs">
+                <div>
+                    <span className="text-gray-400 font-semibold uppercase tracking-wide block">Branch</span>
+                    <p className="text-gray-700 font-medium mt-0.5">
+                        {BRANCH_LABELS[log.branch] || log.branch || 'N/A'}
+                    </p>
+                </div>
+                <div>
+                    <span className="text-gray-400 font-semibold uppercase tracking-wide block">Movimentos</span>
+                    <p className="text-gray-700 mt-0.5">{log.total_movimentos ?? 0}</p>
+                </div>
+                <div>
+                    <span className="text-gray-400 font-semibold uppercase tracking-wide block">Classe</span>
+                    <p className="text-gray-700 mt-0.5 truncate" title={log.classe_normalizada || ''}>
+                        {log.classe_normalizada || 'N/A'}
+                    </p>
+                </div>
+                <div>
+                    <span className="text-gray-400 font-semibold uppercase tracking-wide block">Regra</span>
+                    <p className="text-gray-700 mt-0.5 font-medium">
+                        {RULE_LABELS[log.rule_applied] || log.rule_applied || 'N/A'}
+                    </p>
+                </div>
+            </div>
+
+            {log.decisive_movement && (
+                <div className="py-2 border-t border-gray-200 text-xs">
+                    <span className="text-gray-400 font-semibold uppercase tracking-wide block">Movimento decisivo</span>
+                    <p className="text-gray-800 font-semibold mt-0.5">
+                        {log.decisive_movement}
+                        {log.decisive_movement_date && (
+                            <span className="text-gray-500 font-normal ml-2">
+                                ({new Date(log.decisive_movement_date).toLocaleDateString('pt-BR')})
+                            </span>
+                        )}
+                    </p>
+                </div>
+            )}
+
+            {log.anchor_matches && Object.keys(log.anchor_matches).length > 0 && (
+                <div className="py-2 border-t border-gray-200 text-xs">
+                    <span className="text-gray-400 font-semibold uppercase tracking-wide block mb-1">
+                        Âncoras detectadas
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                        {Object.entries(log.anchor_matches).map(([key, idx]) => (
+                            <span
+                                key={key}
+                                className={`px-2 py-0.5 rounded text-xs font-mono ${
+                                    idx !== null
+                                        ? 'bg-green-50 text-green-700 border border-green-200'
+                                        : 'bg-gray-100 text-gray-400 border border-gray-200'
+                                }`}
+                            >
+                                {key}: {idx !== null ? `#${idx}` : '—'}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 function HistoryTab({ labels, onProcessView }) {
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
+    const [expandedId, setExpandedId] = useState(null);
 
     useEffect(() => {
         loadHistory();
@@ -55,6 +167,7 @@ function HistoryTab({ labels, onProcessView }) {
         try {
             await clearHistory();
             setHistory([]);
+            setExpandedId(null);
             toast.success('Histórico limpo com sucesso!');
         } catch {
             toast.error('Erro ao limpar histórico.');
@@ -161,11 +274,13 @@ function HistoryTab({ labels, onProcessView }) {
             ) : (
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                     <ul className="divide-y divide-gray-100">
-                        {filtered.map((item, index) => {
+                        {filtered.map((item) => {
                             const isFound = item.status === 'found' || !item.status;
                             const tribunal = item.court?.split(' - ')[0] || item.tribunal_expected || null;
+                            const isExpanded = expandedId === item.id;
+                            const hasLog = !!item.classification_log;
                             return (
-                                <li key={index} className="hover:bg-gray-50 transition-colors">
+                                <li key={item.id} className="hover:bg-gray-50/50 transition-colors">
                                     <div className="px-6 py-4 flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-4 flex-1 min-w-0">
                                             <div className={`p-2 rounded-lg shrink-0 ${isFound ? 'bg-indigo-50' : 'bg-red-50'}`}>
@@ -177,6 +292,9 @@ function HistoryTab({ labels, onProcessView }) {
                                                         {item.number}
                                                     </p>
                                                     <StatusBadge status={item.status || 'found'} />
+                                                    {isFound && item.phase && (
+                                                        <PhaseBadge phase={item.phase} />
+                                                    )}
                                                 </div>
                                                 <div className="text-xs text-gray-500 mt-1 space-y-0.5">
                                                     {isFound && tribunal && (
@@ -197,6 +315,27 @@ function HistoryTab({ labels, onProcessView }) {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
+                                            {hasLog && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setExpandedId(isExpanded ? null : item.id);
+                                                    }}
+                                                    className={`p-2 rounded-lg transition-colors ${
+                                                        isExpanded
+                                                            ? 'text-indigo-600 bg-indigo-50'
+                                                            : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'
+                                                    }`}
+                                                    title="Ver log de classificação"
+                                                    aria-label="Ver log de classificação"
+                                                    aria-expanded={isExpanded}
+                                                >
+                                                    {isExpanded
+                                                        ? <ChevronUp className="h-4 w-4" />
+                                                        : <ChevronDown className="h-4 w-4" />
+                                                    }
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={(e) => handleCopyNumber(item.number, e)}
                                                 className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
@@ -218,6 +357,9 @@ function HistoryTab({ labels, onProcessView }) {
                                             )}
                                         </div>
                                     </div>
+                                    {isExpanded && hasLog && (
+                                        <ClassificationTrace log={item.classification_log} />
+                                    )}
                                 </li>
                             );
                         })}

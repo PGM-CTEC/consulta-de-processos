@@ -82,6 +82,8 @@ class SearchHistory(Base):
     tribunal_expected = Column(String, nullable=True)  # Tribunal inferido pelo número CNJ
     court = Column(String, nullable=True)  # Tribunal real (quando encontrado)
     phase_source = Column(String(20), nullable=True)  # datajud | fusion_api | fusion_sql | null
+    phase = Column(String, nullable=True)  # "01"–"15" ou "Indefinido"
+    classification_log = Column(Text, nullable=True)  # JSON string — trace da classificação
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
