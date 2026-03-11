@@ -229,3 +229,22 @@ class AlertResponse(BaseModel):
     message: str
     severity: str
     timestamp: str
+
+
+class PhaseCorrectionRequest(BaseModel):
+    """Request para corrigir fase processual."""
+    corrected_phase: str  # "01"–"15"
+    reason: str  # Motivo da correção
+
+
+class PhaseCorrectionResponse(BaseModel):
+    """Response de correção de fase."""
+    id: int
+    process_number: str
+    original_phase: str
+    corrected_phase: str
+    reason: Optional[str]
+    corrected_at: datetime
+
+    class Config:
+        from_attributes = True

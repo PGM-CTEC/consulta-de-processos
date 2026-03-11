@@ -20,6 +20,7 @@ from .services.metrics_service import get_metrics_service
 from .services.bulk_queue import bulk_job_manager, run_bulk_job
 from .services.dependency_container import get_fusion_service, get_fusion_api_client, update_fusion_cookie
 from .services.fusion_service import FusionService
+from .services.phase_correction_service import PhaseCorrectionService
 from . import schemas
 from .config import settings
 from .error_handlers import register_exception_handlers
@@ -611,6 +612,45 @@ async def get_alerts(limit: int = 20):
     """Get recent performance alerts."""
     metrics_service = get_metrics_service()
     return metrics_service.get_alerts(limit=limit)
+
+
+@app.post("/processes/{number}/phase", response_model=schemas.PhaseCorrectionResponse, tags=["processes"])
+async def correct_process_phase(
+    number: str,
+    body: schemas.PhaseCorrectionRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Corrige manualmente a fase de um processo e registra o motivo.
+    Útil para treinamento do modelo de classificação.
+    """
+    # Busca o processo atual
+    process = db.query(models.Process).filter(
+        models.Process.number == number
+    ).first()
+
+    if not process:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Processo {number} não encontrado"
+        )
+
+    original_phase = process.phase
+
+    # Registra a correção
+    correction = PhaseCorrectionService.record_correction(
+        db=db,
+        process_number=number,
+        original_phase=original_phase,
+        corrected_phase=body.corrected_phase,
+        reason=body.reason
+    )
+
+    # Atualiza o processo com a nova fase
+    process.phase = body.corrected_phase
+    db.commit()
+
+    return correction
 
 
 @app.get("/circuit-breaker/status", tags=["health"])

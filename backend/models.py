@@ -168,3 +168,19 @@ def _audit_process_delete(mapper, connection, target):
             "timestamp": datetime.utcnow(),
         }
     )
+
+
+class PhaseCorrection(Base):
+    """Rastreia correções manuais de classificação de fase."""
+    __tablename__ = "phase_corrections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    process_number = Column(String, index=True, nullable=False)  # Ex: "0848464-14.2023.8.19.0001"
+    original_phase = Column(String(2), nullable=False)  # Ex: "02"
+    corrected_phase = Column(String(2), nullable=False)  # Ex: "03"
+    reason = Column(Text, nullable=True)  # Motivo da correção
+    corrected_by = Column(String, nullable=True)  # Usuário (para futuro)
+    corrected_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    def __repr__(self):
+        return f"<PhaseCorrection {self.process_number}: {self.original_phase}→{self.corrected_phase}>"

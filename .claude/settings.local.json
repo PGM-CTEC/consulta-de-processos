@@ -65,7 +65,12 @@
       "Skill(commit-commands:commit-push-pr:*)",
       "Bash(npx vitest run --reporter=verbose)",
       "Bash(npx vitest run src/tests/HistoryTab.test.jsx --reporter=verbose)",
-      "Bash(./iniciar.bat)"
+      "Bash(./iniciar.bat)",
+      "Bash(pytest tests/test_fusion_detect.py -v)",
+      "Bash(pytest tests/test_fusion_detect.py::test_detect_cookie_endpoint_exists -v)",
+      "Bash(npm run lint)",
+      "Bash(powershell -Command \"Stop-Process -Name python -Force -ErrorAction SilentlyContinue; sleep 2; Remove-Item ''C:/Projetos códigos/consulta-de-processos/consulta_processual.db'' -Force -ErrorAction SilentlyContinue; Write-Host ''✅ Banco deletado com sucesso''\")",
+      "Bash(python3:*)"
     ]
   },
   "hooks": {
