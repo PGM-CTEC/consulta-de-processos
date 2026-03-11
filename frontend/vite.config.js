@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
       // Simplificado para evitar problemas de duplicidade de instâncias de React (REM-037)
     },
     server: {
+      host: '127.0.0.1',
       proxy: {
         '/processes': {
           target: target,

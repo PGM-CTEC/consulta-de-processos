@@ -2,7 +2,7 @@
 // Story: REM-039 — PWA Offline Support
 // Strategy: Cache-first for static assets, Network-first for API calls
 
-const CACHE_NAME = 'consulta-processual-v1';
+const CACHE_NAME = 'consulta-processual-v2';
 
 // Static assets to pre-cache on install
 const PRECACHE_URLS = [
