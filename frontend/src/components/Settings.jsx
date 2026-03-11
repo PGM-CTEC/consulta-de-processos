@@ -5,6 +5,7 @@ import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { testSQLConnection, importFromSQL, testFusionConnection, getFusionStatus, updateFusionCookie } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { sqlConfigSchema } from '../lib/validationSchemas';
+import { detectFusionCookieAuto, formatDetectionError } from '../utils/fusion-cookie-detector';
 
 const fieldClass = 'w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none';
 const errorClass = 'text-red-500 text-xs mt-1';
@@ -23,6 +24,9 @@ const SettingsComponent = () => {
     const [fusionStatus, setFusionStatus] = useState(null);
     const [loadingStatus, setLoadingStatus] = useState(false);
     const [updatingCookie, setUpdatingCookie] = useState(false);
+    const [isDetecting, setIsDetecting] = useState(false);
+    const [detectionMessage, setDetectionMessage] = useState(null);
+    const [detectionStatus, setDetectionStatus] = useState(null); // 'success', 'error', 'pending'
 
     const backendOrigin = (import.meta.env.VITE_API_BASE_URL === '/' ? window.location.origin : import.meta.env.VITE_BACKEND_URL) || window.location.origin;
 
@@ -107,6 +111,37 @@ const SettingsComponent = () => {
         }
     };
 
+    const handleDetectCookie = async () => {
+        setIsDetecting(true);
+        setDetectionMessage(null);
+        setDetectionStatus('pending');
+
+        const result = await detectFusionCookieAuto({
+            retries: 3,
+            timeout: 10000
+        });
+
+        if (result.success) {
+            setDetectionStatus('success');
+            setDetectionMessage(
+                `✅ ${result.message}\nCookie: ${result.jsessionid}`
+            );
+            setFusionCookie(result.jsessionid || '');
+            // Atualizar status automaticamente após sucesso
+            await loadFusionStatus();
+            // Limpar mensagem após 5s
+            setTimeout(() => {
+                setDetectionStatus(null);
+                setDetectionMessage(null);
+            }, 5000);
+        } else {
+            setDetectionStatus('error');
+            setDetectionMessage(formatDetectionError(result));
+        }
+
+        setIsDetecting(false);
+    };
+
     const handleTestFusion = async () => {
         if (!fusionTestCnj.trim()) {
             toast.error('Informe um número CNJ para testar.');
@@ -159,6 +194,59 @@ const SettingsComponent = () => {
                     <span className="ml-auto px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700 border border-amber-300">Fallback DataJud</span>
                 </div>
                 <div className="p-6 space-y-5">
+
+                    {/* Detecção Automática */}
+                    <div className="space-y-2">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">🔗 Detecção Automática de Cookie</p>
+                        <p className="text-xs text-gray-500">
+                            Clique no botão abaixo para conectar-se automaticamente ao PAV Rio e extrair seu JSESSIONID. Requer que você esteja logado no PAV.
+                        </p>
+                        <button
+                            onClick={handleDetectCookie}
+                            disabled={isDetecting}
+                            type="button"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm font-bold rounded-lg transition-colors"
+                        >
+                            {isDetecting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Detectando...
+                                </>
+                            ) : (
+                                <>
+                                    <Globe className="h-4 w-4" />
+                                    🔗 Detectar Automaticamente
+                                </>
+                            )}
+                        </button>
+
+                        {/* Mensagem de Status */}
+                        {detectionMessage && (
+                            <div
+                                style={{
+                                    marginTop: '10px',
+                                    padding: '12px',
+                                    backgroundColor:
+                                        detectionStatus === 'success' ? '#d1fae5' :
+                                        detectionStatus === 'error' ? '#fee2e2' : '#fef3c7',
+                                    color:
+                                        detectionStatus === 'success' ? '#065f46' :
+                                        detectionStatus === 'error' ? '#7f1d1d' : '#92400e',
+                                    borderRadius: '4px',
+                                    fontSize: '13px',
+                                    whiteSpace: 'pre-wrap',
+                                    fontFamily: 'monospace',
+                                    border:
+                                        detectionStatus === 'success' ? '1px solid #6ee7b7' :
+                                        detectionStatus === 'error' ? '1px solid #fca5a5' : '1px solid #fcd34d'
+                                }}
+                            >
+                                {detectionMessage}
+                            </div>
+                        )}
+                    </div>
+
+                    <hr className="border-gray-100" />
 
                     {/* Status da sessão */}
                     <div className="flex items-center justify-between">
