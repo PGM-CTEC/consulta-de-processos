@@ -30,6 +30,8 @@ from .utils.logger import setup_logger, setup_access_logger
 from .utils.redact import redact_dict
 from .middleware import CorrelationIdMiddleware, RequestLoggerMiddleware
 from contextlib import asynccontextmanager
+import httpx
+from pathlib import Path
 
 # Sentry setup (Story: REM-013)
 SENTRY_AVAILABLE = False
@@ -171,6 +173,101 @@ async def add_security_headers(request: Request, call_next):
     if "application/json" in content_type and "charset" not in content_type:
         response.headers["content-type"] = f"{content_type}; charset=utf-8"
     return response
+
+# Configuration for Fusion/PAV cookie auto-detection
+PAV_BASE_URL = os.getenv('PAV_URL', 'https://pav.procuradoria.rio')
+SESSION_FILE = Path('.pav_session')
+
+@app.post('/fusion/detect-cookie', tags=["fusion"])
+async def detect_fusion_cookie():
+    """
+    Detecta automaticamente o cookie JSESSIONID do PAV Fusion
+    conectando à instância PAV Rio e extraindo a sessão.
+
+    Sem parâmetros. Conecta ao PAV, extrai JSESSIONID, valida
+    a sessão, e persiste em `.pav_session`.
+    """
+    try:
+        async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
+            # Tenta acessar um endpoint do PAV que gera JSESSIONID
+            response = await client.get(
+                f'{PAV_BASE_URL}/portal/action/Login/view/normal',
+                follow_redirects=True
+            )
+
+            # Extrai JSESSIONID dos cookies
+            jsessionid = response.cookies.get('JSESSIONID')
+            if not jsessionid:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        'success': False,
+                        'error': 'Cookie JSESSIONID não encontrado na resposta do PAV'
+                    }
+                )
+
+            # Valida a sessão fazendo um teste rápido
+            try:
+                validation_response = await client.get(
+                    f'{PAV_BASE_URL}/services/arquivos/search?numero=0000000',
+                    cookies={'JSESSIONID': jsessionid},
+                    timeout=5.0
+                )
+
+                if validation_response.status_code in [200, 400, 401]:
+                    # 200 = sucesso, 400/401 = cookie válido mas sem permissão
+                    # (indica que o PAV reconheceu a sessão)
+
+                    # Salva o cookie em .pav_session
+                    SESSION_FILE.write_text(jsessionid)
+
+                    return {
+                        'success': True,
+                        'message': 'Cookie PAV detectado automaticamente!',
+                        'jsessionid': jsessionid[:10] + '...'  # Mostra apenas parte
+                    }
+                else:
+                    return JSONResponse(
+                        status_code=400,
+                        content={
+                            'success': False,
+                            'error': f'PAV retornou status {validation_response.status_code}'
+                        }
+                    )
+
+            except Exception as validate_error:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        'success': False,
+                        'error': f'Erro ao validar sessão: {str(validate_error)}'
+                    }
+                )
+
+    except httpx.ConnectError:
+        return JSONResponse(
+            status_code=503,
+            content={
+                'success': False,
+                'error': 'PAV indisponível - verifique a conexão ou tente mais tarde'
+            }
+        )
+    except httpx.TimeoutException:
+        return JSONResponse(
+            status_code=503,
+            content={
+                'success': False,
+                'error': 'Timeout ao conectar ao PAV - servidor lento ou indisponível'
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                'success': False,
+                'error': f'Erro inesperado: {str(e)}'
+            }
+        )
 
 @app.get("/health", tags=["health"])
 async def health_check(db: Session = Depends(get_db)):
