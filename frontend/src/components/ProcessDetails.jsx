@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { LoadingState, ErrorState } from './LoadingState';
-import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw, ArrowDownUp, Database } from 'lucide-react';
+import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw, ArrowDownUp, Database, Edit2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getPhaseColorClasses } from '../utils/phaseColors';
@@ -11,11 +11,14 @@ import { getProcessInstance } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
+import PhaseEditModal from './PhaseEditModal';
 
 function ProcessDetails({ data }) {
     const [activeData, setActiveData] = useState(data);
     const [loadingInstance, setLoadingInstance] = useState(false);
     const [showJson, setShowJson] = useState(false);
+    const [showPhaseEditModal, setShowPhaseEditModal] = useState(false);
+    const [phaseWasEdited, setPhaseWasEdited] = useState(false);
     const jsonDialogRef = useRef(null);
 
     // Sync local state when props change
@@ -175,6 +178,16 @@ function ProcessDetails({ data }) {
         URL.revokeObjectURL(url);
     };
 
+    const handlePhaseEditSave = (correction) => {
+        // correction = { corrected_phase, reason }
+        setActiveData(prev => ({
+            ...prev,
+            phase: correction.corrected_phase
+        }));
+        setPhaseWasEdited(true);
+        setShowPhaseEditModal(false);
+    };
+
     const getCategoryStyles = (category) => {
         switch (category) {
             case 'Decisões': return 'bg-amber-100 text-amber-700 border-amber-200';
@@ -282,6 +295,7 @@ function ProcessDetails({ data }) {
                             <div className="mt-1 flex items-center flex-wrap gap-1.5">
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${correctedPhase === 'Indefinido' ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-300 dark:border-gray-600' : getPhaseColorClasses(correctedPhase, activeData.class_nature)}`}>
                                     {correctedPhase}
+                                    {phaseWasEdited && <span className="ml-1 font-bold text-orange-600">*</span>}
                                 </span>
                                 {/* Badge de origem da fase */}
                                 {activeData.phase_source && activeData.phase_source !== 'datajud' && (
@@ -292,6 +306,16 @@ function ProcessDetails({ data }) {
                                         Fusion
                                     </span>
                                 )}
+                                <Button
+                                    onClick={() => setShowPhaseEditModal(true)}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                    title="Editar fase"
+                                    aria-label="Editar fase do processo"
+                                >
+                                    <Edit2 className="h-4 w-4" />
+                                </Button>
                             </div>
                             {/* Aviso quando fase não pôde ser determinada */}
                             {activeData.phase_warning && (
@@ -488,6 +512,15 @@ function ProcessDetails({ data }) {
                 )}
             </CardContent>
             </Card>
+
+            {/* Phase Edit Modal */}
+            <PhaseEditModal
+                isOpen={showPhaseEditModal}
+                onClose={() => setShowPhaseEditModal(false)}
+                processNumber={activeData.number}
+                currentPhase={correctedPhase}
+                onSave={handlePhaseEditSave}
+            />
 
             {/* JSON Modal */}
             {showJson && activeData.raw_data && (
