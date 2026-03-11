@@ -3,7 +3,7 @@ import os
 import logging
 
 from dotenv import load_dotenv
-from typing import List
+from typing import List, Optional
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -21,6 +21,7 @@ from .services.bulk_queue import bulk_job_manager, run_bulk_job
 from .services.dependency_container import get_fusion_service, get_fusion_api_client, update_fusion_cookie
 from .services.fusion_service import FusionService
 from .services.phase_correction_service import PhaseCorrectionService
+from .services.ml_integration_service import MLIntegrationService
 from . import schemas
 from .config import settings
 from .error_handlers import register_exception_handlers
@@ -697,22 +698,118 @@ async def get_corrections_stats(db: Session = Depends(get_db)):
     }
 
 
-@app.get("/analytics/corrections/export", tags=["analytics"])
-async def export_corrections_jsonl(db: Session = Depends(get_db)):
+@app.get("/analytics/phase-patterns", tags=["analytics"])
+async def get_phase_patterns(db: Session = Depends(get_db)):
     """
-    Exporta todas as correções de fase em formato JSONL.
-    Cada linha é um JSON com: process_number, original_phase, corrected_phase, reason, corrected_at
-    Útil para treinamento de modelos de classificação automática.
+    Retorna padrões de transição de fase com estatísticas para treinar modelos ML.
+    Agrupa as correções por transição original->corrigida.
+    """
+    corrections = db.query(models.PhaseCorrection).all()
+
+    if not corrections:
+        return {"patterns": [], "total_patterns": 0}
+
+    # Agrupar por transição
+    patterns = {}
+    for c in corrections:
+        key = f"{c.original_phase}->{c.corrected_phase}"
+        if key not in patterns:
+            patterns[key] = {
+                "original_phase": c.original_phase,
+                "corrected_phase": c.corrected_phase,
+                "count": 0,
+                "reasons": {},
+                "processes": []
+            }
+
+        patterns[key]["count"] += 1
+
+        # Contar razões (agrupadas)
+        reason = c.reason or "sem_motivo"
+        patterns[key]["reasons"][reason] = patterns[key]["reasons"].get(reason, 0) + 1
+
+        # Manter lista de processos para análise
+        patterns[key]["processes"].append(c.process_number)
+
+    # Converter para lista ordenada por frequência
+    pattern_list = sorted(
+        patterns.values(),
+        key=lambda x: x["count"],
+        reverse=True
+    )
+
+    return {
+        "patterns": pattern_list,
+        "total_patterns": len(patterns),
+        "total_corrections": len(corrections)
+    }
+
+
+@app.get("/analytics/corrections/export", tags=["analytics"])
+async def export_corrections_jsonl(
+    db: Session = Depends(get_db),
+    page: int = 1,
+    page_size: int = 1000,
+    format: str = "jsonl"
+):
+    """
+    Exporta correções de fase com paginação para treinamento de modelos ML.
+
+    Query Parameters:
+    - page: número da página (padrão: 1)
+    - page_size: itens por página (padrão: 1000, máximo: 10000)
+    - format: "jsonl" (padrão) ou "json"
+
+    Retorna:
+    - JSONL: uma correção por linha (ideal para streaming)
+    - JSON: array de correções com metadados de paginação
     """
     from fastapi.responses import StreamingResponse
     import json
 
+    # Validar página e page_size
+    page = max(1, page)
+    page_size = min(max(1, page_size), 10000)  # Limite a 10k por página
+    offset = (page - 1) * page_size
+
+    # Contar total de correções
+    total_corrections = db.query(models.PhaseCorrection).count()
+    total_pages = (total_corrections + page_size - 1) // page_size
+
+    # Buscar correções da página
+    corrections = db.query(models.PhaseCorrection)\
+        .offset(offset)\
+        .limit(page_size)\
+        .all()
+
+    if format.lower() == "json":
+        # Retornar como JSON com metadados de paginação
+        return {
+            "data": [
+                {
+                    "process_number": c.process_number,
+                    "original_phase": c.original_phase,
+                    "corrected_phase": c.corrected_phase,
+                    "reason": c.reason,
+                    "corrected_at": c.corrected_at.isoformat() if c.corrected_at else None,
+                    "corrected_by": c.corrected_by,
+                }
+                for c in corrections
+            ],
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_corrections": total_corrections,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1
+            }
+        }
+
+    # Padrão: JSONL com streaming
     async def generate_jsonl():
         """Generator para streaming JSONL"""
-        corrections = db.query(models.PhaseCorrection).all()
-
         for correction in corrections:
-            # Converter para dicionário serializável
             line = {
                 "process_number": correction.process_number,
                 "original_phase": correction.original_phase,
@@ -723,10 +820,160 @@ async def export_corrections_jsonl(db: Session = Depends(get_db)):
             }
             yield json.dumps(line, ensure_ascii=False) + "\n"
 
+    filename = f"phase-corrections-page{page}.jsonl" if page > 1 else "phase-corrections.jsonl"
     return StreamingResponse(
         generate_jsonl(),
         media_type="application/x-ndjson",
         headers={
-            "Content-Disposition": "attachment; filename=phase-corrections.jsonl"
+            "Content-Disposition": f"attachment; filename={filename}",
+            "X-Total-Corrections": str(total_corrections),
+            "X-Page": str(page),
+            "X-Page-Size": str(page_size),
+            "X-Total-Pages": str(total_pages)
         }
     )
+
+
+# === ML Integration Endpoints ===
+
+# Instância global do serviço ML (pode ser injetado via DI em produção)
+_ml_service = MLIntegrationService(backend="local")
+
+
+@app.post("/ml/train", tags=["machine-learning"])
+async def train_ml_model(
+    db: Session = Depends(get_db),
+    model_name: str = "phase-classifier-v1",
+    page_size: int = 10000
+):
+    """
+    Inicia treinamento de um novo modelo de classificação de fases.
+
+    Exporta dados de correções em JSONL e treina modelo.
+    Suporta backends: local, remote, huggingface.
+
+    Response: job_id para monitorar progresso via GET /ml/train/{job_id}
+    """
+    import tempfile
+    import json
+
+    # Exportar correções em arquivo temporário
+    total_corrections = db.query(models.PhaseCorrection).count()
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+        corrections = db.query(models.PhaseCorrection).all()
+        for correction in corrections:
+            line = {
+                "process_number": correction.process_number,
+                "original_phase": correction.original_phase,
+                "corrected_phase": correction.corrected_phase,
+                "reason": correction.reason,
+                "corrected_at": correction.corrected_at.isoformat() if correction.corrected_at else None,
+            }
+            f.write(json.dumps(line, ensure_ascii=False) + "\n")
+
+        temp_path = f.name
+
+    # Iniciar treinamento
+    success, job = await _ml_service.train_model(temp_path, model_name)
+
+    return {
+        "job_id": job.job_id,
+        "status": job.status,
+        "model_version": job.model_version,
+        "created_at": job.created_at.isoformat(),
+        "total_samples": job.total_samples
+    }
+
+
+@app.get("/ml/train/{job_id}", tags=["machine-learning"])
+async def get_training_status(job_id: str):
+    """
+    Obtém status de um job de treinamento.
+
+    Status: pending, training, completed, failed
+    """
+    job = _ml_service.get_training_job(job_id)
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Training job not found")
+
+    return {
+        "job_id": job.job_id,
+        "status": job.status,
+        "model_version": job.model_version,
+        "created_at": job.created_at.isoformat(),
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+        "total_samples": job.total_samples,
+        "accuracy": job.accuracy,
+        "error": job.error
+    }
+
+
+@app.get("/ml/train", tags=["machine-learning"])
+async def list_training_jobs():
+    """Lista todos os jobs de treinamento."""
+    jobs = _ml_service.list_training_jobs()
+
+    return {
+        "jobs": [
+            {
+                "job_id": job.job_id,
+                "status": job.status,
+                "model_version": job.model_version,
+                "created_at": job.created_at.isoformat(),
+                "accuracy": job.accuracy
+            }
+            for job in jobs
+        ],
+        "total": len(jobs)
+    }
+
+
+@app.post("/ml/predict", tags=["machine-learning"])
+async def predict_phase(
+    process_number: str,
+    original_phase: str,
+    movements: Optional[List[dict]] = None
+):
+    """
+    Faz predição de fase usando modelo treinado.
+
+    Retorna: fase predita com score de confiança (0.0 a 1.0)
+    """
+    prediction = await _ml_service.predict(process_number, original_phase, movements)
+
+    if not prediction:
+        raise HTTPException(status_code=503, detail="ML model unavailable")
+
+    return prediction.to_dict()
+
+
+@app.post("/ml/evaluate", tags=["machine-learning"])
+async def evaluate_model(db: Session = Depends(get_db)):
+    """
+    Avalia modelo usando dados de correções como teste.
+
+    Calcula: accuracy, precision, recall, F1-score
+    """
+    import tempfile
+    import json
+
+    # Usar 20% dos dados como teste
+    all_corrections = db.query(models.PhaseCorrection).all()
+    test_size = max(1, len(all_corrections) // 5)
+    test_corrections = all_corrections[:test_size]
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+        for correction in test_corrections:
+            line = {
+                "process_number": correction.process_number,
+                "original_phase": correction.original_phase,
+                "corrected_phase": correction.corrected_phase,
+            }
+            f.write(json.dumps(line) + "\n")
+
+        temp_path = f.name
+
+    metrics = await _ml_service.evaluate_model(temp_path)
+    return metrics
