@@ -21,7 +21,7 @@ const VIRTUAL_THRESHOLD = 100;
  * ResultRow — memoized row for successful results.
  * Re-renders only when the result data changes.
  */
-const ResultRow = React.memo(({ result }) => (
+const ResultRow = React.memo(({ result, isEdited }) => (
     <tr className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors">
         <td className="px-6 py-4 font-mono font-bold text-gray-900 dark:text-gray-100 text-sm whitespace-nowrap">
             {result.number}
@@ -36,6 +36,7 @@ const ResultRow = React.memo(({ result }) => (
             <div className="flex items-center flex-wrap gap-1">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(result.phase, result.class_nature)}`}>
                     {getPhaseDisplayName(result.phase, result.class_nature)}
+                    {isEdited && <span className="ml-1 font-bold text-orange-600">*</span>}
                 </span>
                 {/* Badge Fusion para resultados em massa */}
                 {result.phase_source && result.phase_source !== 'datajud' && (
@@ -78,7 +79,7 @@ FailureRow.displayName = 'FailureRow';
  * Includes its own sticky thead so columns stay aligned with the data rows.
  * Used when paginatedResults.length > VIRTUAL_THRESHOLD.
  */
-const VirtualResultsBody = ({ items }) => {
+const VirtualResultsBody = ({ items, editedProcessNumbers }) => {
     const parentRef = useRef(null);
 
     const virtualizer = useVirtualizer({
@@ -133,6 +134,7 @@ const VirtualResultsBody = ({ items }) => {
                                     <div className="flex items-center flex-wrap gap-1">
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(result.phase, result.class_nature)}`}>
                                             {getPhaseDisplayName(result.phase, result.class_nature)}
+                                            {editedProcessNumbers.has(result.number) && <span className="ml-1 font-bold text-orange-600">*</span>}
                                         </span>
                                         {result.phase_source && result.phase_source !== 'datajud' && (
                                             <span
@@ -170,6 +172,7 @@ const BulkSearch = () => {
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [dragging, setDragging] = useState(false);
     const [fusionUnavailableWarning, setFusionUnavailableWarning] = useState(false);
+    const [editedProcessNumbers, setEditedProcessNumbers] = useState(new Set()); // Rastreia processos editados
     // Queue-based bulk job state
     const [job, setJob] = useState(null);         // current job metadata
     const pollRef = useRef(null);                 // interval handle
@@ -272,6 +275,28 @@ const BulkSearch = () => {
     // Cleanup polling on unmount.
     useEffect(() => () => stopPolling(), []);
 
+    // Ouvir eventos de edição de fase de ProcessDetails
+    useEffect(() => {
+        const handleProcessPhaseEdited = (event) => {
+            markProcessAsEdited(event.detail);
+        };
+
+        // Também carregar processos editados do localStorage ao montar
+        const editedKey = 'bulkSearch_editedProcesses';
+        const storedEdited = JSON.parse(localStorage.getItem(editedKey) || '[]');
+        if (storedEdited.length > 0) {
+            setEditedProcessNumbers(new Set(storedEdited));
+        }
+
+        window.addEventListener('processPhaseEdited', handleProcessPhaseEdited);
+        return () => window.removeEventListener('processPhaseEdited', handleProcessPhaseEdited);
+    }, []);
+
+    // Permitir que externos (ProcessDetails) rastreiem fases editadas
+    const markProcessAsEdited = (processNumber) => {
+        setEditedProcessNumbers(prev => new Set([...prev, processNumber]));
+    };
+
     const onSubmit = async (data) => {
         const processList = data.numbers.split('\n').map(n => n.trim()).filter(n => n.length > 0);
 
@@ -280,6 +305,8 @@ const BulkSearch = () => {
         setResults(null);
         setJob(null);
         setFusionUnavailableWarning(false);
+        setEditedProcessNumbers(new Set()); // Reset edição ao nova busca
+        localStorage.removeItem('bulkSearch_editedProcesses'); // Limpar localStorage
         stopPolling();
 
         try {
@@ -543,7 +570,7 @@ const BulkSearch = () => {
                     {/* Results table */}
                     <div className="overflow-x-auto">
                         {useVirtual ? (
-                            <VirtualResultsBody items={paginatedItems} />
+                            <VirtualResultsBody items={paginatedItems} editedProcessNumbers={editedProcessNumbers} />
                         ) : (
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">
@@ -557,7 +584,7 @@ const BulkSearch = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                     {paginatedItems.map((p) => (
-                                        <ResultRow key={p.number} result={p} />
+                                        <ResultRow key={p.number} result={p} isEdited={editedProcessNumbers.has(p.number)} />
                                     ))}
                                 </tbody>
                             </table>

@@ -186,6 +186,18 @@ function ProcessDetails({ data }) {
         }));
         setPhaseWasEdited(true);
         setShowPhaseEditModal(false);
+
+        // Notificar BulkSearch que este processo foi editado
+        if (activeData?.number) {
+            const editedKey = 'bulkSearch_editedProcesses';
+            const existingEdited = JSON.parse(localStorage.getItem(editedKey) || '[]');
+            if (!existingEdited.includes(activeData.number)) {
+                existingEdited.push(activeData.number);
+                localStorage.setItem(editedKey, JSON.stringify(existingEdited));
+                // Disparar evento para BulkSearch ouvir
+                window.dispatchEvent(new CustomEvent('processPhaseEdited', { detail: activeData.number }));
+            }
+        }
     };
 
     const getCategoryStyles = (category) => {
