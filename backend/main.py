@@ -658,3 +658,75 @@ async def get_circuit_breaker_status():
     """Get status of all registered circuit breakers."""
     from .patterns.circuit_breaker import get_registry
     return get_registry().get_status()
+
+
+@app.get("/analytics/corrections/stats", tags=["analytics"])
+async def get_corrections_stats(db: Session = Depends(get_db)):
+    """
+    Retorna estatísticas sobre as correções de fase.
+    Útil para entender o padrão de erros do modelo.
+    """
+    from sqlalchemy import func
+
+    corrections = db.query(models.PhaseCorrection).all()
+
+    if not corrections:
+        return {
+            "total_corrections": 0,
+            "unique_processes": 0,
+            "phase_transitions": {},
+            "most_common_corrections": []
+        }
+
+    # Contar transições de fase
+    transitions = {}
+    for c in corrections:
+        key = f"{c.original_phase}->{c.corrected_phase}"
+        transitions[key] = transitions.get(key, 0) + 1
+
+    # Top 10 correções mais comuns
+    top_corrections = sorted(transitions.items(), key=lambda x: x[1], reverse=True)[:10]
+
+    return {
+        "total_corrections": len(corrections),
+        "unique_processes": len(set(c.process_number for c in corrections)),
+        "phase_transitions": transitions,
+        "most_common_corrections": [
+            {"transition": k, "count": v} for k, v in top_corrections
+        ]
+    }
+
+
+@app.get("/analytics/corrections/export", tags=["analytics"])
+async def export_corrections_jsonl(db: Session = Depends(get_db)):
+    """
+    Exporta todas as correções de fase em formato JSONL.
+    Cada linha é um JSON com: process_number, original_phase, corrected_phase, reason, corrected_at
+    Útil para treinamento de modelos de classificação automática.
+    """
+    from fastapi.responses import StreamingResponse
+    import json
+
+    async def generate_jsonl():
+        """Generator para streaming JSONL"""
+        corrections = db.query(models.PhaseCorrection).all()
+
+        for correction in corrections:
+            # Converter para dicionário serializável
+            line = {
+                "process_number": correction.process_number,
+                "original_phase": correction.original_phase,
+                "corrected_phase": correction.corrected_phase,
+                "reason": correction.reason,
+                "corrected_at": correction.corrected_at.isoformat() if correction.corrected_at else None,
+                "corrected_by": correction.corrected_by,
+            }
+            yield json.dumps(line, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(
+        generate_jsonl(),
+        media_type="application/x-ndjson",
+        headers={
+            "Content-Disposition": "attachment; filename=phase-corrections.jsonl"
+        }
+    )
