@@ -39,6 +39,11 @@ export default defineConfig({
 
         /* Video on first retry */
         video: 'retain-on-failure',
+
+        /* Block service workers so page.route() mocks work correctly.
+         * The app registers sw.js for offline support, which intercepts
+         * /processes, /stats, etc. — preventing Playwright from mocking them. */
+        serviceWorkers: 'block',
     },
 
     /* Configure projects for major browsers */

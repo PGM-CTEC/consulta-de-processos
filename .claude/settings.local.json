@@ -73,7 +73,14 @@
       "Bash(python3:*)",
       "Bash(lsof -ti:8000)",
       "Bash(xargs kill:*)",
-      "Bash(pkill -f \"uvicorn.*main:app\")"
+      "Bash(pkill -f \"uvicorn.*main:app\")",
+      "Bash(npm run e2e)",
+      "Bash(npm run test:e2e)",
+      "Bash(tee e2e-test-output.txt)",
+      "Bash(source venv/Scripts/activate)",
+      "Bash(pkill -f \"uvicorn\")",
+      "Bash(pkill -f \"vite\")",
+      "Bash(bash run-tests.sh)"
     ]
   },
   "hooks": {

@@ -1,0 +1,254 @@
+
+> frontend@0.0.0 test:e2e
+> playwright test
+
+
+Running 14 tests using 10 workers
+
+  x   1 [chromium] › e2e\bulk-search-flow.spec.ts:155:5 › Bulk Process Search Flow › should handle bulk search with mixed valid/invalid numbers (0ms)
+  x   2 [chromium] › e2e\bulk-search-flow.spec.ts:36:5 › Bulk Process Search Flow › should perform bulk search via manual input and export CSV (0ms)
+  x   3 [chromium] › e2e\bulk-search-flow.spec.ts:92:5 › Bulk Process Search Flow › should perform bulk search via file upload (0ms)
+  x   4 [chromium] › e2e\bulk-search-flow.spec.ts:130:5 › Bulk Process Search Flow › should show progress during bulk search (0ms)
+  x   5 [chromium] › e2e\dashboard-flow.spec.ts:15:5 › Dashboard Analytics Flow › should display dashboard with all charts and statistics (2ms)
+  x   6 [chromium] › e2e\dashboard-flow.spec.ts:46:5 › Dashboard Analytics Flow › should filter dashboard by tribunal (4ms)
+  x   7 [chromium] › e2e\dashboard-flow.spec.ts:104:5 › Dashboard Analytics Flow › should display tribunal distribution (2ms)
+  x   8 [chromium] › e2e\dashboard-flow.spec.ts:157:5 › Dashboard Analytics Flow › should handle dashboard API errors gracefully (3ms)
+  x   9 [chromium] › e2e\dashboard-flow.spec.ts:85:5 › Dashboard Analytics Flow › should display phase distribution chart (3ms)
+  x  10 [chromium] › e2e\dashboard-flow.spec.ts:124:5 › Dashboard Analytics Flow › should handle empty dashboard gracefully (3ms)
+  x  11 [chromium] › e2e\dashboard-flow.spec.ts:178:5 › Dashboard Analytics Flow › should refresh dashboard data (1ms)
+  x  12 [chromium] › e2e\single-search-flow.spec.ts:86:5 › Single Process Search Flow › should handle API errors gracefully (1ms)
+  x  13 [chromium] › e2e\single-search-flow.spec.ts:71:5 › Single Process Search Flow › should handle invalid process number gracefully (2ms)
+  x  14 [chromium] › e2e\single-search-flow.spec.ts:15:5 › Single Process Search Flow › should search for a process, view details, and export JSON (2ms)
+
+
+  1) [chromium] › e2e\bulk-search-flow.spec.ts:36:5 › Bulk Process Search Flow › should perform bulk search via manual input and export CSV 
+
+    ReferenceError: __dirname is not defined
+
+      17 |     // Setup: Create test CSV file
+      18 |     test.beforeAll(() => {
+    > 19 |         const testCsvPath = path.join(__dirname, 'test-processes.csv');
+         |                                       ^
+      20 |         const csvContent = `numero_cnj
+      21 | 0001745-64.1989.8.19.0002
+      22 | 0001745-64.1989.8.19.0003
+        at C:\Users\2776540\.gemini\antigravity\scratch\consulta-de-processos\frontend\e2e\bulk-search-flow.spec.ts:19:39
+
+    ReferenceError: __dirname is not defined
+
+      28 |     // Cleanup: Remove test CSV file
+      29 |     test.afterAll(() => {
+    > 30 |         const testCsvPath = path.join(__dirname, 'test-processes.csv');
+         |                                       ^
+      31 |         if (fs.existsSync(testCsvPath)) {
+      32 |             fs.unlinkSync(testCsvPath);
+      33 |         }
+        at C:\Users\2776540\.gemini\antigravity\scratch\consulta-de-processos\frontend\e2e\bulk-search-flow.spec.ts:30:39
+
+  2) [chromium] › e2e\bulk-search-flow.spec.ts:92:5 › Bulk Process Search Flow › should perform bulk search via file upload 
+
+    ReferenceError: __dirname is not defined
+
+      17 |     // Setup: Create test CSV file
+      18 |     test.beforeAll(() => {
+    > 19 |         const testCsvPath = path.join(__dirname, 'test-processes.csv');
+         |                                       ^
+      20 |         const csvContent = `numero_cnj
+      21 | 0001745-64.1989.8.19.0002
+      22 | 0001745-64.1989.8.19.0003
+        at C:\Users\2776540\.gemini\antigravity\scratch\consulta-de-processos\frontend\e2e\bulk-search-flow.spec.ts:19:39
+
+    ReferenceError: __dirname is not defined
+
+      28 |     // Cleanup: Remove test CSV file
+      29 |     test.afterAll(() => {
+    > 30 |         const testCsvPath = path.join(__dirname, 'test-processes.csv');
+         |                                       ^
+      31 |         if (fs.existsSync(testCsvPath)) {
+      32 |             fs.unlinkSync(testCsvPath);
+      33 |         }
+        at C:\Users\2776540\.gemini\antigravity\scratch\consulta-de-processos\frontend\e2e\bulk-search-flow.spec.ts:30:39
+
+  3) [chromium] › e2e\bulk-search-flow.spec.ts:130:5 › Bulk Process Search Flow › should show progress during bulk search 
+
+    ReferenceError: __dirname is not defined
+
+      17 |     // Setup: Create test CSV file
+      18 |     test.beforeAll(() => {
+    > 19 |         const testCsvPath = path.join(__dirname, 'test-processes.csv');
+         |                                       ^
+      20 |         const csvContent = `numero_cnj
+      21 | 0001745-64.1989.8.19.0002
+      22 | 0001745-64.1989.8.19.0003
+        at C:\Users\2776540\.gemini\antigravity\scratch\consulta-de-processos\frontend\e2e\bulk-search-flow.spec.ts:19:39
+
+    ReferenceError: __dirname is not defined
+
+      28 |     // Cleanup: Remove test CSV file
+      29 |     test.afterAll(() => {
+    > 30 |         const testCsvPath = path.join(__dirname, 'test-processes.csv');
+         |                                       ^
+      31 |         if (fs.existsSync(testCsvPath)) {
+      32 |             fs.unlinkSync(testCsvPath);
+      33 |         }
+        at C:\Users\2776540\.gemini\antigravity\scratch\consulta-de-processos\frontend\e2e\bulk-search-flow.spec.ts:30:39
+
+  4) [chromium] › e2e\bulk-search-flow.spec.ts:155:5 › Bulk Process Search Flow › should handle bulk search with mixed valid/invalid numbers 
+
+    ReferenceError: __dirname is not defined
+
+      17 |     // Setup: Create test CSV file
+      18 |     test.beforeAll(() => {
+    > 19 |         const testCsvPath = path.join(__dirname, 'test-processes.csv');
+         |                                       ^
+      20 |         const csvContent = `numero_cnj
+      21 | 0001745-64.1989.8.19.0002
+      22 | 0001745-64.1989.8.19.0003
+        at C:\Users\2776540\.gemini\antigravity\scratch\consulta-de-processos\frontend\e2e\bulk-search-flow.spec.ts:19:39
+
+    ReferenceError: __dirname is not defined
+
+      28 |     // Cleanup: Remove test CSV file
+      29 |     test.afterAll(() => {
+    > 30 |         const testCsvPath = path.join(__dirname, 'test-processes.csv');
+         |                                       ^
+      31 |         if (fs.existsSync(testCsvPath)) {
+      32 |             fs.unlinkSync(testCsvPath);
+      33 |         }
+        at C:\Users\2776540\.gemini\antigravity\scratch\consulta-de-processos\frontend\e2e\bulk-search-flow.spec.ts:30:39
+
+  5) [chromium] › e2e\dashboard-flow.spec.ts:15:5 › Dashboard Analytics Flow › should display dashboard with all charts and statistics 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\2776540\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+  6) [chromium] › e2e\dashboard-flow.spec.ts:46:5 › Dashboard Analytics Flow › should filter dashboard by tribunal 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\2776540\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+  7) [chromium] › e2e\dashboard-flow.spec.ts:85:5 › Dashboard Analytics Flow › should display phase distribution chart 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\2776540\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+  8) [chromium] › e2e\dashboard-flow.spec.ts:104:5 › Dashboard Analytics Flow › should display tribunal distribution 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\2776540\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+  9) [chromium] › e2e\dashboard-flow.spec.ts:124:5 › Dashboard Analytics Flow › should handle empty dashboard gracefully 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\2776540\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+  10) [chromium] › e2e\dashboard-flow.spec.ts:157:5 › Dashboard Analytics Flow › should handle dashboard API errors gracefully 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\2776540\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+  11) [chromium] › e2e\dashboard-flow.spec.ts:178:5 › Dashboard Analytics Flow › should refresh dashboard data 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\2776540\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+  12) [chromium] › e2e\single-search-flow.spec.ts:15:5 › Single Process Search Flow › should search for a process, view details, and export JSON 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\2776540\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+  13) [chromium] › e2e\single-search-flow.spec.ts:71:5 › Single Process Search Flow › should handle invalid process number gracefully 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\2776540\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+  14) [chromium] › e2e\single-search-flow.spec.ts:86:5 › Single Process Search Flow › should handle API errors gracefully 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\2776540\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+  14 failed
+    [chromium] › e2e\bulk-search-flow.spec.ts:36:5 › Bulk Process Search Flow › should perform bulk search via manual input and export CSV 
+    [chromium] › e2e\bulk-search-flow.spec.ts:92:5 › Bulk Process Search Flow › should perform bulk search via file upload 
+    [chromium] › e2e\bulk-search-flow.spec.ts:130:5 › Bulk Process Search Flow › should show progress during bulk search 
+    [chromium] › e2e\bulk-search-flow.spec.ts:155:5 › Bulk Process Search Flow › should handle bulk search with mixed valid/invalid numbers 
+    [chromium] › e2e\dashboard-flow.spec.ts:15:5 › Dashboard Analytics Flow › should display dashboard with all charts and statistics 
+    [chromium] › e2e\dashboard-flow.spec.ts:46:5 › Dashboard Analytics Flow › should filter dashboard by tribunal 
+    [chromium] › e2e\dashboard-flow.spec.ts:85:5 › Dashboard Analytics Flow › should display phase distribution chart 
+    [chromium] › e2e\dashboard-flow.spec.ts:104:5 › Dashboard Analytics Flow › should display tribunal distribution 
+    [chromium] › e2e\dashboard-flow.spec.ts:124:5 › Dashboard Analytics Flow › should handle empty dashboard gracefully 
+    [chromium] › e2e\dashboard-flow.spec.ts:157:5 › Dashboard Analytics Flow › should handle dashboard API errors gracefully 
+    [chromium] › e2e\dashboard-flow.spec.ts:178:5 › Dashboard Analytics Flow › should refresh dashboard data 
+    [chromium] › e2e\single-search-flow.spec.ts:15:5 › Single Process Search Flow › should search for a process, view details, and export JSON 
+    [chromium] › e2e\single-search-flow.spec.ts:71:5 › Single Process Search Flow › should handle invalid process number gracefully 
+    [chromium] › e2e\single-search-flow.spec.ts:86:5 › Single Process Search Flow › should handle API errors gracefully 

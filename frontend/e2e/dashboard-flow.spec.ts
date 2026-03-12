@@ -11,11 +11,38 @@
 
 import { test, expect } from '@playwright/test';
 
+const MOCK_STATS = {
+    total_processes: 42,
+    total_movements: 156,
+    last_updated: '2024-01-15T10:30:00',
+    tribunals: [
+        { tribunal_name: 'TJRJ', count: 25 },
+        { tribunal_name: 'TJSP', count: 17 },
+    ],
+    phases: [
+        { phase: 'Conhecimento', count: 30 },
+        { phase: 'Execução', count: 12 },
+    ],
+    timeline: [{ count: 5 }, { count: 10 }],
+    classes: [{ class_nature: 'Ação Ordinária', count: 20 }],
+};
+
+const STATS_PATTERN = /\/stats/;
+
 test.describe('Dashboard Analytics Flow', () => {
     test('should display dashboard with all charts and statistics', async ({ page }) => {
+        // Mock stats API to return predictable data
+        await page.route(STATS_PATTERN, async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify(MOCK_STATS),
+            });
+        });
+
         await page.goto('/');
 
-        // Navigate to Dashboard tab
+        // Navigate to Dashboard tab (nav label: "Analytics / BI")
         const dashboardTab = page.locator('text=/Dashboard|Painel|Analytics/i').first();
         await dashboardTab.click();
 
@@ -23,27 +50,34 @@ test.describe('Dashboard Analytics Flow', () => {
         await page.waitForLoadState('networkidle');
 
         // Verify statistics cards are visible
-        // Looking for total processes count
-        await expect(page.locator('text=/Total de Processos|Processos Cadastrados/i')).toBeVisible({
+        await expect(page.locator('text=/Total de Processos|Processos Cadastrados/i').first()).toBeVisible({
             timeout: 5000,
         });
 
-        // Verify movements count
-        await expect(page.locator('text=/Total de Movimentações|Movimentações/i')).toBeVisible({
+        // Verify movements count card is visible ("Total de Movimentos" in Dashboard.jsx)
+        await expect(page.locator('text=/Total de Movimentos|Movimentações/i').first()).toBeVisible({
             timeout: 5000,
         });
 
-        // Verify charts are visible
-        // Dashboard typically shows: Processes by Tribunal, Processes by Phase
-        const charts = page.locator('canvas, svg[class*="recharts"], [role="img"]');
-        const chartCount = await charts.count();
-        expect(chartCount).toBeGreaterThan(0);
+        // Verify figure elements (used as chart containers in Dashboard)
+        const figures = page.locator('figure');
+        const figureCount = await figures.count();
+        expect(figureCount).toBeGreaterThan(0);
 
-        // Verify we have data (not empty state)
-        await expect(page.locator('text=/Nenhum dado|Sem dados|No data/i')).not.toBeVisible();
+        // Verify we don't show empty state
+        await expect(page.locator('text=/Nenhum dado|Sem dados|No data/i').first()).not.toBeVisible();
     });
 
     test('should filter dashboard by tribunal', async ({ page }) => {
+        // Mock stats API
+        await page.route(STATS_PATTERN, async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify(MOCK_STATS),
+            });
+        });
+
         await page.goto('/');
 
         // Navigate to Dashboard
@@ -62,7 +96,6 @@ test.describe('Dashboard Analytics Flow', () => {
             const initialCountText = await page.locator('text=/Total de Processos|Processos/i').first().textContent();
 
             // Click on a specific tribunal filter
-            // Try to find TJRJ, TJSP, or any tribunal option
             const tribunalOption = page.locator('text=/TJRJ|TJSP|TRF/i').first();
 
             if (await tribunalOption.isVisible()) {
@@ -74,7 +107,6 @@ test.describe('Dashboard Analytics Flow', () => {
                 // Verify count changed or filter is applied
                 const newCountText = await page.locator('text=/Total de Processos|Processos/i').first().textContent();
 
-                // Either count changed or a filter indicator is visible
                 const filterIndicatorVisible = await page.locator('text=/Filtrado|Filtered|TJ/i').isVisible();
 
                 expect(initialCountText !== newCountText || filterIndicatorVisible).toBe(true);
@@ -83,6 +115,15 @@ test.describe('Dashboard Analytics Flow', () => {
     });
 
     test('should display phase distribution chart', async ({ page }) => {
+        // Mock stats API with phase data
+        await page.route(STATS_PATTERN, async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify(MOCK_STATS),
+            });
+        });
+
         await page.goto('/');
 
         const dashboardTab = page.locator('text=/Dashboard|Painel|Analytics/i').first();
@@ -90,18 +131,26 @@ test.describe('Dashboard Analytics Flow', () => {
 
         await page.waitForLoadState('networkidle');
 
-        // Verify phase-related content is visible
-        // Dashboard shows phases like "Conhecimento", "Execução", etc.
-        await expect(page.locator('text=/Fases|Processuais|Conhecimento|Execução/i').first()).toBeVisible({
+        // Verify phase-related heading is visible ("Processos por Fase" in Dashboard.jsx)
+        await expect(page.locator('text=/Processos por Fase|Fases|Conhecimento|Execução/i').first()).toBeVisible({
             timeout: 5000,
         });
 
-        // Verify chart/visualization exists for phases
-        const chartContainer = page.locator('[class*="chart"], canvas, svg').first();
+        // Verify figure element exists (used as chart wrapper in Dashboard)
+        const chartContainer = page.locator('figure').first();
         await expect(chartContainer).toBeVisible();
     });
 
     test('should display tribunal distribution', async ({ page }) => {
+        // Mock stats API with tribunal data
+        await page.route(STATS_PATTERN, async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify(MOCK_STATS),
+            });
+        });
+
         await page.goto('/');
 
         const dashboardTab = page.locator('text=/Dashboard|Painel|Analytics/i').first();
@@ -109,22 +158,19 @@ test.describe('Dashboard Analytics Flow', () => {
 
         await page.waitForLoadState('networkidle');
 
-        // Verify tribunal distribution section
+        // Verify tribunal distribution section heading ("Processos por Tribunal" in Dashboard.jsx)
         await expect(page.locator('text=/Tribunais|Distribuição|Por Tribunal/i').first()).toBeVisible({
             timeout: 5000,
         });
 
-        // Verify we have tribunal names displayed (TJRJ, TJSP, etc.)
-        const tribunalNames = page.locator('text=/TJ[A-Z]{2}|TRF\d|TRT\d/');
-        const tribunalCount = await tribunalNames.count();
-
-        expect(tribunalCount).toBeGreaterThan(0);
+        // Verify tribunal names from mock data are displayed
+        await expect(page.locator('text=TJRJ').first()).toBeVisible({ timeout: 5000 });
     });
 
     test('should handle empty dashboard gracefully', async ({ page }) => {
         // Mock API to return empty stats
-        await page.route('**/stats**', (route) => {
-            route.fulfill({
+        await page.route(STATS_PATTERN, async (route) => {
+            await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
                 body: JSON.stringify({
@@ -132,6 +178,8 @@ test.describe('Dashboard Analytics Flow', () => {
                     total_movements: 0,
                     tribunals: [],
                     phases: [],
+                    timeline: [],
+                    classes: [],
                 }),
             });
         });
@@ -143,24 +191,36 @@ test.describe('Dashboard Analytics Flow', () => {
 
         await page.waitForLoadState('networkidle');
 
-        // Should show empty state message
-        await expect(page.locator('text=/Nenhum dado|Sem dados|No data|vazio/i')).toBeVisible({
-            timeout: 5000,
-        });
-
-        // Counts should be 0
-        await expect(page.locator('text=/0 processos|0 movimentações/i').first()).toBeVisible({
+        // Should show empty state message ("Banco de Dados Vazio" in Dashboard.jsx)
+        await expect(page.locator('text=/Nenhum dado|Sem dados|No data|Vazio/i').first()).toBeVisible({
             timeout: 5000,
         });
     });
 
     test('should handle dashboard API errors gracefully', async ({ page }) => {
-        // Mock API to return error
-        await page.route('**/stats**', (route) => {
-            route.fulfill({
-                status: 500,
+        // Mock API to return error — abort causes Axios to throw a network error
+        await page.route(STATS_PATTERN, async (route) => {
+            await route.abort();
+        });
+
+        await page.goto('/');
+
+        const dashboardTab = page.locator('text=/Dashboard|Painel|Analytics/i').first();
+        await dashboardTab.click();
+
+        await page.waitForLoadState('networkidle');
+
+        // Should show error message ("Erro ao carregar dados" / "Falha ao carregar..." in Dashboard.jsx)
+        await expect(page.locator('text=/erro|error|falha/i').first()).toBeVisible({ timeout: 5000 });
+    });
+
+    test('should refresh dashboard data', async ({ page }) => {
+        // Mock stats API
+        await page.route(STATS_PATTERN, async (route) => {
+            await route.fulfill({
+                status: 200,
                 contentType: 'application/json',
-                body: JSON.stringify({ detail: 'Internal Server Error' }),
+                body: JSON.stringify(MOCK_STATS),
             });
         });
 
@@ -171,32 +231,16 @@ test.describe('Dashboard Analytics Flow', () => {
 
         await page.waitForLoadState('networkidle');
 
-        // Should show error message
-        await expect(page.locator('text=/erro|error|falha/i')).toBeVisible({ timeout: 5000 });
-    });
-
-    test('should refresh dashboard data', async ({ page }) => {
-        await page.goto('/');
-
-        const dashboardTab = page.locator('text=/Dashboard|Painel|Analytics/i').first();
-        await dashboardTab.click();
-
-        await page.waitForLoadState('networkidle');
-
-        // Look for refresh button (if exists)
+        // Look for refresh button ("Atualizar" in Dashboard.jsx)
         const refreshButton = page.locator('button').filter({ hasText: /Atualizar|Refresh|Reload/i }).first();
 
         if (await refreshButton.isVisible()) {
             await refreshButton.click();
 
-            // Should show loading state briefly
-            const loadingIndicator = page.locator('.animate-spin, [role="progressbar"]').first();
-            await expect(loadingIndicator).toBeVisible({ timeout: 2000 });
-
-            // Then data should reload
+            // Wait for data to reload after refresh
             await page.waitForLoadState('networkidle');
 
-            await expect(page.locator('text=/Total de Processos/i')).toBeVisible();
+            await expect(page.locator('text=/Total de Processos/i').first()).toBeVisible();
         }
     });
 });

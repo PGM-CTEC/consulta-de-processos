@@ -13,7 +13,11 @@ from typing import List
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv('.env')
+# Busca o .env tanto no CWD quanto no diretório do próprio arquivo (backend/)
+import pathlib
+_HERE = pathlib.Path(__file__).parent
+load_dotenv(_HERE / '.env')
+load_dotenv('.env')  # fallback: CWD
 
 
 class Settings(BaseSettings):
