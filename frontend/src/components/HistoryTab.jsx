@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, Trash2, Copy, ExternalLink, FileText, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, Trash2, Copy, ExternalLink, FileText, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp, Edit2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { getHistory, clearHistory, searchProcess } from '../services/api';
 import { PHASE_BY_CODE } from '../constants/phases';
@@ -196,6 +196,14 @@ function HistoryTab({ labels, onProcessView }) {
         }
     };
 
+    const handleEditProcess = (number, event) => {
+        event.stopPropagation();
+        // Disparar evento customizado para navegação a ProcessDetails com busca individual
+        window.dispatchEvent(new CustomEvent('editProcessFromHistory', {
+            detail: number
+        }));
+    };
+
     const filtered = history.filter(item => {
         if (filter === 'all') return true;
         if (filter === 'found') return item.status === 'found' || !item.status;
@@ -345,15 +353,25 @@ function HistoryTab({ labels, onProcessView }) {
                                                 <Copy className="h-4 w-4" />
                                             </button>
                                             {isFound && (
-                                                <button
-                                                    onClick={(e) => handleViewProcess(item.number, e)}
-                                                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-indigo-600 hover:text-white hover:bg-indigo-600 border border-indigo-200 rounded-lg transition-colors"
-                                                    title="Ver detalhes do processo"
-                                                    aria-label="Ver detalhes do processo"
-                                                >
-                                                    <ExternalLink className="h-4 w-4" />
-                                                    <span>Ver Detalhes</span>
-                                                </button>
+                                                <>
+                                                    <button
+                                                        onClick={(e) => handleEditProcess(item.number, e)}
+                                                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                        title="Editar fase do processo"
+                                                        aria-label="Editar fase do processo"
+                                                    >
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleViewProcess(item.number, e)}
+                                                        className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-indigo-600 hover:text-white hover:bg-indigo-600 border border-indigo-200 rounded-lg transition-colors"
+                                                        title="Ver detalhes do processo"
+                                                        aria-label="Ver detalhes do processo"
+                                                    >
+                                                        <ExternalLink className="h-4 w-4" />
+                                                        <span>Ver Detalhes</span>
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
                                     </div>
