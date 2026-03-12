@@ -20,7 +20,7 @@ export const useSearchStore = create((set, get) => ({
       };
       return {
         currentSearch: newSearch,
-        searchHistory: [newSearch, ...state.searchHistory].slice(0, 50), // Keep last 50
+        searchHistory: [newSearch, ...state.searchHistory], // Keep all history (sem limite)
         recentSearches: [newSearch, ...state.recentSearches].slice(0, 10), // Keep last 10
       };
     });

@@ -581,8 +581,8 @@ async def fusion_session_status() -> dict:
 
 @app.get("/history", response_model=List[schemas.HistoryResponse])
 async def get_search_history(db: Session = Depends(get_db)):
-    """Retrieve the recent search history."""
-    return db.query(models.SearchHistory).order_by(models.SearchHistory.created_at.desc()).limit(50).all()
+    """Retrieve all search history (não limitado)."""
+    return db.query(models.SearchHistory).order_by(models.SearchHistory.created_at.desc()).all()
 
 @app.delete("/history")
 async def clear_search_history(db: Session = Depends(get_db)):
