@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { Search, Database, Layers, BarChart3, Settings, Sun, Moon } from 'lucide-react';
 import SearchProcess from './components/SearchProcess';
@@ -55,6 +55,31 @@ function App() {
     setActiveTab('single');
     setData(processData);
   };
+
+  // Listener para eventos de edição de fase (do histórico, busca em lote, ou outros)
+  useEffect(() => {
+    const handleEditFromBulk = async (event) => {
+      const processNumber = event.detail;
+      try {
+        toast.loading('Buscando processo para edição...', { id: 'edit' });
+        const result = await searchProcess(processNumber);
+        setData(result);
+        setActiveTab('single'); // Navegar para aba de consulta individual
+        toast.success('Processo carregado para edição!', { id: 'edit' });
+      } catch (error) {
+        toast.error('Erro ao buscar processo para edição', { id: 'edit' });
+        console.error('Error fetching process for edit:', error);
+      }
+    };
+
+    window.addEventListener('editProcessFromBulk', handleEditFromBulk);
+    window.addEventListener('editProcessFromHistory', handleEditFromBulk);
+
+    return () => {
+      window.removeEventListener('editProcessFromBulk', handleEditFromBulk);
+      window.removeEventListener('editProcessFromHistory', handleEditFromBulk);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
