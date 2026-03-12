@@ -80,7 +80,11 @@
       "Bash(source venv/Scripts/activate)",
       "Bash(pkill -f \"uvicorn\")",
       "Bash(pkill -f \"vite\")",
-      "Bash(bash run-tests.sh)"
+      "Bash(bash run-tests.sh)",
+      "Bash(python3 test-fusion-cookie.py)",
+      "Bash(source backend/venv/Scripts/activate)",
+      "Bash(node -e \"const u=''http://localhost:5173/processes/0001745-64.1989.8.19.0002''; console.log\\(/\\\\/processes\\\\//.test\\(u\\)\\); console.log\\(''**/processes/**''.includes\\(''processes''\\)\\);\")",
+      "mcp__Claude_Preview__preview_start"
     ]
   },
   "hooks": {
