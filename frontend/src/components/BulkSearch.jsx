@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, ChevronDown, FileUp, AlertCircle } from 'lucide-react';
+import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, ChevronDown, FileUp, AlertCircle, Edit2 } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useForm } from 'react-hook-form';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
@@ -21,7 +21,7 @@ const VIRTUAL_THRESHOLD = 100;
  * ResultRow — memoized row for successful results.
  * Re-renders only when the result data changes.
  */
-const ResultRow = React.memo(({ result, isEdited }) => (
+const ResultRow = React.memo(({ result, isEdited, onEdit }) => (
     <tr className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors">
         <td className="px-6 py-4 font-mono font-bold text-gray-900 dark:text-gray-100 text-sm whitespace-nowrap">
             {result.number}
@@ -49,10 +49,18 @@ const ResultRow = React.memo(({ result, isEdited }) => (
                 )}
             </div>
         </td>
-        <td className="px-6 py-4">
-            <div className="flex items-center text-green-600 dark:text-green-400 text-xs font-semibold">
-                <CheckCircle className="h-4 w-4 mr-1" /> OK
+        <td className="px-6 py-4 flex items-center gap-3">
+            <div className="text-green-600 dark:text-green-400 text-xs font-semibold">
+                <CheckCircle className="h-4 w-4" />
             </div>
+            <button
+                onClick={() => onEdit(result.number)}
+                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-700 rounded transition-colors"
+                title="Editar fase"
+                aria-label="Editar fase do processo"
+            >
+                <Edit2 className="h-4 w-4" />
+            </button>
         </td>
     </tr>
 ));
@@ -79,7 +87,7 @@ FailureRow.displayName = 'FailureRow';
  * Includes its own sticky thead so columns stay aligned with the data rows.
  * Used when paginatedResults.length > VIRTUAL_THRESHOLD.
  */
-const VirtualResultsBody = ({ items, editedProcessNumbers }) => {
+const VirtualResultsBody = ({ items, editedProcessNumbers, onEdit }) => {
     const parentRef = useRef(null);
 
     const virtualizer = useVirtualizer({
@@ -98,11 +106,11 @@ const VirtualResultsBody = ({ items, editedProcessNumbers }) => {
             <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 z-10">
                     <tr>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '25%' }}>Processo Judicial</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '20%' }}>Tribunal</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '25%' }}>Órgão Judicial / Vara</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '15%' }}>Fase Atual</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '15%' }}>Status</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '23%' }}>Processo Judicial</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '18%' }}>Tribunal</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '23%' }}>Órgão Judicial / Vara</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '13%' }}>Fase Atual</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '13%' }}>Ações</th>
                     </tr>
                 </thead>
                 <tbody style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
@@ -146,10 +154,18 @@ const VirtualResultsBody = ({ items, editedProcessNumbers }) => {
                                         )}
                                     </div>
                                 </td>
-                                <td className="px-6 py-4" style={{ width: '15%' }}>
-                                    <div className="flex items-center text-green-600 dark:text-green-400 text-xs font-semibold">
-                                        <CheckCircle className="h-4 w-4 mr-1" /> OK
+                                <td className="px-6 py-4 flex items-center gap-3" style={{ width: '13%' }}>
+                                    <div className="text-green-600 dark:text-green-400 text-xs font-semibold">
+                                        <CheckCircle className="h-4 w-4" />
                                     </div>
+                                    <button
+                                        onClick={() => onEdit(result.number)}
+                                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-700 rounded transition-colors"
+                                        title="Editar fase"
+                                        aria-label="Editar fase do processo"
+                                    >
+                                        <Edit2 className="h-4 w-4" />
+                                    </button>
                                 </td>
                             </tr>
                         );
@@ -295,6 +311,13 @@ const BulkSearch = () => {
     // Permitir que externos (ProcessDetails) rastreiem fases editadas
     const markProcessAsEdited = (processNumber) => {
         setEditedProcessNumbers(prev => new Set([...prev, processNumber]));
+    };
+
+    // Disparar evento para navegação a ProcessDetails com busca individual
+    const handleEditProcess = (processNumber) => {
+        window.dispatchEvent(new CustomEvent('editProcessFromBulk', {
+            detail: processNumber
+        }));
     };
 
     const onSubmit = async (data) => {
@@ -570,7 +593,7 @@ const BulkSearch = () => {
                     {/* Results table */}
                     <div className="overflow-x-auto">
                         {useVirtual ? (
-                            <VirtualResultsBody items={paginatedItems} editedProcessNumbers={editedProcessNumbers} />
+                            <VirtualResultsBody items={paginatedItems} editedProcessNumbers={editedProcessNumbers} onEdit={handleEditProcess} />
                         ) : (
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">
@@ -584,7 +607,7 @@ const BulkSearch = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                     {paginatedItems.map((p) => (
-                                        <ResultRow key={p.number} result={p} isEdited={editedProcessNumbers.has(p.number)} />
+                                        <ResultRow key={p.number} result={p} isEdited={editedProcessNumbers.has(p.number)} onEdit={handleEditProcess} />
                                     ))}
                                 </tbody>
                             </table>

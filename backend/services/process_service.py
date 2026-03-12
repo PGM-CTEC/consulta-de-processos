@@ -717,6 +717,55 @@ class ProcessService:
 
         return {"results": results, "failures": failures}
 
+    async def get_bulk_processes_pav_only(self, numbers: list, max_concurrent: int = 1) -> dict:
+        """
+        Executes multiple process lookups using PAV-only source.
+        Uses semaphore to limit concurrent requests (default: 1 for sequential queue).
+
+        Args:
+            numbers: List of CNJ process numbers to fetch
+            max_concurrent: Maximum concurrent requests (default: 1 for queue)
+
+        Returns:
+            dict with 'results' (successful processes) and 'failures' (error numbers)
+
+        Story: PERF-ARCH-001 - Async Bulk Processing (PAV-only version)
+        """
+        # Create semaphore to limit concurrent requests
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def fetch_with_semaphore(number: str):
+            """Fetch process via PAV-only with semaphore to limit concurrency."""
+            async with semaphore:
+                try:
+                    process = await self.get_or_update_process_pav_only(number)
+                    return ("success", number, process)
+                except Exception as e:
+                    logger.error(f"Error fetching process {number} via PAV: {e}")
+                    return ("failure", number, None)
+
+        # Create tasks for all numbers
+        tasks = [fetch_with_semaphore(number) for number in numbers]
+
+        # Execute all tasks concurrently (respecting semaphore limit)
+        results_list = await asyncio.gather(*tasks, return_exceptions=False)
+
+        # Separate results and failures
+        results = []
+        failures = []
+
+        for status, number, process in results_list:
+            if status == "success" and process:
+                results.append(process)
+            else:
+                failures.append(number)
+
+        logger.info(
+            f"Bulk PAV-only processing completed: {len(results)} successful, {len(failures)} failed out of {len(numbers)} total"
+        )
+
+        return {"results": results, "failures": failures}
+
     async def get_all_instances(self, process_number: str) -> dict:
         """
         Busca todas as instâncias de um processo no DataJud.

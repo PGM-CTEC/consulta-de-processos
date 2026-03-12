@@ -110,7 +110,7 @@ async def run_bulk_job(
                 if request_delay > 0:
                     await asyncio.sleep(request_delay)
                 try:
-                    process = await service.get_or_update_process(number)
+                    process = await service.get_or_update_process_pav_only(number)
                     if process:
                         # Serialize com schema leve (sem raw_data/movements) para
                         # reduzir tamanho da resposta de ~100 KB para ~1 KB por processo

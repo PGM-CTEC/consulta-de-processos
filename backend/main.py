@@ -384,7 +384,7 @@ async def get_processes_bulk(
     Story: PERF-ARCH-001 - Async Bulk Processing
     """
     service = ProcessService(db, fusion_service=fusion_service)
-    return await service.get_bulk_processes(
+    return await service.get_bulk_processes_pav_only(
         body.numbers,
         max_concurrent=settings.BULK_MAX_CONCURRENT
     )
