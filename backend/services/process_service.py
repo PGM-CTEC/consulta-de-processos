@@ -12,6 +12,7 @@ from .phase_analyzer import PhaseAnalyzer, DCP_WARNING_MESSAGE
 from .fusion_service import FusionService
 from .fusion_api_client import FusionResult
 from .document_phase_classifier import DocumentPhaseClassifier, ClassificationResult
+from .pav_data_transformer import PAVDataTransformer
 import json as _json
 from .. import models, schemas
 from ..database import transaction_scope
@@ -152,6 +153,121 @@ class ProcessService:
         process = self._save_process_data(process_number, api_data)
 
         # Record search in history
+        if process:
+            self._record_history(
+                process,
+                classification_log=_meta_fo.get("fusion_classification_log"),
+            )
+
+        return process
+
+    async def get_or_update_process_pav_only(self, process_number: str) -> Optional[models.Process]:
+        """
+        [PAV-ONLY] Busca processo exclusivamente via PAV.
+        Elimina dependência em DataJud completamente.
+
+        Fluxo:
+        1. Chama PAV via fusion_service.get_process_complete()
+        2. Normaliza dados com PAVDataTransformer
+        3. Classifica fase com DocumentPhaseClassifier
+        4. Salva em DB
+        5. Retorna processo ou None
+
+        Args:
+            process_number: número CNJ (com ou sem formatação)
+
+        Returns:
+            Process objeto ou None se não encontrado
+
+        Raises:
+            ProcessNotFoundException: Se processo não encontrado
+        """
+        logger.info(f"[PAV-ONLY] Iniciando busca para: {process_number}")
+        if not self.fusion_service:
+            logger.error("FusionService não configurado - PAV-only não disponível")
+            raise ProcessNotFoundException(process_number)
+
+        # Buscar dados COMPLETOS do PAV
+        try:
+            pav_response = await self.fusion_service.get_process_complete(process_number)
+        except Exception as e:
+            logger.error(f"[PAV-only] Erro ao buscar processo {process_number}: {e}")
+            self._record_history_not_found(process_number, error_type="pav_error", error_message=str(e))
+            raise ProcessNotFoundException(process_number) from e
+
+        if not pav_response:
+            # Não encontrado no PAV
+            logger.info(f"[PAV-only] Processo {process_number} não encontrado")
+            self._record_history_not_found(process_number, error_type="not_found")
+            return None
+
+        # Normalizar dados do PAV
+        try:
+            normalized_data = PAVDataTransformer.transform(pav_response)
+        except ValueError as e:
+            logger.error(f"[PAV-only] Erro ao normalizar dados: {e}")
+            self._record_history_not_found(process_number, error_type="transform_error", error_message=str(e))
+            raise ProcessNotFoundException(process_number) from e
+
+        # Classificar fase usando movimentos do PAV
+        try:
+            movimentos_fusion = PAVDataTransformer.extract_movimentos_for_classification(pav_response)
+            classe_processual = PAVDataTransformer.extract_classe_processual(pav_response)
+
+            classification = DocumentPhaseClassifier.classify_with_trace(
+                movimentos_fusion,
+                classe_processual
+            )
+            fusion_phase = classification.phase
+        except Exception as e:
+            logger.warning(f"[PAV-only] Erro ao classificar fase: {e}")
+            classification = None
+            fusion_phase = "Indefinido"
+
+        # Preparar dados para salvar no DB
+        api_data = normalized_data
+        api_data = copy.deepcopy(api_data)
+        # IMPORTANTE: __meta__ deve estar no top-level, não em raw_data, para ser lido por _parse_datajud_response()
+        _meta_fo = api_data.setdefault("__meta__", {})
+
+        # Adicionar metadados de fase
+        _meta_fo["fusion_phase_override"] = fusion_phase
+        _meta_fo["fusion_phase_source"] = "pav_completo"
+        _meta_fo["fusion_fonte"] = "pav_api"
+
+        if classification:
+            _meta_fo["fusion_classification_log"] = classification.to_dict()
+            logger.info(
+                f"[PAV-only] {process_number}: fase={fusion_phase}, "
+                f"regra={classification.rule_applied}"
+            )
+        else:
+            _meta_fo["fusion_classification_log"] = {
+                "phase": fusion_phase, "branch": None, "classe_normalizada": classe_processual,
+                "total_movimentos": len(movimentos_fusion) if movimentos_fusion else 0,
+                "rule_applied": "classificacao_erro",
+                "decisive_movement": None, "decisive_movement_date": None,
+                "anchor_matches": {},
+            }
+
+        # Converter FusionMovimento objects para dicts para compatibilidade
+        if "movimentos" in api_data and api_data["movimentos"]:
+            movimentos_converted = []
+            for mov in api_data["movimentos"]:
+                if hasattr(mov, 'data'):  # É um FusionMovimento
+                    movimentos_converted.append({
+                        "dataHora": mov.data.isoformat(),
+                        "tipo_local": mov.tipo_local,
+                        "tipo_cnj": mov.tipo_cnj,
+                    })
+                else:  # Já é um dict
+                    movimentos_converted.append(mov)
+            api_data["movimentos"] = movimentos_converted
+
+        # Salvar no DB
+        process = self._save_process_data(process_number, api_data)
+
+        # Registrar no histórico
         if process:
             self._record_history(
                 process,

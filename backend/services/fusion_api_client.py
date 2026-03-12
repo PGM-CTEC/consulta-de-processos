@@ -188,5 +188,43 @@ class FusionAPIClient:
             fonte="fusion_api",
         )
 
+    async def get_process_complete(self, numero_cnj: str) -> Optional[dict]:
+        """
+        Busca dados completos do processo via endpoint PAV consolidado.
+        Este é o endpoint novo que retorna tudo: dados cadastrais + movimentos + partes.
+
+        Endpoint:
+        GET /services/custom-consulta-rapida-de-procesos/dados-da-consulta/{numero_cnj}
+
+        Args:
+            numero_cnj: número CNJ (com ou sem formatação).
+
+        Returns:
+            dict com estrutura completa do processo (dados cadastrais, movimentos, partes, etc.)
+            ou None se o processo não for encontrado (404).
+
+        Raises:
+            httpx.RequestError: Se houver erro de rede/timeout.
+            httpx.HTTPStatusError: Se o servidor retorna erro (500, etc.).
+        """
+        cnj_digits = re.sub(r"\D", "", numero_cnj)
+        endpoint = f"/services/custom-consulta-rapida-de-procesos/dados-da-consulta/{cnj_digits}"
+        url = self._base_url + endpoint
+
+        try:
+            response = await self._http.get(url, timeout=httpx.Timeout(15.0))
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.info(f"Processo {cnj_digits} não encontrado no PAV")
+                return None
+            logger.warning(f"PAV API HTTP error for {cnj_digits}: {e.response.status_code}")
+            raise
+        except httpx.RequestError as e:
+            logger.error(f"PAV API request error for {cnj_digits}: {e}")
+            raise
+
+        return response.json()
+
     async def aclose(self):
         await self._http.aclose()

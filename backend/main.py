@@ -341,11 +341,10 @@ async def get_process(
 ):
     """
     Retrieve a single process by its CNJ number.
-    Fetches from DataJud API and stores in local database.
-    Falls back to Fusion/PAV if not found in DataJud.
+    [PAV-ONLY] Busca exclusivamente via PAV Fusion.
     """
     service = ProcessService(db, fusion_service=fusion_service)
-    process = await service.get_or_update_process(number)
+    process = await service.get_or_update_process_pav_only(number)
     if not process:
         raise ProcessNotFoundException(number)
     return process

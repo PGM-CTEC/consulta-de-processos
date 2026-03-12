@@ -82,7 +82,7 @@ class TestProcessEndpoints:
 
         app.dependency_overrides[get_db] = lambda: test_db
 
-        with patch('backend.services.process_service.ProcessService.get_or_update_process') as mock_method:
+        with patch('backend.services.process_service.ProcessService.get_or_update_process_pav_only') as mock_method:
             mock_method.return_value = process
             try:
                 response = client.get(f"/processes/{process_number}")
@@ -100,7 +100,7 @@ class TestProcessEndpoints:
 
         app.dependency_overrides[get_db] = lambda: test_db
 
-        with patch('backend.services.process_service.ProcessService.get_or_update_process') as mock_method:
+        with patch('backend.services.process_service.ProcessService.get_or_update_process_pav_only') as mock_method:
             mock_method.return_value = None
             try:
                 response = client.get(f"/processes/{process_number}")
