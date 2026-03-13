@@ -67,7 +67,11 @@
       "Bash(pkill -f \"python -m uvicorn\")",
       "Bash(pkill -f \"vite\")",
       "Bash(taskkill /f /im python.exe)",
-      "Bash(taskkill /f /im node.exe)"
+      "Bash(taskkill /f /im node.exe)",
+      "Bash(for pid:*)",
+      "Bash(do)",
+      "Bash(taskkill /F /PID $pid)",
+      "Bash(powershell -Command \"Get-Process -Name python* | Stop-Process -Force; Get-Process -Name pythonw* | Stop-Process -Force; Write-Host ''Killed all python processes''\")"
     ]
   },
   "hooks": {
