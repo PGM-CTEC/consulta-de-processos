@@ -39,6 +39,9 @@ class ClassificationResult:
     decisive_movement_date: Optional[str] = None  # ISO date do movimento decisivo
     anchor_matches: dict = field(default_factory=dict)
     # anchor_matches: posição na lista DESC de cada âncora, ou None
+    confidence: Optional[float] = None            # 0.0–1.0, None = não calculado
+    context_summary: dict = field(default_factory=dict)
+    # context_summary: resumo do conjunto completo de movimentos
 
     def to_dict(self) -> dict:
         """Retorna dict serializável para JSON."""
@@ -51,6 +54,8 @@ class ClassificationResult:
             "decisive_movement": self.decisive_movement,
             "decisive_movement_date": self.decisive_movement_date,
             "anchor_matches": self.anchor_matches,
+            "confidence": self.confidence,
+            "context_summary": self.context_summary,
         }
 
 
@@ -79,6 +84,14 @@ _ANCHOR_REMESSA = re.compile(r'(remessa\b|declinio\s+de\s+competencia|redistribu
 # Fase 13 — Suspenso/Sobrestado
 _ANCHOR_SUSPENSO = re.compile(r'(suspensao|sobrestamento|processo\s+suspenso)')
 
+# Atividade substancial posterior a um arquivamento — indica que o processo
+# foi reaberto e NÃO está definitivamente arquivado.
+_ANCHOR_REATIVACAO = re.compile(
+    r'(desarquivamento|reaber|reativacao|redistribui|peticao\s+inicial|citacao|'
+    r'despacho|decisao|audiencia|intimacao|mandado|diligencia|'
+    r'cumpr\w+\s+sentenca|embargo|sentenca|acordao)'
+)
+
 # Classes processuais que indicam execução (fases 10-12, 14)
 _CLASSES_EXECUCAO = {
     "cumprimento de sentenca",
@@ -100,6 +113,88 @@ class DocumentPhaseClassifier:
     Classifica fase processual a partir de movimentos do Fusion/PAV.
     Stateless — todos os métodos são classmethod.
     """
+
+    @classmethod
+    def _has_substantive_posterior_activity(cls, nomes: List[str], anchor_idx: int) -> bool:
+        """
+        Verifica se há atividade substancial POSTERIOR à âncora encontrada.
+
+        A lista ``nomes`` está em ordem DESC (idx 0 = mais recente).
+        Movimentos em idx < anchor_idx são mais recentes que a âncora.
+        Retorna True se algum deles indica atividade real (petições,
+        despachos, citações, etc.), o que sugere que o processo foi
+        reaberto após o arquivamento.
+        """
+        if anchor_idx == 0:
+            return False  # âncora é o mais recente → nada posterior
+
+        for i in range(anchor_idx):
+            if _ANCHOR_REATIVACAO.search(nomes[i]):
+                return True
+        return False
+
+    @classmethod
+    def _build_context_summary(cls, ordered: List[FusionMovimento], nomes: List[str]) -> dict:
+        """
+        Constrói resumo contextual do conjunto completo de movimentos.
+        Permite avaliar a confiança da classificação e identificar
+        decisões baseadas em evidência fraca.
+        """
+        anchor_counts = {
+            "arquivamento": sum(1 for n in nomes if _ANCHOR_ARQUIVAMENTO.search(n)),
+            "transito": sum(1 for n in nomes if _ANCHOR_TRANSITO.search(n)),
+            "sentenca": sum(1 for n in nomes if _ANCHOR_SENTENCA.match(n)),
+            "remessa": sum(1 for n in nomes if _ANCHOR_REMESSA.search(n)),
+            "suspenso": sum(1 for n in nomes if _ANCHOR_SUSPENSO.search(n)),
+        }
+        span_days = 0
+        if len(ordered) >= 2:
+            span_days = (ordered[0].data - ordered[-1].data).days
+
+        return {
+            "total": len(ordered),
+            "span_days": span_days,
+            "anchor_counts": anchor_counts,
+        }
+
+    @classmethod
+    def _compute_confidence(cls, anchors: dict, context: dict, rule: str) -> float:
+        """
+        Calcula confiança da classificação baseado no contexto geral.
+
+        - Âncora confirmada por outras âncoras coerentes → alta confiança
+        - Âncora isolada sem contexto confirmatório → confiança reduzida
+        - Fallback sem nenhuma âncora → confiança baixa
+        """
+        counts = context.get("anchor_counts", {})
+        total = context.get("total", 0)
+        rule_lower = rule.lower()
+
+        # Fallback deve ser avaliado ANTES de checks por substring
+        # pois o nome da regra pode conter "sentenca" (ex: P6_fallback_antes_sentenca)
+        if "fallback" in rule_lower:
+            if total > 15:
+                return 0.40  # muitos movimentos sem âncora = baixa confiança
+            return 0.60
+
+        if "arquivamento" in rule_lower:
+            if counts.get("transito", 0) > 0 and counts.get("sentenca", 0) > 0:
+                return 0.95
+            if counts.get("sentenca", 0) > 0:
+                return 0.85
+            return 0.70
+
+        if "transito" in rule_lower:
+            if counts.get("sentenca", 0) > 0:
+                return 0.90
+            return 0.75
+
+        if "sentenca" in rule_lower:
+            if total > 3:
+                return 0.85
+            return 0.70
+
+        return 0.70
 
     @classmethod
     def classify(cls, movimentos: List[FusionMovimento], classe_processual: str) -> str:
@@ -187,21 +282,33 @@ class DocumentPhaseClassifier:
             return ordered[idx].tipo_local, ordered[idx].data.isoformat()
 
         total = len(movimentos)
+        context = cls._build_context_summary(ordered, nomes)
 
-        # P1: Arquivamento
+        # P1: Arquivamento — somente se NÃO há atividade substancial posterior
         if arq_idx is not None:
-            nome, data = _decisive(arq_idx)
-            return ClassificationResult(
-                "15", "conhecimento", classe_norm, total,
-                "P1_arquivamento", nome, data, anchors,
+            if not cls._has_substantive_posterior_activity(nomes, arq_idx):
+                rule = "P1_arquivamento"
+                nome, data = _decisive(arq_idx)
+                return ClassificationResult(
+                    "15", "conhecimento", classe_norm, total,
+                    rule, nome, data, anchors,
+                    cls._compute_confidence(anchors, context, rule), context,
+                )
+            # Arquivamento invalidado por atividade posterior — continuar avaliação
+            anchors["arquivamento_overridden"] = True
+            logger.info(
+                "Arquivamento ignorado: atividade substancial posterior detectada "
+                f"(total_movimentos={total})"
             )
 
         # P2: Trânsito em Julgado (explícito)
         if transito_idx is not None:
+            rule = "P2_transito_em_julgado"
             nome, data = _decisive(transito_idx)
             return ClassificationResult(
                 "03", "conhecimento", classe_norm, total,
-                "P2_transito_em_julgado", nome, data, anchors,
+                rule, nome, data, anchors,
+                cls._compute_confidence(anchors, context, rule), context,
             )
 
         # P3: Sentença
@@ -209,38 +316,53 @@ class DocumentPhaseClassifier:
             # Se há remessa mais recente que a sentença (índice menor = mais recente),
             # o processo foi remetido à instância superior após a sentença → fase 04
             if remessa_idx is not None and remessa_idx < sentenca_idx:
+                rule = "P3_sentenca_com_remessa_posterior"
                 nome, data = _decisive(remessa_idx)
                 return ClassificationResult(
                     "04", "conhecimento", classe_norm, total,
-                    "P3_sentenca_com_remessa_posterior", nome, data, anchors,
+                    rule, nome, data, anchors,
+                    cls._compute_confidence(anchors, context, rule), context,
                 )
             # Sentença sem remessa posterior nem trânsito → fase 02
+            rule = "P3_sentenca_sem_transito"
             nome, data = _decisive(sentenca_idx)
             return ClassificationResult(
                 "02", "conhecimento", classe_norm, total,
-                "P3_sentenca_sem_transito", nome, data, anchors,
+                rule, nome, data, anchors,
+                cls._compute_confidence(anchors, context, rule), context,
             )
 
         # P4: Remessa sem sentença prévia
         if remessa_idx is not None:
+            rule = "P4_remessa_sem_sentenca"
             nome, data = _decisive(remessa_idx)
             return ClassificationResult(
                 "04", "conhecimento", classe_norm, total,
-                "P4_remessa_sem_sentenca", nome, data, anchors,
+                rule, nome, data, anchors,
+                cls._compute_confidence(anchors, context, rule), context,
             )
 
-        # P5: Suspensão
+        # P5: Suspensão — somente se NÃO há atividade substancial posterior
         if suspenso_idx is not None:
-            nome, data = _decisive(suspenso_idx)
-            return ClassificationResult(
-                "13", "conhecimento", classe_norm, total,
-                "P5_suspensao", nome, data, anchors,
-            )
+            if not cls._has_substantive_posterior_activity(nomes, suspenso_idx):
+                rule = "P5_suspensao"
+                nome, data = _decisive(suspenso_idx)
+                return ClassificationResult(
+                    "13", "conhecimento", classe_norm, total,
+                    rule, nome, data, anchors,
+                    cls._compute_confidence(anchors, context, rule), context,
+                )
+            # Suspensão invalidada por atividade posterior
+            anchors["suspenso_overridden"] = True
 
         # Fallback conservador: antes da sentença
+        rule = "P6_fallback_antes_sentenca"
+        if total > 15:
+            rule = "P6_fallback_antes_sentenca_ALERT"
         return ClassificationResult(
             "01", "conhecimento", classe_norm, total,
-            "P6_fallback_antes_sentenca", None, None, anchors,
+            rule, None, None, anchors,
+            cls._compute_confidence(anchors, context, rule), context,
         )
 
     # ------------------------------------------------------------------
@@ -279,27 +401,42 @@ class DocumentPhaseClassifier:
             return ordered[idx].tipo_local, ordered[idx].data.isoformat()
 
         total = len(movimentos)
+        context = cls._build_context_summary(ordered, nomes)
 
-        # E1: Arquivamento também termina execução
+        # E1: Arquivamento — somente se NÃO há atividade substancial posterior
         if arq_idx is not None:
-            nome, data = _decisive(arq_idx)
-            return ClassificationResult(
-                "15", "execucao", classe_norm, total,
-                "E1_arquivamento", nome, data, anchors,
+            if not cls._has_substantive_posterior_activity(nomes, arq_idx):
+                rule = "E1_arquivamento"
+                nome, data = _decisive(arq_idx)
+                return ClassificationResult(
+                    "15", "execucao", classe_norm, total,
+                    rule, nome, data, anchors,
+                    cls._compute_confidence(anchors, context, rule), context,
+                )
+            anchors["arquivamento_overridden"] = True
+            logger.info(
+                "Arquivamento (execução) ignorado: atividade substancial posterior "
+                f"(total_movimentos={total})"
             )
 
-        # E2: Suspensão de execução
+        # E2: Suspensão de execução — somente se NÃO há atividade substancial posterior
         if suspenso_idx is not None:
-            nome, data = _decisive(suspenso_idx)
-            return ClassificationResult(
-                "11", "execucao", classe_norm, total,
-                "E2_suspensao", nome, data, anchors,
-            )
+            if not cls._has_substantive_posterior_activity(nomes, suspenso_idx):
+                rule = "E2_suspensao"
+                nome, data = _decisive(suspenso_idx)
+                return ClassificationResult(
+                    "11", "execucao", classe_norm, total,
+                    rule, nome, data, anchors,
+                    cls._compute_confidence(anchors, context, rule), context,
+                )
+            anchors["suspenso_overridden"] = True
 
         # Fallback: execução em andamento
+        rule = "E3_fallback"
         return ClassificationResult(
             "10", "execucao", classe_norm, total,
-            "E3_fallback", None, None, anchors,
+            rule, None, None, anchors,
+            cls._compute_confidence(anchors, context, rule), context,
         )
 
     # ------------------------------------------------------------------

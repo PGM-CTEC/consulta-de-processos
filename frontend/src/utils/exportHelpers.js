@@ -9,7 +9,7 @@
  */
 
 import * as XLSX from 'xlsx';
-import { normalizePhase } from '../constants/phases';
+import { normalizePhaseWithMovements } from '../constants/phases';
 
 /**
  * Transform process results into exportable format
@@ -22,7 +22,7 @@ export function prepareExportData(results) {
     'Número': p.number,
     'Tribunal': p.tribunal_name || p.court?.split(' - ')[0] || 'N/A',
     'Sede / Vara': p.court_unit || p.court?.split(' - ')[1] || p.court || 'N/A',
-    'Fase Atual': normalizePhase(p.phase, p.class_nature),
+    'Fase Atual': normalizePhaseWithMovements(p.phase, p.class_nature, p.movements),
     'Fonte da Fase': p.phase_source || 'datajud'
   }));
 }

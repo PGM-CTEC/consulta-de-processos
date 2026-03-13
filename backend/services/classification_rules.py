@@ -254,6 +254,10 @@ class CodigosCNJ:
         # Adicionar outras conforme necessidade
     }
     
+    # === MOVIMENTOS DE REATIVAÇÃO/DESARQUIVAMENTO ===
+    # Sincronizado com phase_analyzer.py: CODIGOS_REATIVACAO
+    CODIGOS_REATIVACAO = {900, 12617, 849, 36}
+
     # === DOCUMENTOS ===
     DOC_SENTENCA = 80
     DOC_ACORDAO = 81
@@ -359,10 +363,31 @@ class ClassificadorFases:
     # ==================== MÉTODOS DE VERIFICAÇÃO ====================
     
     def _verificar_baixa_definitiva(self, processo: ProcessoJudicial) -> bool:
-        """Verifica se processo está baixado definitivamente."""
-        if processo.situacao and processo.situacao.upper() in ["BAIXADO", "ARQUIVADO"]:
+        """
+        Verifica se processo está baixado definitivamente.
+
+        Considera movimentos de reativação/desarquivamento posteriores à baixa.
+        Se há reativação após a última baixa, o processo NÃO está arquivado.
+        """
+        # Verificar código 22 (Baixa Definitiva) sem reativação posterior
+        if processo.tem_movimento_sem_posterior(
+            {CodigosCNJ.BAIXA_DEFINITIVA},
+            CodigosCNJ.CODIGOS_REATIVACAO
+        ):
             return True
-        return processo.tem_movimento({CodigosCNJ.BAIXA_DEFINITIVA})
+
+        # Verificar situação "BAIXADO"/"ARQUIVADO" com validação cruzada
+        if processo.situacao and processo.situacao.upper() in ["BAIXADO", "ARQUIVADO"]:
+            # Se não há nenhum movimento de reativação, confiar na situação
+            if not processo.tem_movimento(CodigosCNJ.CODIGOS_REATIVACAO):
+                return True
+            # Há reativação — verificar se a última baixa é posterior
+            return processo.tem_movimento_sem_posterior(
+                {CodigosCNJ.BAIXA_DEFINITIVA},
+                CodigosCNJ.CODIGOS_REATIVACAO
+            )
+
+        return False
     
     def _verificar_sobrestamento_ativo(self, processo: ProcessoJudicial) -> bool:
         """Verifica se há sobrestamento ativo (sem levantamento posterior)."""

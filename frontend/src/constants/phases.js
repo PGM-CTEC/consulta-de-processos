@@ -153,7 +153,13 @@ function isExecutionClass(classNature) {
 }
 
 /**
- * Normaliza uma string de fase para o nome oficial
+ * Normaliza uma string de fase para o nome oficial.
+ *
+ * ATENÇÃO: Esta função normaliza STRINGS de fase — ela NÃO consulta movimentos
+ * do processo. Para classificação que considera o contexto completo de movimentos
+ * (ex: detectar baixa definitiva revertida por desarquivamento), use
+ * normalizePhaseWithMovements().
+ *
  * @param {string} phaseInput - Fase recebida do backend
  * @param {string} classNature - Classe processual (opcional, melhora a precisão)
  * @returns {string} Nome oficial da fase ou fase padrão
