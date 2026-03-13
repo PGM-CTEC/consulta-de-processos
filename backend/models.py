@@ -87,6 +87,24 @@ class SearchHistory(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class PhaseCorrection(Base):
+    __tablename__ = "phase_corrections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    process_number = Column(String, nullable=False, index=True)
+    original_phase = Column(String(20), nullable=True)
+    corrected_phase = Column(String(20), nullable=False)
+    reason = Column(Text, nullable=False)
+    source_tab = Column(String(20), nullable=True)  # "single"|"bulk"|"history"
+    classification_log_snapshot = Column(Text, nullable=True)  # JSON string
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index('ix_phase_corrections_number', 'process_number'),
+        Index('ix_phase_corrections_created_at', 'created_at'),
+    )
+
+
 class AuditLog(Base):
     __tablename__ = 'audit_log'
 

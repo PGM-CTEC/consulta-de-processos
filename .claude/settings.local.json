@@ -63,7 +63,11 @@
       "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File iniciar.ps1)",
       "Skill(commit-commands:commit-push-pr)",
       "Skill(commit-commands:commit-push-pr:*)",
-      "Bash(npx vitest run src/tests/HistoryTab.test.jsx)"
+      "Bash(npx vitest run src/tests/HistoryTab.test.jsx)",
+      "Bash(pkill -f \"python -m uvicorn\")",
+      "Bash(pkill -f \"vite\")",
+      "Bash(taskkill /f /im python.exe)",
+      "Bash(taskkill /f /im node.exe)"
     ]
   },
   "hooks": {

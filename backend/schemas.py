@@ -229,3 +229,46 @@ class AlertResponse(BaseModel):
     message: str
     severity: str
     timestamp: str
+
+
+class PhaseCorrectionCreate(BaseModel):
+    """Schema para criar uma correção de fase."""
+    corrected_phase: str = Field(..., description="Código de fase corrigida (01-15)")
+    reason: str = Field(..., min_length=10, max_length=2000, description="Motivo da correção")
+    source_tab: Optional[str] = Field(None, pattern="^(single|bulk|history)$", description="Aba de origem")
+    original_phase: Optional[str] = None
+    classification_log_snapshot: Optional[Any] = None
+
+    @field_validator('corrected_phase', mode='before')
+    @classmethod
+    def normalize_phase_code(cls, v):
+        """Normaliza código de fase para zfill(2)."""
+        if isinstance(v, str):
+            v = v.strip().zfill(2)
+        return v
+
+
+class PhaseCorrectionResponse(BaseModel):
+    """Schema de resposta para correção de fase."""
+    id: int
+    process_number: str
+    original_phase: Optional[str]
+    corrected_phase: str
+    reason: str
+    source_tab: Optional[str]
+    classification_log_snapshot: Optional[Any]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+    @model_validator(mode='after')
+    def parse_classification_log(self):
+        """Deserializa classification_log_snapshot de JSON string (DB) para dict (API)."""
+        if isinstance(self.classification_log_snapshot, str):
+            import json
+            try:
+                self.classification_log_snapshot = json.loads(self.classification_log_snapshot)
+            except (json.JSONDecodeError, TypeError):
+                self.classification_log_snapshot = None
+        return self

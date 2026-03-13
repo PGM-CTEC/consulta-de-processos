@@ -18,8 +18,34 @@ from enum import Enum
 from datetime import datetime
 import json
 import logging
+import unicodedata
 
 logger = logging.getLogger(__name__)
+
+
+def _normalizar_texto(texto: str) -> str:
+    """Remove acentos, lowercase, normaliza espaços."""
+    if not texto:
+        return ""
+    nfkd = unicodedata.normalize("NFKD", texto)
+    ascii_text = nfkd.encode("ascii", "ignore").decode("ascii")
+    return " ".join(ascii_text.lower().split())
+
+
+# Padrões textuais em descrições de movimentos que indicam fase de execução.
+# Pré-normalizados (sem acentos, lowercase) para comparação eficiente.
+_PADROES_DESCRICAO_EXECUCAO_RAW = [
+    "execução",
+    "cumprimento de sentença",
+    "penhora",
+    "hasta pública",
+    "leilão judicial",
+    "expropriação",
+    "arresto",
+    "bloqueio de valores",
+    "bacenjud",
+]
+_PADROES_DESCRICAO_EXECUCAO = [_normalizar_texto(p) for p in _PADROES_DESCRICAO_EXECUCAO_RAW]
 
 class FaseProcessual(Enum):
     """Enumeração das 15 fases processuais definidas."""
@@ -283,8 +309,19 @@ class ClassificadorFases:
     def classificar(self, processo: ProcessoJudicial) -> ResultadoClassificacao:
         """
         Classifica o processo em uma das 15 fases definidas.
-        
-        Aplica as regras em ordem de prioridade:
+
+        Aplica as regras por código em ordem de prioridade, depois aplica
+        override por descrição textual de movimentos quando pertinente.
+        """
+        resultado = self._classificar_por_codigos(processo)
+        resultado = self._aplicar_override_por_descricao(processo, resultado)
+        return resultado
+
+    def _classificar_por_codigos(self, processo: ProcessoJudicial) -> ResultadoClassificacao:
+        """
+        Classificação primária baseada em códigos numéricos CNJ.
+
+        Regras em ordem de prioridade:
         1. Baixa Definitiva (Fase 15)
         2. Sobrestamento (Fase 13)
         3. Execução (Fases 10-14)
@@ -787,3 +824,66 @@ RESPONDA NO FORMATO:
 }}
 """
         return instrucao.strip()
+
+    # ==================== OVERRIDE POR DESCRIÇÃO ====================
+
+    _FASES_CONHECIMENTO = {"01", "02", "03", "04", "05", "06", "07", "08", "09"}
+
+    def _aplicar_override_por_descricao(
+        self,
+        processo: ProcessoJudicial,
+        resultado: ResultadoClassificacao,
+    ) -> ResultadoClassificacao:
+        """
+        Pós-processamento: analisa descrições textuais dos movimentos para
+        detectar transição de fase não capturada pelos códigos numéricos.
+
+        Só atua quando:
+        - A classificação por código resultou em fase de conhecimento (01-09)
+        - Existem movimentos POSTERIORES ao movimento decisivo cuja descrição
+          contém termos indicativos de fase de execução
+        """
+        if resultado.fase.value not in self._FASES_CONHECIMENTO:
+            return resultado
+
+        # Determinar limiar temporal: data do movimento decisivo mais recente
+        data_limiar = None
+        if resultado.movimentos_determinantes:
+            data_limiar = max(m.data for m in resultado.movimentos_determinantes)
+
+        # Buscar movimentos posteriores com descrição indicando execução
+        movs_execucao = []
+        for mov in processo.movimentos:
+            if data_limiar and mov.data <= data_limiar:
+                continue
+            desc_norm = _normalizar_texto(mov.descricao)
+            if any(padrao in desc_norm for padrao in _PADROES_DESCRICAO_EXECUCAO):
+                movs_execucao.append(mov)
+
+        if not movs_execucao:
+            return resultado
+
+        # Override: movimento mais recente como decisivo
+        mov_decisivo = max(movs_execucao, key=lambda m: m.data)
+        fase_original = resultado.fase
+
+        resultado.alertas.append(
+            f"OVERRIDE_DESCRICAO: Fase alterada de {fase_original.value} "
+            f"({fase_original.descricao}) para 10 (Execução) — "
+            f"movimento '{mov_decisivo.descricao}' em {mov_decisivo.data.isoformat()}"
+        )
+        resultado.regras_aplicadas.append(
+            "REGRA_OVERRIDE_DESCRICAO: Descrição de movimento posterior indica fase de execução"
+        )
+        resultado.movimentos_determinantes.append(mov_decisivo)
+        resultado.fase = FaseProcessual.EXECUCAO
+        resultado.confianca = min(resultado.confianca, 0.70)
+
+        logger.info(
+            "Override por descrição para processo %s: %s -> 10, "
+            "movimento decisivo: '%s' em %s",
+            processo.numero, fase_original.value,
+            mov_decisivo.descricao, mov_decisivo.data.isoformat(),
+        )
+
+        return resultado

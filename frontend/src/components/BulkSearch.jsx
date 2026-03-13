@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, ChevronDown, FileUp, AlertCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Upload, Search, FileText, CheckCircle, XCircle, Loader2, Download, ChevronDown, FileUp, AlertCircle, Pencil } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useForm } from 'react-hook-form';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { bulkSubmit, getBulkJob, getFusionStatus } from '../services/api';
 import * as XLSX from 'xlsx';
 import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
+import { PHASE_BY_CODE } from '../constants/phases';
 import { exporters } from '../utils/exportHelpers';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -13,6 +14,8 @@ import Pagination from './Pagination';
 import { usePagination } from '../hooks/usePagination';
 import { bulkSearchSchema } from '../lib/validationSchemas';
 import { trackSearch, trackBulkUpload, trackExport } from '../lib/analytics';
+import PhaseEditModal from './PhaseEditModal';
+import { toast } from 'react-hot-toast';
 
 // Threshold above which virtual scrolling is activated
 const VIRTUAL_THRESHOLD = 100;
@@ -21,40 +24,61 @@ const VIRTUAL_THRESHOLD = 100;
  * ResultRow — memoized row for successful results.
  * Re-renders only when the result data changes.
  */
-const ResultRow = React.memo(({ result }) => (
-    <tr className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors">
-        <td className="px-6 py-4 font-mono font-bold text-gray-900 dark:text-gray-100 text-sm whitespace-nowrap">
-            {result.number}
-        </td>
-        <td className="px-6 py-4 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
-            {result.tribunal_name || result.court?.split(' - ')[0] || 'N/A'}
-        </td>
-        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-            {result.court_unit || result.court?.split(' - ')[1] || result.court || 'N/A'}
-        </td>
-        <td className="px-6 py-4">
-            <div className="flex items-center flex-wrap gap-1">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(result.phase, result.class_nature)}`}>
-                    {getPhaseDisplayName(result.phase, result.class_nature)}
-                </span>
-                {/* Badge Fusion para resultados em massa */}
-                {result.phase_source && result.phase_source !== 'datajud' && (
-                    <span
-                        className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-700 border border-amber-200"
-                        title={`Classificado via ${result.phase_source}`}
-                    >
-                        F
+const ResultRow = React.memo(({ result, correctedPhase, onEditPhase }) => {
+    const displayPhase = correctedPhase || getPhaseDisplayName(result.phase, result.class_nature);
+
+    return (
+        <tr className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors">
+            <td className="px-6 py-4 font-mono font-bold text-gray-900 dark:text-gray-100 text-sm whitespace-nowrap">
+                {result.number}
+            </td>
+            <td className="px-6 py-4 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                {result.tribunal_name || result.court?.split(' - ')[0] || 'N/A'}
+            </td>
+            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                {result.court_unit || result.court?.split(' - ')[1] || result.court || 'N/A'}
+            </td>
+            <td className="px-6 py-4">
+                <div className="flex items-center flex-wrap gap-1">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(correctedPhase || result.phase, result.class_nature)}`}>
+                        {displayPhase}
                     </span>
-                )}
-            </div>
-        </td>
-        <td className="px-6 py-4">
-            <div className="flex items-center text-green-600 dark:text-green-400 text-xs font-semibold">
-                <CheckCircle className="h-4 w-4 mr-1" /> OK
-            </div>
-        </td>
-    </tr>
-));
+                    {/* Badge Corrigida */}
+                    {correctedPhase && (
+                        <span className="px-1.5 py-0.5 text-xs rounded bg-violet-100 text-violet-700 border border-violet-200">
+                            ✓
+                        </span>
+                    )}
+                    {/* Badge Fusion para resultados em massa */}
+                    {result.phase_source && result.phase_source !== 'datajud' && (
+                        <span
+                            className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-700 border border-amber-200"
+                            title={`Classificado via ${result.phase_source}`}
+                        >
+                            F
+                        </span>
+                    )}
+                    {/* Botão de edição */}
+                    <button
+                        onClick={() => onEditPhase(result)}
+                        className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
+                                 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors
+                                 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        title="Editar fase"
+                        aria-label={`Editar fase para ${result.number}`}
+                    >
+                        <Pencil className="h-3 w-3" />
+                    </button>
+                </div>
+            </td>
+            <td className="px-6 py-4">
+                <div className="flex items-center text-green-600 dark:text-green-400 text-xs font-semibold">
+                    <CheckCircle className="h-4 w-4 mr-1" /> OK
+                </div>
+            </td>
+        </tr>
+    );
+});
 ResultRow.displayName = 'ResultRow';
 
 /**
@@ -78,13 +102,13 @@ FailureRow.displayName = 'FailureRow';
  * Includes its own sticky thead so columns stay aligned with the data rows.
  * Used when paginatedResults.length > VIRTUAL_THRESHOLD.
  */
-const VirtualResultsBody = ({ items }) => {
+const VirtualResultsBody = ({ items, phaseCorrections, onEditPhase }) => {
     const parentRef = useRef(null);
 
     const virtualizer = useVirtualizer({
         count: items.length,
         getScrollElement: () => parentRef.current,
-        estimateSize: () => 60,
+        estimateSize: () => 72, // increased from 60 to account for edit button
         overscan: 5,
     });
 
@@ -131,9 +155,14 @@ const VirtualResultsBody = ({ items }) => {
                                 </td>
                                 <td className="px-6 py-4" style={{ width: '15%' }}>
                                     <div className="flex items-center flex-wrap gap-1">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(result.phase, result.class_nature)}`}>
-                                            {getPhaseDisplayName(result.phase, result.class_nature)}
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(phaseCorrections?.[result.number] || result.phase, result.class_nature)}`}>
+                                            {phaseCorrections?.[result.number] ? PHASE_BY_CODE[phaseCorrections[result.number]]?.name : getPhaseDisplayName(result.phase, result.class_nature)}
                                         </span>
+                                        {phaseCorrections?.[result.number] && (
+                                            <span className="px-1.5 py-0.5 text-xs rounded bg-violet-100 text-violet-700 border border-violet-200">
+                                                ✓
+                                            </span>
+                                        )}
                                         {result.phase_source && result.phase_source !== 'datajud' && (
                                             <span
                                                 className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-700 border border-amber-200"
@@ -142,6 +171,16 @@ const VirtualResultsBody = ({ items }) => {
                                                 F
                                             </span>
                                         )}
+                                        <button
+                                            onClick={() => onEditPhase(result)}
+                                            className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
+                                                     hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors
+                                                     focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            title="Editar fase"
+                                            aria-label={`Editar fase para ${result.number}`}
+                                        >
+                                            <Pencil className="h-3 w-3" />
+                                        </button>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4" style={{ width: '15%' }}>
@@ -175,6 +214,9 @@ const BulkSearch = () => {
     const pollRef = useRef(null);                 // interval handle
     const pollErrorCount = useRef(0);             // consecutive error counter
     const fileInputRef = useRef(null);
+    // Phase correction state
+    const [phaseCorrections, setPhaseCorrections] = useState({});
+    const [editingProcess, setEditingProcess] = useState(null);
 
     const {
         register,
@@ -210,6 +252,11 @@ const BulkSearch = () => {
         document.addEventListener('keydown', handleEsc);
         return () => document.removeEventListener('keydown', handleEsc);
     }, [showExportMenu]);
+
+    // Handler para editar fase
+    const handleEditPhase = useCallback((result) => {
+        setEditingProcess(result);
+    }, []);
 
     // Stop polling and clean up the interval reference.
     const stopPolling = () => {
@@ -543,7 +590,7 @@ const BulkSearch = () => {
                     {/* Results table */}
                     <div className="overflow-x-auto">
                         {useVirtual ? (
-                            <VirtualResultsBody items={paginatedItems} />
+                            <VirtualResultsBody items={paginatedItems} phaseCorrections={phaseCorrections} onEditPhase={handleEditPhase} />
                         ) : (
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">
@@ -557,7 +604,12 @@ const BulkSearch = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                     {paginatedItems.map((p) => (
-                                        <ResultRow key={p.number} result={p} />
+                                        <ResultRow
+                                            key={p.number}
+                                            result={p}
+                                            correctedPhase={phaseCorrections[p.number] ?? null}
+                                            onEditPhase={handleEditPhase}
+                                        />
                                     ))}
                                 </tbody>
                             </table>
@@ -604,6 +656,24 @@ const BulkSearch = () => {
                         />
                     )}
                 </Card>
+            )}
+
+            {/* Modal de Edição de Fase */}
+            {editingProcess && (
+                <PhaseEditModal
+                    processNumber={editingProcess.number}
+                    currentPhase={phaseCorrections[editingProcess.number] || getPhaseDisplayName(editingProcess.phase, editingProcess.class_nature)}
+                    sourceTab="bulk"
+                    onClose={() => setEditingProcess(null)}
+                    onSuccess={(newPhaseCode) => {
+                        setPhaseCorrections(prev => ({
+                            ...prev,
+                            [editingProcess.number]: newPhaseCode,
+                        }));
+                        toast.success('Fase corrigida com sucesso!');
+                        setEditingProcess(null);
+                    }}
+                />
             )}
         </div>
     );

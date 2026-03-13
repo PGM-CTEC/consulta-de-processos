@@ -69,6 +69,12 @@ async def lifespan(app: FastAPI):
             conn.execute(sa_text("ALTER TABLE search_history ADD COLUMN classification_log TEXT"))
             conn.commit()
 
+    # Migrate: ensure phase_corrections table exists
+    inspector = sa_inspect(engine)
+    existing_tables = {t.lower() for t in inspector.get_table_names()}
+    if "phase_corrections" not in existing_tables:
+        models.Base.metadata.tables["phase_corrections"].create(bind=engine)
+
     yield
 
 load_dotenv()
@@ -514,6 +520,73 @@ async def get_alerts(limit: int = 20):
     """Get recent performance alerts."""
     metrics_service = get_metrics_service()
     return metrics_service.get_alerts(limit=limit)
+
+
+@app.post("/processes/{number}/phase-correction", response_model=schemas.PhaseCorrectionResponse, tags=["processes"])
+@limiter.limit("60/minute")
+async def submit_phase_correction(
+    number: str,
+    request: Request,
+    correction: schemas.PhaseCorrectionCreate,
+    db: Session = Depends(get_db),
+):
+    """
+    Submeter uma correção de fase processual.
+    Registra o par (fase_original, fase_corrigida, motivo) para retreinamento do ML.
+
+    Story: Edição Manual de Fase Processual
+    """
+    from .constants import VALID_PHASE_CODES
+
+    # Validar código de fase
+    corrected_phase = correction.corrected_phase.zfill(2)
+    if corrected_phase not in VALID_PHASE_CODES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Código de fase inválido. Use 01-15."
+        )
+
+    # Registrar correção
+    phase_correction = models.PhaseCorrection(
+        process_number=number,
+        original_phase=correction.original_phase,
+        corrected_phase=corrected_phase,
+        reason=correction.reason,
+        source_tab=correction.source_tab,
+        classification_log_snapshot=correction.classification_log_snapshot,
+    )
+    db.add(phase_correction)
+    db.commit()
+    db.refresh(phase_correction)
+
+    return phase_correction
+
+
+@app.get("/phase-corrections", response_model=List[schemas.PhaseCorrectionResponse], tags=["processes"])
+@limiter.limit("100/minute")
+async def list_phase_corrections(
+    request: Request,
+    process_number: str = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+):
+    """
+    Listar correções de fase.
+
+    Query params:
+    - process_number: filtrar por número do processo
+    - limit: máximo 1000 (padrão: 100)
+    - offset: paginação (padrão: 0)
+    """
+    limit = min(limit, 1000)
+    query = db.query(models.PhaseCorrection)
+
+    if process_number:
+        query = query.filter(models.PhaseCorrection.process_number == process_number)
+
+    corrections = query.order_by(models.PhaseCorrection.created_at.desc()).offset(offset).limit(limit).all()
+    return corrections
 
 
 @app.get("/circuit-breaker/status", tags=["health"])

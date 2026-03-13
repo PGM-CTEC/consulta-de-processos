@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
-import { Clock, Trash2, Copy, ExternalLink, FileText, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Clock, Trash2, Copy, ExternalLink, FileText, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { getHistory, clearHistory, searchProcess } from '../services/api';
 import { PHASE_BY_CODE } from '../constants/phases';
 import { getPhaseColorClasses } from '../utils/phaseColors';
+import PhaseEditModal from './PhaseEditModal';
 
 const STATUS_LABELS = {
     found: { label: 'Encontrado', icon: CheckCircle, cls: 'text-green-600 bg-green-50 border-green-200' },
@@ -52,21 +53,54 @@ function StatusBadge({ status }) {
     );
 }
 
-function PhaseBadge({ phase }) {
+function PhaseBadge({ phase, corrected, onEdit }) {
     if (!phase || phase === 'Indefinido') {
         return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-200">
-                Fase Indefinida
-            </span>
+            <div className="flex items-center gap-1">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-200">
+                    Fase Indefinida
+                </span>
+                {onEdit && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                        className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
+                                 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors
+                                 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        title="Editar fase"
+                        aria-label="Editar fase processual"
+                    >
+                        <Pencil className="h-3 w-3" />
+                    </button>
+                )}
+            </div>
         );
     }
     const code = String(phase).padStart(2, '0');
     const phaseInfo = PHASE_BY_CODE[code];
     const colorCls = getPhaseColorClasses(code);
     return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${colorCls}`}>
-            {phaseInfo ? `${code} — ${phaseInfo.name}` : `Fase ${phase}`}
-        </span>
+        <div className="flex items-center gap-1">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${colorCls}`}>
+                {phaseInfo ? `${code} — ${phaseInfo.name}` : `Fase ${phase}`}
+            </span>
+            {corrected && (
+                <span className="px-1.5 py-0.5 text-xs rounded bg-violet-100 text-violet-700 border border-violet-200">
+                    ✓
+                </span>
+            )}
+            {onEdit && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                    className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
+                             hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors
+                             focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    title="Editar fase"
+                    aria-label="Editar fase processual"
+                >
+                    <Pencil className="h-3 w-3" />
+                </button>
+            )}
+        </div>
     );
 }
 
@@ -144,6 +178,8 @@ function HistoryTab({ labels, onProcessView }) {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
     const [expandedId, setExpandedId] = useState(null);
+    const [phaseCorrections, setPhaseCorrections] = useState({});
+    const [editingItem, setEditingItem] = useState(null);
 
     useEffect(() => {
         loadHistory();
@@ -293,7 +329,11 @@ function HistoryTab({ labels, onProcessView }) {
                                                     </p>
                                                     <StatusBadge status={item.status || 'found'} />
                                                     {isFound && item.phase && (
-                                                        <PhaseBadge phase={item.phase} />
+                                                        <PhaseBadge
+                                                            phase={phaseCorrections[item.id] || item.phase}
+                                                            corrected={!!phaseCorrections[item.id]}
+                                                            onEdit={() => setEditingItem(item)}
+                                                        />
                                                     )}
                                                 </div>
                                                 <div className="text-xs text-gray-500 mt-1 space-y-0.5">
@@ -365,6 +405,25 @@ function HistoryTab({ labels, onProcessView }) {
                         })}
                     </ul>
                 </div>
+            )}
+
+            {/* Modal de Edição de Fase */}
+            {editingItem && (
+                <PhaseEditModal
+                    processNumber={editingItem.number}
+                    currentPhase={phaseCorrections[editingItem.id] || editingItem.phase}
+                    classificationLog={typeof editingItem.classification_log === 'string' ? JSON.parse(editingItem.classification_log) : editingItem.classification_log}
+                    sourceTab="history"
+                    onClose={() => setEditingItem(null)}
+                    onSuccess={(newPhaseCode) => {
+                        setPhaseCorrections(prev => ({
+                            ...prev,
+                            [editingItem.id]: newPhaseCode,
+                        }));
+                        toast.success('Fase corrigida com sucesso!');
+                        setEditingItem(null);
+                    }}
+                />
             )}
         </div>
     );

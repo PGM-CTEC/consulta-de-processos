@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { LoadingState, ErrorState } from './LoadingState';
-import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw, ArrowDownUp, Database } from 'lucide-react';
+import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw, ArrowDownUp, Database, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getPhaseColorClasses } from '../utils/phaseColors';
@@ -11,6 +11,7 @@ import { getProcessInstance } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
+import PhaseEditModal from './PhaseEditModal';
 
 function ProcessDetails({ data }) {
     const [activeData, setActiveData] = useState(data);
@@ -71,6 +72,8 @@ function ProcessDetails({ data }) {
     const [selectedDocTypes, setSelectedDocTypes] = useState([]); // Empty array means 'Todos'
     const [movSort, setMovSort] = useState('desc');       // 'desc' | 'asc' — movimentações DataJud
     const [fusionSort, setFusionSort] = useState('desc'); // 'desc' | 'asc' — movimentações Fusion
+    const [manualPhase, setManualPhase] = useState(null);  // Fase corrigida manualmente
+    const [showPhaseEdit, setShowPhaseEdit] = useState(false); // Modal de edição de fase
 
     const DOC_TYPES = useMemo(() => ({
         'Decisões': ['3', '193', '246', '80', '81'],
@@ -87,9 +90,15 @@ function ProcessDetails({ data }) {
     }, [activeData?.movements, activeData?.distribution_date]);
 
     // Corrigir fase considerando movimentos (força Fase 15 se houver baixa)
+    // Prioriza manualPhase se foi corrigida manualmente
     const correctedPhase = useMemo(() => {
+        if (manualPhase) {
+            // Se foi corrigida manualmente, usar a nova fase
+            const { PHASE_BY_CODE } = require('../constants/phases');
+            return PHASE_BY_CODE[manualPhase]?.name || manualPhase;
+        }
         return normalizePhaseWithMovements(activeData?.phase, activeData?.class_nature, activeData?.movements);
-    }, [activeData?.phase, activeData?.class_nature, activeData?.movements]);
+    }, [manualPhase, activeData?.phase, activeData?.class_nature, activeData?.movements]);
 
     const filteredMovements = useMemo(() => {
         if (!activeData?.movements) return [];
@@ -277,12 +286,18 @@ function ProcessDetails({ data }) {
                     </div>
                     <div className="flex items-start space-x-3">
                         <FileText className="h-5 w-5 text-violet-500 mt-1" aria-hidden="true" />
-                        <div>
+                        <div className="flex-1">
                             <p className="text-xs text-gray-500 uppercase font-semibold">Fase Atual</p>
                             <div className="mt-1 flex items-center flex-wrap gap-1.5">
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${correctedPhase === 'Indefinido' ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-300 dark:border-gray-600' : getPhaseColorClasses(correctedPhase, activeData.class_nature)}`}>
                                     {correctedPhase}
                                 </span>
+                                {/* Badge "Corrigida" quando manualmente editada */}
+                                {manualPhase && (
+                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-violet-100 text-violet-800 border border-violet-300 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-700">
+                                        Corrigida
+                                    </span>
+                                )}
                                 {/* Badge de origem da fase */}
                                 {activeData.phase_source && activeData.phase_source !== 'datajud' && (
                                     <span
@@ -292,6 +307,17 @@ function ProcessDetails({ data }) {
                                         Fusion
                                     </span>
                                 )}
+                                {/* Botão de edição */}
+                                <button
+                                    onClick={() => setShowPhaseEdit(true)}
+                                    className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
+                                             hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors
+                                             focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    title="Editar fase"
+                                    aria-label="Editar fase processual"
+                                >
+                                    <Pencil className="h-4 w-4" />
+                                </button>
                             </div>
                             {/* Aviso quando fase não pôde ser determinada */}
                             {activeData.phase_warning && (
@@ -532,6 +558,21 @@ function ProcessDetails({ data }) {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Modal de Edição de Fase */}
+            {showPhaseEdit && (
+                <PhaseEditModal
+                    processNumber={activeData.number}
+                    currentPhase={correctedPhase}
+                    classificationLog={activeData.raw_data?.__meta__?.classification_log}
+                    sourceTab="single"
+                    onClose={() => setShowPhaseEdit(false)}
+                    onSuccess={(newPhaseCode) => {
+                        setManualPhase(newPhaseCode);
+                        toast.success('Fase corrigida com sucesso!');
+                    }}
+                />
             )}
         </article>
     );
