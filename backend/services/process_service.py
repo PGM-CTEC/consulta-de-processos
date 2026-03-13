@@ -41,18 +41,25 @@ def _consolidar_fases(fase_datajud: str, fase_fusion: str) -> tuple[str, str]:
     cod_dj = _extrair_codigo_fase(fase_datajud)
     cod_fu = _extrair_codigo_fase(fase_fusion)
 
+    logger.debug(f"_consolidar_fases: DataJud={fase_datajud} (cod={cod_dj}), Fusion={fase_fusion} (cod={cod_fu})")
+
     # Regra: Execução sobrescreve Conhecimento
     if cod_dj in _FASES_EXECUCAO and cod_fu in _FASES_CONHECIMENTO:
+        logger.debug(f"-> DataJud execução override: {fase_datajud}")
         return fase_datajud, "datajud_execucao_override"
     if cod_fu in _FASES_EXECUCAO and cod_dj in _FASES_CONHECIMENTO:
+        logger.debug(f"-> Fusion execução override: {fase_fusion}")
         return fase_fusion, "fusion_execucao_override"
 
     # Ambas no mesmo branch: priorizar Fusion se disponível
     if cod_fu:
+        logger.debug(f"-> Fusion preferred: {fase_fusion}")
         return fase_fusion, "fusion_preferred"
     if cod_dj:
+        logger.debug(f"-> DataJud fallback: {fase_datajud}")
         return fase_datajud, "datajud_fallback"
 
+    logger.debug(f"-> Ambas indefinidas")
     return "Indefinido", "ambos_indefinidos"
 
 
@@ -124,6 +131,8 @@ class ProcessService:
             grau = api_data.get("grau", "G1")
             movements = api_data.get("movimentos", []) or []
 
+            logger.debug(f"Calculating DataJud phase: class={class_code}, tribunal={tribunal}, grau={grau}, movements={len(movements)}")
+
             datajud_phase = PhaseAnalyzer.analyze(
                 class_code=class_code,
                 movements=movements,
@@ -133,9 +142,9 @@ class ProcessService:
                 raw_data=api_data,
             )
             _meta_fo["datajud_phase"] = datajud_phase
-            logger.debug(f"DataJud phase for {process_number}: {datajud_phase}")
+            logger.info(f"✓ DataJud phase for {process_number}: {datajud_phase}")
         except Exception as e:
-            logger.warning(f"Error calculating DataJud phase for {process_number}: {e}")
+            logger.error(f"✗ Error calculating DataJud phase for {process_number}: {e}", exc_info=True)
             _meta_fo["datajud_phase"] = "Indefinido"
 
         if self.fusion_service:
