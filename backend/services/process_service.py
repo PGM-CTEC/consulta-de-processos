@@ -20,6 +20,42 @@ from ..utils.string_cleaner import clean_orgao_name
 
 logger = logging.getLogger(__name__)
 
+# Conjuntos de códigos de fase para consolidação
+_FASES_EXECUCAO = {"10", "11", "12", "14"}
+_FASES_CONHECIMENTO = {"01", "02", "03", "04", "05", "06", "07", "08", "09"}
+
+
+def _extrair_codigo_fase(fase_str: str) -> str:
+    """Extrai o código de fase a partir de string como '10 Execução'."""
+    if not fase_str:
+        return ""
+    return fase_str.split()[0] if fase_str.split() else ""
+
+
+def _consolidar_fases(fase_datajud: str, fase_fusion: str) -> tuple[str, str]:
+    """
+    Consolida fases de DataJud e Fusion usando regra: Execução sempre sobrescreve Conhecimento.
+
+    Retorna: (fase_consolidada, modo_consolidacao)
+    """
+    cod_dj = _extrair_codigo_fase(fase_datajud)
+    cod_fu = _extrair_codigo_fase(fase_fusion)
+
+    # Regra: Execução sobrescreve Conhecimento
+    if cod_dj in _FASES_EXECUCAO and cod_fu in _FASES_CONHECIMENTO:
+        return fase_datajud, "datajud_execucao_override"
+    if cod_fu in _FASES_EXECUCAO and cod_dj in _FASES_CONHECIMENTO:
+        return fase_fusion, "fusion_execucao_override"
+
+    # Ambas no mesmo branch: priorizar Fusion se disponível
+    if cod_fu:
+        return fase_fusion, "fusion_preferred"
+    if cod_dj:
+        return fase_datajud, "datajud_fallback"
+
+    return "Indefinido", "ambos_indefinidos"
+
+
 class ProcessService:
     def __init__(
         self,
@@ -80,6 +116,27 @@ class ProcessService:
         # DataJud fornece dados cadastrais; a fase vem do DocumentPhaseClassifier.
         api_data = copy.deepcopy(api_data)
         _meta_fo = api_data.setdefault("__meta__", {})
+
+        # Calcular fase DataJud via PhaseAnalyzer / ClassificadorFases
+        try:
+            class_code = (api_data.get("classe") or {}).get("codigo", 0)
+            tribunal = clean_orgao_name(api_data.get("tribunal", ""))
+            grau = api_data.get("grau", "G1")
+            movements = api_data.get("movimentos", []) or []
+
+            datajud_phase = PhaseAnalyzer.analyze(
+                class_code=class_code,
+                movements=movements,
+                tribunal=tribunal,
+                grau=grau,
+                process_number=process_number,
+                raw_data=api_data,
+            )
+            _meta_fo["datajud_phase"] = datajud_phase
+            logger.debug(f"DataJud phase for {process_number}: {datajud_phase}")
+        except Exception as e:
+            logger.warning(f"Error calculating DataJud phase for {process_number}: {e}")
+            _meta_fo["datajud_phase"] = "Indefinido"
 
         if self.fusion_service:
             try:
@@ -327,23 +384,32 @@ class ProcessService:
             "distribution date"
         )
 
-        # [FUSION-ONLY] Phase Analysis — usa exclusivamente a fase calculada
-        # pelo DocumentPhaseClassifier via Fusion PAV.
+        # Phase Analysis — consolidação de DataJud + Fusion
         raw_payload = dict(data)
         meta = raw_payload.get("__meta__") or {}
 
-        phase_source = meta.get("fusion_phase_source", "datajud")
+        # Rastrear índice e grau da instância selecionada (para múltiplas instâncias)
+        if "selected_index" in meta:
+            meta["phase_source_instance_index"] = meta["selected_index"]
+        if "grau" in data:
+            meta["phase_source_grau"] = data["grau"]
 
-        if meta.get("fusion_phase_override"):
-            phase = meta["fusion_phase_override"]
-            meta["phase_analysis_mode"] = "fusion_only"
-        elif meta.get("phase_override"):
+        # Verificar se há override manual (maior prioridade)
+        if meta.get("phase_override"):
             phase = meta["phase_override"]
-            meta["phase_analysis_mode"] = "override"
+            meta["phase_analysis_mode"] = "manual_override"
         else:
-            # Segurança: sem dados Fusion nem override → Indefinido
-            phase = "Indefinido"
-            meta["phase_analysis_mode"] = "fusion_only_fallback"
+            # Consolidar fases DataJud e Fusion usando regra:
+            # Execução sempre sobrescreve Conhecimento
+            fase_datajud = meta.get("datajud_phase", "")
+            fase_fusion = meta.get("fusion_phase_override", "")
+
+            phase, modo = _consolidar_fases(fase_datajud, fase_fusion)
+            meta["phase_analysis_mode"] = modo
+            meta["datajud_phase_input"] = fase_datajud
+            meta["fusion_phase_input"] = fase_fusion
+
+        phase_source = meta.get("fusion_phase_source", "datajud")
 
         meta["unified_phase"] = phase
 

@@ -92,6 +92,14 @@ _ANCHOR_REATIVACAO = re.compile(
     r'cumpr\w+\s+sentenca|embargo|sentenca|acordao)'
 )
 
+# Fase 10 — Execução/Cumprimento posterior ao Trânsito em Julgado
+# Detecta documentos de execução (nomeArquivo/tipo_local)
+_ANCHOR_EXECUCAO = re.compile(
+    r'(execucao|cumprimento\s+de\s+sentenca|penhora|hasta\s+publica|'
+    r'leilao\s+judicial|expropriacao|arresto|bloqueio\s+de\s+valores|bacenjud|'
+    r'calculo\s*[-–]\s*execucao)'
+)
+
 # Classes processuais que indicam execução (fases 10-12, 14)
 _CLASSES_EXECUCAO = {
     "cumprimento de sentenca",
@@ -146,6 +154,7 @@ class DocumentPhaseClassifier:
             "sentenca": sum(1 for n in nomes if _ANCHOR_SENTENCA.match(n)),
             "remessa": sum(1 for n in nomes if _ANCHOR_REMESSA.search(n)),
             "suspenso": sum(1 for n in nomes if _ANCHOR_SUSPENSO.search(n)),
+            "execucao": sum(1 for n in nomes if _ANCHOR_EXECUCAO.search(n)),
         }
         span_days = 0
         if len(ordered) >= 2:
@@ -266,6 +275,9 @@ class DocumentPhaseClassifier:
         suspenso_idx = next(
             (i for i, n in enumerate(nomes) if _ANCHOR_SUSPENSO.search(n)), None
         )
+        execucao_idx = next(
+            (i for i, n in enumerate(nomes) if _ANCHOR_EXECUCAO.search(n)), None
+        )
 
         anchors = {
             "arquivamento": arq_idx,
@@ -273,6 +285,7 @@ class DocumentPhaseClassifier:
             "sentenca": sentenca_idx,
             "remessa": remessa_idx,
             "suspenso": suspenso_idx,
+            "execucao": execucao_idx,
         }
 
         def _decisive(idx):
@@ -299,6 +312,18 @@ class DocumentPhaseClassifier:
             logger.info(
                 "Arquivamento ignorado: atividade substancial posterior detectada "
                 f"(total_movimentos={total})"
+            )
+
+        # P0: Execução posterior ao Trânsito — fase 10
+        # Lista está em ordem DESC (idx 0 = mais recente)
+        # Se execucao_idx < transito_idx, o documento de execução é POSTERIOR ao trânsito
+        if execucao_idx is not None and transito_idx is not None and execucao_idx < transito_idx:
+            rule = "P0_execucao_posterior_transito"
+            nome, data = _decisive(execucao_idx)
+            return ClassificationResult(
+                "10", "execucao", classe_norm, total,
+                rule, nome, data, anchors,
+                0.70, context,
             )
 
         # P2: Trânsito em Julgado (explícito)
