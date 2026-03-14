@@ -5,7 +5,7 @@ import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getPhaseColorClasses } from '../utils/phaseColors';
-import { normalizePhaseWithMovements } from '../constants/phases';
+import { normalizePhaseWithMovements, PHASE_BY_CODE } from '../constants/phases';
 import InstanceSelector from './InstanceSelector';
 import { getProcessInstance } from '../services/api';
 import { toast } from 'react-hot-toast';
@@ -95,7 +95,6 @@ function ProcessDetails({ data }) {
     const correctedPhase = useMemo(() => {
         if (manualPhase) {
             // Se foi corrigida manualmente, usar a nova fase
-            const { PHASE_BY_CODE } = require('../constants/phases');
             return PHASE_BY_CODE[manualPhase]?.name || manualPhase;
         }
         return normalizePhaseWithMovements(activeData?.phase, activeData?.class_nature, activeData?.movements);
