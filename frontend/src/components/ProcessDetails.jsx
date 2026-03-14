@@ -68,6 +68,7 @@ function ProcessDetails({ data }) {
     }, [showJson]);
 
     const [showAll, setShowAll] = useState(false);
+    const [showAllFusion, setShowAllFusion] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDocTypes, setSelectedDocTypes] = useState([]); // Empty array means 'Todos'
     const [movSort, setMovSort] = useState('desc');       // 'desc' | 'asc' — movimentações DataJud
@@ -137,6 +138,9 @@ function ProcessDetails({ data }) {
             return fusionSort === 'desc' ? -diff : diff;
         });
     }, [activeData?.fusion_movements, fusionSort]);
+
+    const displayedFusionMovements = showAllFusion ? fusionMovements : fusionMovements.slice(0, 20);
+    const hasFusionMore = fusionMovements.length > 20;
 
     const toggleFilter = (type) => {
         if (type === 'Todos') {
@@ -347,7 +351,10 @@ function ProcessDetails({ data }) {
                             </span>
                         </h2>
                         <button
-                            onClick={() => setFusionSort(s => s === 'desc' ? 'asc' : 'desc')}
+                            onClick={() => {
+                                setFusionSort(s => s === 'desc' ? 'asc' : 'desc');
+                                setShowAllFusion(false);
+                            }}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
                             title={fusionSort === 'desc' ? 'Ordenado: mais recente primeiro' : 'Ordenado: mais antigo primeiro'}
                         >
@@ -356,7 +363,7 @@ function ProcessDetails({ data }) {
                         </button>
                     </div>
                     <ol className="relative border-l-2 border-amber-100 ml-3 space-y-6 pl-8 pb-2 list-none">
-                        {fusionMovements.map((mov, idx) => (
+                        {displayedFusionMovements.map((mov, idx) => (
                             <li key={idx} className="relative">
                                 <span className="absolute -left-[41px] top-1 h-5 w-5 rounded-full border-4 border-white bg-amber-400 shadow-sm" aria-hidden="true" />
                                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
@@ -376,6 +383,29 @@ function ProcessDetails({ data }) {
                             </li>
                         ))}
                     </ol>
+
+                    {/* Show More Button for Fusion */}
+                    {hasFusionMore && (
+                        <div className="mt-8 flex justify-center">
+                            <Button
+                                onClick={() => setShowAllFusion(!showAllFusion)}
+                                variant="outline"
+                                className="flex items-center space-x-2 px-6 py-2.5 bg-amber-50 text-amber-700 rounded-full font-bold text-sm hover:bg-amber-100 transition-all border border-amber-100 shadow-sm"
+                            >
+                                {showAllFusion ? (
+                                    <>
+                                        <ChevronUp className="h-4 w-4" />
+                                        <span>Recolher movimentações</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <ChevronDown className="h-4 w-4" />
+                                        <span>Ver mais {fusionMovements.length - 20} movimentos</span>
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    )}
                 </CardContent>
                 </Card>
             )}
