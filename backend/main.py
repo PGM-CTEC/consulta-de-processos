@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import logging
 
@@ -553,7 +554,10 @@ async def submit_phase_correction(
         corrected_phase=corrected_phase,
         reason=correction.reason,
         source_tab=correction.source_tab,
-        classification_log_snapshot=correction.classification_log_snapshot,
+        classification_log_snapshot=(
+            json.dumps(correction.classification_log_snapshot, ensure_ascii=False)
+            if correction.classification_log_snapshot is not None else None
+        ),
     )
     db.add(phase_correction)
     db.commit()
