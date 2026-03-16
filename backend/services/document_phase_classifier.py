@@ -81,6 +81,10 @@ _ANCHOR_SENTENCA = re.compile(
 # Fase 04+ — Remessa / recurso para instância superior
 _ANCHOR_REMESSA = re.compile(r'(remessa\b|declinio\s+de\s+competencia|redistribuicao)')
 
+# Fase 05 — Acórdão / Certidão de Julgamento (julgado na 2ª instância, sem trânsito)
+# "Certidão de julgamento" ≠ "Certidão de trânsito em julgado"
+_ANCHOR_ACORDAO = re.compile(r'(acordao|certidao\s+de\s+julgamento)')
+
 # Fase 13 — Suspenso/Sobrestado
 _ANCHOR_SUSPENSO = re.compile(r'(suspensao|sobrestamento|processo\s+suspenso)')
 
@@ -153,6 +157,7 @@ class DocumentPhaseClassifier:
             "transito": sum(1 for n in nomes if _ANCHOR_TRANSITO.search(n)),
             "sentenca": sum(1 for n in nomes if _ANCHOR_SENTENCA.match(n)),
             "remessa": sum(1 for n in nomes if _ANCHOR_REMESSA.search(n)),
+            "acordao": sum(1 for n in nomes if _ANCHOR_ACORDAO.search(n)),
             "suspenso": sum(1 for n in nomes if _ANCHOR_SUSPENSO.search(n)),
             "execucao": sum(1 for n in nomes if _ANCHOR_EXECUCAO.search(n)),
         }
@@ -272,6 +277,9 @@ class DocumentPhaseClassifier:
         remessa_idx = next(
             (i for i, n in enumerate(nomes) if _ANCHOR_REMESSA.search(n)), None
         )
+        acordao_idx = next(
+            (i for i, n in enumerate(nomes) if _ANCHOR_ACORDAO.search(n)), None
+        )
         suspenso_idx = next(
             (i for i, n in enumerate(nomes) if _ANCHOR_SUSPENSO.search(n)), None
         )
@@ -284,6 +292,7 @@ class DocumentPhaseClassifier:
             "transito": transito_idx,
             "sentenca": sentenca_idx,
             "remessa": remessa_idx,
+            "acordao": acordao_idx,
             "suspenso": suspenso_idx,
             "execucao": execucao_idx,
         }
@@ -341,6 +350,15 @@ class DocumentPhaseClassifier:
             # Se há remessa mais recente que a sentença (índice menor = mais recente),
             # o processo foi remetido à instância superior após a sentença → fase 04
             if remessa_idx is not None and remessa_idx < sentenca_idx:
+                # P3a: Se há acórdão mais recente que a remessa → julgado na 2ª instância → fase 05
+                if acordao_idx is not None and acordao_idx < remessa_idx:
+                    rule = "P3a_acordao_apos_remessa"
+                    nome, data = _decisive(acordao_idx)
+                    return ClassificationResult(
+                        "05", "conhecimento", classe_norm, total,
+                        rule, nome, data, anchors,
+                        cls._compute_confidence(anchors, context, rule), context,
+                    )
                 rule = "P3_sentenca_com_remessa_posterior"
                 nome, data = _decisive(remessa_idx)
                 return ClassificationResult(
@@ -359,6 +377,15 @@ class DocumentPhaseClassifier:
 
         # P4: Remessa sem sentença prévia
         if remessa_idx is not None:
+            # P4a: Se há acórdão mais recente que a remessa → julgado na 2ª instância → fase 05
+            if acordao_idx is not None and acordao_idx < remessa_idx:
+                rule = "P4a_acordao_apos_remessa"
+                nome, data = _decisive(acordao_idx)
+                return ClassificationResult(
+                    "05", "conhecimento", classe_norm, total,
+                    rule, nome, data, anchors,
+                    cls._compute_confidence(anchors, context, rule), context,
+                )
             rule = "P4_remessa_sem_sentenca"
             nome, data = _decisive(remessa_idx)
             return ClassificationResult(

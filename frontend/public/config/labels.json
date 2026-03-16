@@ -1,10 +1,10 @@
 {
     "app": {
         "title": "Consulta Fase Processual",
-        "subtitle": "DataJud Intelligence",
+        "subtitle": "CTEC Intelligence",
         "statusOnline": "Status: Online",
         "statusOffline": "Status: Offline",
-        "footerText": "© 2026 Consulta Processual. Dados providos por DataJud/CNJ."
+        "footerText": "© 2026 Consulta Processual. Dados providos por DataJud/CNJ e MNI/PAV."
     },
     "nav": {
         "single": "Consulta Individual",
@@ -16,7 +16,7 @@
     "home": {
         "heroTitle": "Consulte a fase de processos em",
         "heroHighlight": "tempo real",
-        "heroSubtitle": "Acesse dados unificados do Poder Judiciário (DataJud) de forma simples e rápida."
+        "heroSubtitle": "Acesse a API do DATAJUD (CNJ) e dos MNIs ligados ao PAV de forma simples e rápida."
     },
     "search": {
         "placeholder": "Nº do processo (ex: 0000000-00.2024.8.19.0001)",

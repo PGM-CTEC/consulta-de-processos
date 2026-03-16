@@ -18,7 +18,7 @@ const DEFAULT_LABELS = {
     home: {
         heroTitle: "Consulte processos em",
         heroHighlight: "tempo real",
-        heroSubtitle: "Acesse dados unificados do Poder Judiciário (DataJud) de forma simples e rápida."
+        heroSubtitle: "Acesse dos MNIs ligados ao PAV de forma simples e rápida."
     },
     search: {
         placeholder: "Nº do processo (ex: 0000000-00.2024.8.19.0001)",
