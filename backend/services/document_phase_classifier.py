@@ -64,7 +64,7 @@ class ClassificationResult:
 # ---------------------------------------------------------------------------
 
 # Fase 15 — Arquivado Definitivamente
-_ANCHOR_ARQUIVAMENTO = re.compile(r'\barquivamento\b')
+_ANCHOR_ARQUIVAMENTO = re.compile(r'(\barquivamento\b|baixa\s+definitiva)')
 
 # Fase 03 — Trânsito em Julgado (somente documento explícito)
 _ANCHOR_TRANSITO = re.compile(
@@ -140,10 +140,11 @@ class DocumentPhaseClassifier:
         if anchor_idx == 0:
             return False  # âncora é o mais recente → nada posterior
 
+        count = 0
         for i in range(anchor_idx):
             if _ANCHOR_REATIVACAO.search(nomes[i]):
-                return True
-        return False
+                count += 1
+        return count > 5
 
     @classmethod
     def _build_context_summary(cls, ordered: List[FusionMovimento], nomes: List[str]) -> dict:
