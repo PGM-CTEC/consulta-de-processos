@@ -32,6 +32,7 @@ Estrutura da resposta:
   "uuid": "..."
 }
 """
+import json
 import re
 import logging
 from datetime import datetime
@@ -158,7 +159,12 @@ class FusionAPIClient:
             logger.error(f"PAV API request error for {cnj_digits}: {e}")
             raise
 
-        data = response.json()
+        # PAV envia UTF-8 na maioria dos casos; fallback para ISO-8859-1 em dados legados
+        try:
+            raw_text = response.content.decode("utf-8")
+        except UnicodeDecodeError:
+            raw_text = response.content.decode("iso-8859-1")
+        data = json.loads(raw_text)
 
         if not data.get("encontradoTribunal", False):
             logger.info(f"Processo {cnj_digits} não encontrado no PAV (encontradoTribunal=false)")
@@ -178,6 +184,7 @@ class FusionAPIClient:
                     data=_parse_date(m.get("dataDoMovimento", "")),
                     tipo_local=m.get("tipoMovimentoLocal", ""),
                     tipo_cnj=m.get("tipoMovimentoCNJ", ""),
+                    descricao=m.get("descricao", ""),
                 ))
             except Exception as e:
                 logger.warning(f"Erro ao parsear movimento {m}: {e}")

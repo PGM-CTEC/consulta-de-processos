@@ -23,8 +23,9 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FusionMovimento:
     data: datetime
-    tipo_local: str   # "batismo" — principal âncora de classificação
-    tipo_cnj: str     # código CNJ (referência)
+    tipo_local: str      # "batismo" — tipoMovimentoLocal
+    tipo_cnj: str        # tipoMovimentoCNJ
+    descricao: str = ""  # campo "descricao" da API — texto descritivo mais rico
 
 
 @dataclass
@@ -263,36 +264,39 @@ class DocumentPhaseClassifier:
 
         # Percorre do mais recente para o mais antigo
         ordered = sorted(movimentos, key=lambda m: m.data, reverse=True)
-        nomes_pair = [(cls._normalize(m.tipo_local), cls._normalize(m.tipo_cnj)) for m in ordered]
-        # nomes: texto principal para _has_substantive e _build_context (local com fallback para cnj)
-        nomes = [local or cnj for local, cnj in nomes_pair]
+        nomes_triple = [
+            (cls._normalize(m.tipo_local), cls._normalize(m.tipo_cnj), cls._normalize(m.descricao))
+            for m in ordered
+        ]
+        # nomes: melhor texto disponível para _has_substantive e _build_context
+        nomes = [local or cnj or desc for local, cnj, desc in nomes_triple]
 
-        def _any_match(pattern, local: str, cnj: str, use_match: bool = False) -> bool:
-            """Verifica se o padrão bate em tipo_local OU tipo_cnj."""
+        def _any_match(pattern, local: str, cnj: str, desc: str, use_match: bool = False) -> bool:
+            """Verifica se o padrão bate em tipo_local, tipo_cnj OU descricao."""
             fn = pattern.match if use_match else pattern.search
-            return bool(fn(local)) or bool(cnj and fn(cnj))
+            return bool(fn(local)) or bool(cnj and fn(cnj)) or bool(desc and fn(desc))
 
-        # Escaneia todas as âncoras considerando ambos os campos
+        # Escaneia todas as âncoras considerando os três campos
         arq_idx = next(
-            (i for i, (l, c) in enumerate(nomes_pair) if _any_match(_ANCHOR_ARQUIVAMENTO, l, c)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_ARQUIVAMENTO, l, c, d)), None
         )
         transito_idx = next(
-            (i for i, (l, c) in enumerate(nomes_pair) if _any_match(_ANCHOR_TRANSITO, l, c)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_TRANSITO, l, c, d)), None
         )
         sentenca_idx = next(
-            (i for i, (l, c) in enumerate(nomes_pair) if _any_match(_ANCHOR_SENTENCA, l, c, use_match=True)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_SENTENCA, l, c, d, use_match=True)), None
         )
         remessa_idx = next(
-            (i for i, (l, c) in enumerate(nomes_pair) if _any_match(_ANCHOR_REMESSA, l, c)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_REMESSA, l, c, d)), None
         )
         acordao_idx = next(
-            (i for i, (l, c) in enumerate(nomes_pair) if _any_match(_ANCHOR_ACORDAO, l, c)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_ACORDAO, l, c, d)), None
         )
         suspenso_idx = next(
-            (i for i, (l, c) in enumerate(nomes_pair) if _any_match(_ANCHOR_SUSPENSO, l, c)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_SUSPENSO, l, c, d)), None
         )
         execucao_idx = next(
-            (i for i, (l, c) in enumerate(nomes_pair) if _any_match(_ANCHOR_EXECUCAO, l, c)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_EXECUCAO, l, c, d)), None
         )
 
         anchors = {
@@ -310,7 +314,7 @@ class DocumentPhaseClassifier:
             if idx is None:
                 return None, None
             m = ordered[idx]
-            return (m.tipo_local or m.tipo_cnj), m.data.isoformat()
+            return (m.tipo_local or m.tipo_cnj or m.descricao), m.data.isoformat()
 
         total = len(movimentos)
         context = cls._build_context_summary(ordered, nomes)
@@ -442,19 +446,22 @@ class DocumentPhaseClassifier:
             )
 
         ordered = sorted(movimentos, key=lambda m: m.data, reverse=True)
-        nomes_pair = [(cls._normalize(m.tipo_local), cls._normalize(m.tipo_cnj)) for m in ordered]
-        nomes = [local or cnj for local, cnj in nomes_pair]
+        nomes_triple = [
+            (cls._normalize(m.tipo_local), cls._normalize(m.tipo_cnj), cls._normalize(m.descricao))
+            for m in ordered
+        ]
+        nomes = [local or cnj or desc for local, cnj, desc in nomes_triple]
 
-        def _any_match(pattern, local: str, cnj: str, use_match: bool = False) -> bool:
-            """Verifica se o padrão bate em tipo_local OU tipo_cnj."""
+        def _any_match(pattern, local: str, cnj: str, desc: str, use_match: bool = False) -> bool:
+            """Verifica se o padrão bate em tipo_local, tipo_cnj OU descricao."""
             fn = pattern.match if use_match else pattern.search
-            return bool(fn(local)) or bool(cnj and fn(cnj))
+            return bool(fn(local)) or bool(cnj and fn(cnj)) or bool(desc and fn(desc))
 
         arq_idx = next(
-            (i for i, (l, c) in enumerate(nomes_pair) if _any_match(_ANCHOR_ARQUIVAMENTO, l, c)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_ARQUIVAMENTO, l, c, d)), None
         )
         suspenso_idx = next(
-            (i for i, (l, c) in enumerate(nomes_pair) if _any_match(_ANCHOR_SUSPENSO, l, c)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_SUSPENSO, l, c, d)), None
         )
 
         anchors = {
@@ -466,7 +473,7 @@ class DocumentPhaseClassifier:
             if idx is None:
                 return None, None
             m = ordered[idx]
-            return (m.tipo_local or m.tipo_cnj), m.data.isoformat()
+            return (m.tipo_local or m.tipo_cnj or m.descricao), m.data.isoformat()
 
         total = len(movimentos)
         context = cls._build_context_summary(ordered, nomes)

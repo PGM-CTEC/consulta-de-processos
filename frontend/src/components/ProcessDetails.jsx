@@ -368,7 +368,12 @@ function ProcessDetails({ data }) {
                                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
                                     <div className="flex-1 pr-4">
                                         <p className="text-base font-medium text-gray-900">{mov.description || '—'}</p>
-                                        {mov.code && (
+                                        {mov.detail && mov.detail !== mov.description && (
+                                            <p className="text-sm text-gray-600 mt-0.5">
+                                                <span className="font-semibold">Descrição: </span>{mov.detail}
+                                            </p>
+                                        )}
+                                        {mov.code && mov.code.toLowerCase() !== 'indisponível' && (
                                             <p className="text-sm text-gray-500 mt-1 uppercase tracking-tight font-semibold">Tipo: {mov.code}</p>
                                         )}
                                     </div>

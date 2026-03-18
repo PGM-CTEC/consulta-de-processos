@@ -160,7 +160,7 @@ class ProcessService:
                     _meta_fo["fusion_phase_override"] = fusion_phase
                     _meta_fo["fusion_phase_source"] = fusion_result.fonte
                     _meta_fo["fusion_movements"] = [
-                        {"date": m.data.isoformat(), "description": m.tipo_cnj, "code": m.tipo_local}
+                        {"date": m.data.isoformat(), "description": m.tipo_cnj, "code": m.tipo_local, "detail": m.descricao}
                         for m in fusion_result.movimentos
                     ]
                     _meta_fo["fusion_fonte"] = fusion_result.fonte
@@ -787,7 +787,7 @@ class ProcessService:
 
             # Serializa movimentos Fusion para persistência em raw_data
             fusion_movs_json = [
-                {"date": m.data.isoformat(), "description": m.tipo_cnj, "code": m.tipo_local}
+                {"date": m.data.isoformat(), "description": m.tipo_cnj, "code": m.tipo_local, "detail": m.descricao}
                 for m in fusion_result.movimentos
             ]
             fusion_raw = {"__meta__": {"fusion_movements": fusion_movs_json, "fusion_fonte": fusion_result.fonte}}
@@ -919,7 +919,7 @@ class ProcessService:
         meta["fusion_fonte"] = fusion_result.fonte
         meta["fusion_classe_processual"] = fusion_result.classe_processual
         meta["fusion_movements"] = [
-            {"date": m.data.isoformat(), "description": m.tipo_cnj, "code": m.tipo_local}
+            {"date": m.data.isoformat(), "description": m.tipo_cnj, "code": m.tipo_local, "detail": m.descricao}
             for m in fusion_result.movimentos
         ]
 

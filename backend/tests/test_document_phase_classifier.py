@@ -6,12 +6,13 @@ from datetime import datetime
 from backend.services.document_phase_classifier import DocumentPhaseClassifier, FusionMovimento
 
 
-def _mov(tipo_local: str, data: str = "01/01/2024 10:00") -> FusionMovimento:
+def _mov(tipo_local: str, data: str = "01/01/2024 10:00", tipo_cnj: str = "", descricao: str = "") -> FusionMovimento:
     """Helper: create FusionMovimento from tipo_local string."""
     return FusionMovimento(
         data=datetime.strptime(data, "%d/%m/%Y %H:%M"),
         tipo_local=tipo_local,
-        tipo_cnj="",
+        tipo_cnj=tipo_cnj,
+        descricao=descricao,
     )
 
 
@@ -410,3 +411,47 @@ class TestSuspensaoComAtividadePosterior:
         ]
         result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
         assert result == "13"
+
+
+class TestClassificacaoViaDescricao:
+    """Testes onde o campo `descricao` é a fonte decisiva para classificação."""
+
+    def test_arquivamento_via_descricao_quando_tipo_local_indisponivel(self):
+        """tipoMovimentoLocal='Indisponível', mas descricao='Arquivado Definitivamente' → Fase 15."""
+        movimentos = [
+            _mov("Indisponível", "20/02/2025 14:37", tipo_cnj="Distribuição", descricao="Distribuído por sorteio"),
+            _mov("Indisponível", "09/04/2025 08:39", tipo_cnj="Desistência", descricao="Extinto o processo por desistência"),
+            _mov("Indisponível", "06/08/2025 16:01", tipo_cnj="Definitivo", descricao="Arquivado Definitivamente"),
+            _mov("Indisponível", "06/08/2025 16:01", tipo_cnj="Baixa Definitiva", descricao="Baixa Definitiva"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Procedimento do Juizado Especial Cível")
+        assert result == "15"
+
+    def test_sentenca_via_descricao(self):
+        """descricao contém 'sentença' quando tipo_local e tipo_cnj não contêm → Fase 02."""
+        movimentos = [
+            _mov("Indisponível", "01/01/2024 10:00", tipo_cnj="Distribuição", descricao="Distribuído por sorteio"),
+            _mov("Indisponível", "01/06/2024 10:00", tipo_cnj="Conclusão", descricao="Conclusos para julgamento"),
+            _mov("Indisponível", "01/07/2024 10:00", tipo_cnj="Julgamento", descricao="Sentença"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "02"
+
+    def test_transito_via_descricao(self):
+        """descricao='Certidão de Trânsito em Julgado' quando campos tipo são genéricos → Fase 03."""
+        movimentos = [
+            _mov("Indisponível", "01/01/2024 10:00", tipo_cnj="Distribuição", descricao="Distribuído"),
+            _mov("Indisponível", "01/06/2024 10:00", tipo_cnj="Expedição de documento", descricao="Certidão de Trânsito em Julgado"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "03"
+
+    def test_descricao_nao_interfere_quando_tipo_local_suficiente(self):
+        """Quando tipo_local já classifica corretamente, descricao vazia não altera resultado."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Sentença", "01/06/2024 10:00"),
+            _mov("Arquivamento", "01/07/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "15"
