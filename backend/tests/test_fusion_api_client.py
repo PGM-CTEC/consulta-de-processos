@@ -1,4 +1,5 @@
 """Tests for FusionAPIClient — PAV REST API client."""
+import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
@@ -85,7 +86,7 @@ class TestFusionAPIClientHTTP:
             timeout=30,
         )
         mock_resp = MagicMock()
-        mock_resp.json.return_value = MOCK_RESPONSE
+        mock_resp.content = json.dumps(MOCK_RESPONSE).encode("utf-8")
         mock_resp.raise_for_status = MagicMock()
 
         with patch.object(client._http, "get", new_callable=AsyncMock, return_value=mock_resp) as mock_get:
@@ -103,7 +104,7 @@ class TestFusionAPIClientHTTP:
             timeout=30,
         )
         mock_resp = MagicMock()
-        mock_resp.json.return_value = {**MOCK_RESPONSE, "encontradoTribunal": False}
+        mock_resp.content = json.dumps({**MOCK_RESPONSE, "encontradoTribunal": False}).encode("iso-8859-1")
         mock_resp.raise_for_status = MagicMock()
 
         with patch.object(client._http, "get", new_callable=AsyncMock, return_value=mock_resp):

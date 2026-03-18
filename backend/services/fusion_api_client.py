@@ -1,26 +1,38 @@
 """
 FusionAPIClient — consome a API REST do PAV/Fusion para obter
-árvore de documentos de um processo por número CNJ.
+lista completa de movimentos (com ou sem documentos anexados) de um processo por número CNJ.
 
 Endpoint:
-GET {base_url}/services/arquivos/arvore-processo-by-sistema/{numero_cnj_sem_formatacao}
+GET {base_url}/services/custom-consulta-rapida-de-procesos/dados-da-consulta/{numero_cnj_sem_formatacao}
 
 Estrutura da resposta:
 {
-  "processo": { "sucesso": true, "numeroJudicial": "...", ... },
-  "tribunal": [
+  "dadosPAV": {
+    "neoId": 950453990,
+    "wfProcessNeoId": 950453990,
+    "situacao": "Ativo"
+  },
+  "dadosGerais": {
+    "numeroJudicial": "00754816320208190001",
+    "classeProcessual": "Cumprimento de sentença",
+    "orgaoJulgador": "Cartório da 3ª Vara da Fazenda Pública",
+    "descricaoSistema": "TJRJ_DCP"
+  },
+  "movimentos": [
     {
-      "descricaoSistema": "TRT - Primeira Instância",
-      "classeProcessual": "...",
-      "documentos": [
-        { "tipo": "7007", "nomeArquivo": "Minutar Sentença", "dataAutuacao": "25/05/2015 15:31", ... },
-        ...
-      ]
+      "dataDoMovimento": "08/04/2020 15:59",
+      "tipoMovimentoCNJ": "Distribuição",
+      "tipoMovimentoLocal": "DISTRIBUIÇÃO Sorteio",
+      "documentos": ["783447489", ...]
     },
     ...
-  ]
+  ],
+  "urlConsultaAutos": "http://...",
+  "encontradoTribunal": true,
+  "uuid": "..."
 }
 """
+import json
 import re
 import logging
 from datetime import datetime
@@ -70,7 +82,7 @@ class FusionAPIClient:
     Requer cookie de sessão JSESSIONID configurado.
     """
 
-    _ENDPOINT = "/services/arquivos/arvore-processo-by-sistema/{cnj}"
+    _ENDPOINT = "/services/custom-consulta-rapida-de-procesos/dados-da-consulta/{cnj}"
 
     def __init__(self, base_url: str, session_cookie: str, timeout: int = 30):
         self._base_url = base_url.rstrip("/")
@@ -147,43 +159,44 @@ class FusionAPIClient:
             logger.error(f"PAV API request error for {cnj_digits}: {e}")
             raise
 
-        data = response.json()
+        # PAV envia UTF-8 na maioria dos casos; fallback para ISO-8859-1 em dados legados
+        try:
+            raw_text = response.content.decode("utf-8")
+        except UnicodeDecodeError:
+            raw_text = response.content.decode("iso-8859-1")
+        data = json.loads(raw_text)
 
-        if not data.get("processo", {}).get("sucesso", False):
-            logger.info(f"Processo {cnj_digits} não encontrado no PAV (sucesso=false)")
-            return None
-
-        if not data.get("tribunal"):
-            logger.info(f"Processo {cnj_digits} sem tribunais no PAV")
+        if not data.get("encontradoTribunal", False):
+            logger.info(f"Processo {cnj_digits} não encontrado no PAV (encontradoTribunal=false)")
             return None
 
         return self._parse(data, numero_cnj)
 
     def _parse(self, data: dict, numero_cnj: str) -> FusionResult:
-        """Converte resposta JSON do PAV (arvore-processo-by-sistema) em FusionResult."""
-        tribunais = data.get("tribunal", [])
-        primeiro_tribunal = tribunais[0] if tribunais else {}
+        """Converte resposta JSON do PAV (dados-da-consulta) em FusionResult."""
+        dados_gerais = data.get("dadosGerais", {})
+        dados_pav = data.get("dadosPAV", {})
 
         movimentos = []
-        for tribunal in tribunais:
-            for doc in tribunal.get("documentos", []):
-                try:
-                    movimentos.append(FusionMovimento(
-                        data=_parse_date(doc.get("dataAutuacao", "")),
-                        tipo_local=doc.get("nomeArquivo", ""),
-                        tipo_cnj=doc.get("tipo", ""),
-                    ))
-                except Exception as e:
-                    logger.warning(f"Erro ao parsear documento {doc}: {e}")
+        for m in data.get("movimentos", []):
+            try:
+                movimentos.append(FusionMovimento(
+                    data=_parse_date(m.get("dataDoMovimento", "")),
+                    tipo_local=m.get("tipoMovimentoLocal", ""),
+                    tipo_cnj=m.get("tipoMovimentoCNJ", ""),
+                    descricao=m.get("descricao", ""),
+                ))
+            except Exception as e:
+                logger.warning(f"Erro ao parsear movimento {m}: {e}")
 
         # Ordenar ASC por data
         movimentos.sort(key=lambda m: m.data)
 
         return FusionResult(
             numero_cnj=numero_cnj,
-            neo_id=None,  # Não disponível neste endpoint
-            classe_processual=primeiro_tribunal.get("classeProcessual", ""),
-            sistema=primeiro_tribunal.get("descricaoSistema", ""),
+            neo_id=dados_pav.get("wfProcessNeoId"),
+            classe_processual=dados_gerais.get("classeProcessual", ""),
+            sistema=dados_gerais.get("descricaoSistema", ""),
             movimentos=movimentos,
             fonte="fusion_api",
         )

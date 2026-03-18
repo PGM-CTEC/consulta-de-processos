@@ -6,12 +6,13 @@ from datetime import datetime
 from backend.services.document_phase_classifier import DocumentPhaseClassifier, FusionMovimento
 
 
-def _mov(tipo_local: str, data: str = "01/01/2024 10:00") -> FusionMovimento:
+def _mov(tipo_local: str, data: str = "01/01/2024 10:00", tipo_cnj: str = "", descricao: str = "") -> FusionMovimento:
     """Helper: create FusionMovimento from tipo_local string."""
     return FusionMovimento(
         data=datetime.strptime(data, "%d/%m/%Y %H:%M"),
         tipo_local=tipo_local,
-        tipo_cnj="",
+        tipo_cnj=tipo_cnj,
+        descricao=descricao,
     )
 
 
@@ -186,20 +187,30 @@ class TestArquivamentoComAtividadePosterior:
     """Arquivamento NÃO deve forçar Fase 15 se há atividade posterior."""
 
     def test_arquivamento_com_peticao_posterior_nao_retorna_15(self):
-        """Arquivamento + despacho posterior → NÃO é Fase 15."""
+        """Arquivamento + >5 movimentos posteriores → NÃO é Fase 15."""
         movimentos = [
             _mov("Arquivamento", "01/01/2024 10:00"),
-            _mov("Despacho", "01/03/2024 10:00"),
+            _mov("Despacho", "01/02/2024 10:00"),
+            _mov("Intimação", "01/03/2024 10:00"),
+            _mov("Decisão", "01/04/2024 10:00"),
+            _mov("Citação", "01/05/2024 10:00"),
+            _mov("Audiência", "01/06/2024 10:00"),
+            _mov("Sentença", "01/07/2024 10:00"),
         ]
         result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
         assert result != "15"
 
     def test_arquivamento_com_desarquivamento_posterior(self):
-        """Arquivamento + Desarquivamento → NÃO é Fase 15."""
+        """Arquivamento + Desarquivamento + >5 atividades → NÃO é Fase 15."""
         movimentos = [
             _mov("Sentença", "01/01/2024 10:00"),
             _mov("Arquivamento", "01/02/2024 10:00"),
-            _mov("Desarquivamento", "01/04/2024 10:00"),
+            _mov("Desarquivamento", "01/03/2024 10:00"),
+            _mov("Despacho", "01/04/2024 10:00"),
+            _mov("Intimação", "01/05/2024 10:00"),
+            _mov("Decisão", "01/06/2024 10:00"),
+            _mov("Citação", "01/07/2024 10:00"),
+            _mov("Audiência", "01/08/2024 10:00"),
         ]
         result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
         assert result != "15"
@@ -215,31 +226,28 @@ class TestArquivamentoComAtividadePosterior:
         assert result == "15"
 
     def test_arquivamento_com_redistribuicao_posterior(self):
-        """Arquivamento + Redistribuição → processo reaberto, NÃO Fase 15."""
+        """Arquivamento + >5 atividades com redistribuição → NÃO Fase 15."""
         movimentos = [
             _mov("Arquivamento", "01/01/2024 10:00"),
-            _mov("Redistribuição", "01/03/2024 10:00"),
-        ]
-        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
-        assert result != "15"
-
-    def test_arquivamento_com_citacao_posterior(self):
-        """Arquivamento + Citação → processo reaberto."""
-        movimentos = [
-            _mov("Arquivamento", "01/01/2024 10:00"),
-            _mov("Citação", "01/05/2024 10:00"),
-        ]
-        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
-        assert result != "15"
-
-    def test_arquivamento_com_intimacao_posterior(self):
-        """Arquivamento + Intimação → processo reaberto."""
-        movimentos = [
-            _mov("Arquivamento", "01/01/2024 10:00"),
+            _mov("Redistribuição", "01/02/2024 10:00"),
+            _mov("Despacho", "01/03/2024 10:00"),
             _mov("Intimação", "01/04/2024 10:00"),
+            _mov("Decisão", "01/05/2024 10:00"),
+            _mov("Citação", "01/06/2024 10:00"),
+            _mov("Audiência", "01/07/2024 10:00"),
         ]
         result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
         assert result != "15"
+
+    def test_arquivamento_com_poucos_movimentos_posteriores_mantem_15(self):
+        """Arquivamento + poucos movimentos posteriores (<=5) → mantém Fase 15."""
+        movimentos = [
+            _mov("Arquivamento", "01/01/2024 10:00"),
+            _mov("Intimação", "01/02/2024 10:00"),
+            _mov("Citação", "01/03/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "15"
 
     def test_arquivamento_unico_movimento_retorna_15(self):
         """Arquivamento como único movimento → Fase 15."""
@@ -259,10 +267,15 @@ class TestArquivamentoComAtividadePosterior:
         assert result == "15"
 
     def test_execucao_arquivamento_com_citacao_posterior(self):
-        """Execução: Arquivamento + Citação posterior → NÃO Fase 15."""
+        """Execução: Arquivamento + >5 atividades → NÃO Fase 15."""
         movimentos = [
             _mov("Arquivamento", "01/01/2024 10:00"),
-            _mov("Citação", "01/03/2024 10:00"),
+            _mov("Citação", "01/02/2024 10:00"),
+            _mov("Despacho", "01/03/2024 10:00"),
+            _mov("Intimação", "01/04/2024 10:00"),
+            _mov("Decisão", "01/05/2024 10:00"),
+            _mov("Mandado", "01/06/2024 10:00"),
+            _mov("Diligência", "01/07/2024 10:00"),
         ]
         result = DocumentPhaseClassifier.classify(movimentos, "Execução Fiscal")
         assert result != "15"
@@ -377,10 +390,15 @@ class TestSuspensaoComAtividadePosterior:
     """Suspensão NÃO deve forçar Fase 13 se há atividade posterior."""
 
     def test_suspensao_com_despacho_posterior_nao_retorna_13(self):
-        """Suspensão + Despacho posterior → NÃO é Fase 13."""
+        """Suspensão + >5 atividades posteriores → NÃO é Fase 13."""
         movimentos = [
             _mov("Suspensão", "01/01/2024 10:00"),
-            _mov("Despacho", "01/03/2024 10:00"),
+            _mov("Despacho", "01/02/2024 10:00"),
+            _mov("Intimação", "01/03/2024 10:00"),
+            _mov("Decisão", "01/04/2024 10:00"),
+            _mov("Citação", "01/05/2024 10:00"),
+            _mov("Audiência", "01/06/2024 10:00"),
+            _mov("Mandado", "01/07/2024 10:00"),
         ]
         result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
         assert result != "13"
@@ -393,3 +411,47 @@ class TestSuspensaoComAtividadePosterior:
         ]
         result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
         assert result == "13"
+
+
+class TestClassificacaoViaDescricao:
+    """Testes onde o campo `descricao` é a fonte decisiva para classificação."""
+
+    def test_arquivamento_via_descricao_quando_tipo_local_indisponivel(self):
+        """tipoMovimentoLocal='Indisponível', mas descricao='Arquivado Definitivamente' → Fase 15."""
+        movimentos = [
+            _mov("Indisponível", "20/02/2025 14:37", tipo_cnj="Distribuição", descricao="Distribuído por sorteio"),
+            _mov("Indisponível", "09/04/2025 08:39", tipo_cnj="Desistência", descricao="Extinto o processo por desistência"),
+            _mov("Indisponível", "06/08/2025 16:01", tipo_cnj="Definitivo", descricao="Arquivado Definitivamente"),
+            _mov("Indisponível", "06/08/2025 16:01", tipo_cnj="Baixa Definitiva", descricao="Baixa Definitiva"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Procedimento do Juizado Especial Cível")
+        assert result == "15"
+
+    def test_sentenca_via_descricao(self):
+        """descricao contém 'sentença' quando tipo_local e tipo_cnj não contêm → Fase 02."""
+        movimentos = [
+            _mov("Indisponível", "01/01/2024 10:00", tipo_cnj="Distribuição", descricao="Distribuído por sorteio"),
+            _mov("Indisponível", "01/06/2024 10:00", tipo_cnj="Conclusão", descricao="Conclusos para julgamento"),
+            _mov("Indisponível", "01/07/2024 10:00", tipo_cnj="Julgamento", descricao="Sentença"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "02"
+
+    def test_transito_via_descricao(self):
+        """descricao='Certidão de Trânsito em Julgado' quando campos tipo são genéricos → Fase 03."""
+        movimentos = [
+            _mov("Indisponível", "01/01/2024 10:00", tipo_cnj="Distribuição", descricao="Distribuído"),
+            _mov("Indisponível", "01/06/2024 10:00", tipo_cnj="Expedição de documento", descricao="Certidão de Trânsito em Julgado"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "03"
+
+    def test_descricao_nao_interfere_quando_tipo_local_suficiente(self):
+        """Quando tipo_local já classifica corretamente, descricao vazia não altera resultado."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Sentença", "01/06/2024 10:00"),
+            _mov("Arquivamento", "01/07/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "15"

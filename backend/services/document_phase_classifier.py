@@ -23,8 +23,9 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FusionMovimento:
     data: datetime
-    tipo_local: str   # "batismo" — principal âncora de classificação
-    tipo_cnj: str     # código CNJ (referência)
+    tipo_local: str      # "batismo" — tipoMovimentoLocal
+    tipo_cnj: str        # tipoMovimentoCNJ
+    descricao: str = ""  # campo "descricao" da API — texto descritivo mais rico
 
 
 @dataclass
@@ -64,7 +65,7 @@ class ClassificationResult:
 # ---------------------------------------------------------------------------
 
 # Fase 15 — Arquivado Definitivamente
-_ANCHOR_ARQUIVAMENTO = re.compile(r'\barquivamento\b')
+_ANCHOR_ARQUIVAMENTO = re.compile(r'(\barquivamento\b|baixa\s+definitiva)')
 
 # Fase 03 — Trânsito em Julgado (somente documento explícito)
 _ANCHOR_TRANSITO = re.compile(
@@ -140,10 +141,11 @@ class DocumentPhaseClassifier:
         if anchor_idx == 0:
             return False  # âncora é o mais recente → nada posterior
 
+        count = 0
         for i in range(anchor_idx):
             if _ANCHOR_REATIVACAO.search(nomes[i]):
-                return True
-        return False
+                count += 1
+        return count > 5
 
     @classmethod
     def _build_context_summary(cls, ordered: List[FusionMovimento], nomes: List[str]) -> dict:
@@ -262,29 +264,39 @@ class DocumentPhaseClassifier:
 
         # Percorre do mais recente para o mais antigo
         ordered = sorted(movimentos, key=lambda m: m.data, reverse=True)
-        nomes = [cls._normalize(m.tipo_local) for m in ordered]
+        nomes_triple = [
+            (cls._normalize(m.tipo_local), cls._normalize(m.tipo_cnj), cls._normalize(m.descricao))
+            for m in ordered
+        ]
+        # nomes: melhor texto disponível para _has_substantive e _build_context
+        nomes = [local or cnj or desc for local, cnj, desc in nomes_triple]
 
-        # Escaneia todas as âncoras de uma vez
+        def _any_match(pattern, local: str, cnj: str, desc: str, use_match: bool = False) -> bool:
+            """Verifica se o padrão bate em tipo_local, tipo_cnj OU descricao."""
+            fn = pattern.match if use_match else pattern.search
+            return bool(fn(local)) or bool(cnj and fn(cnj)) or bool(desc and fn(desc))
+
+        # Escaneia todas as âncoras considerando os três campos
         arq_idx = next(
-            (i for i, n in enumerate(nomes) if _ANCHOR_ARQUIVAMENTO.search(n)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_ARQUIVAMENTO, l, c, d)), None
         )
         transito_idx = next(
-            (i for i, n in enumerate(nomes) if _ANCHOR_TRANSITO.search(n)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_TRANSITO, l, c, d)), None
         )
         sentenca_idx = next(
-            (i for i, n in enumerate(nomes) if _ANCHOR_SENTENCA.match(n)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_SENTENCA, l, c, d, use_match=True)), None
         )
         remessa_idx = next(
-            (i for i, n in enumerate(nomes) if _ANCHOR_REMESSA.search(n)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_REMESSA, l, c, d)), None
         )
         acordao_idx = next(
-            (i for i, n in enumerate(nomes) if _ANCHOR_ACORDAO.search(n)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_ACORDAO, l, c, d)), None
         )
         suspenso_idx = next(
-            (i for i, n in enumerate(nomes) if _ANCHOR_SUSPENSO.search(n)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_SUSPENSO, l, c, d)), None
         )
         execucao_idx = next(
-            (i for i, n in enumerate(nomes) if _ANCHOR_EXECUCAO.search(n)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_EXECUCAO, l, c, d)), None
         )
 
         anchors = {
@@ -298,10 +310,11 @@ class DocumentPhaseClassifier:
         }
 
         def _decisive(idx):
-            """Retorna (tipo_local original, ISO date) do movimento na posição idx."""
+            """Retorna (melhor texto disponível, ISO date) do movimento na posição idx."""
             if idx is None:
                 return None, None
-            return ordered[idx].tipo_local, ordered[idx].data.isoformat()
+            m = ordered[idx]
+            return (m.tipo_local or m.tipo_cnj or m.descricao), m.data.isoformat()
 
         total = len(movimentos)
         context = cls._build_context_summary(ordered, nomes)
@@ -433,13 +446,22 @@ class DocumentPhaseClassifier:
             )
 
         ordered = sorted(movimentos, key=lambda m: m.data, reverse=True)
-        nomes = [cls._normalize(m.tipo_local) for m in ordered]
+        nomes_triple = [
+            (cls._normalize(m.tipo_local), cls._normalize(m.tipo_cnj), cls._normalize(m.descricao))
+            for m in ordered
+        ]
+        nomes = [local or cnj or desc for local, cnj, desc in nomes_triple]
+
+        def _any_match(pattern, local: str, cnj: str, desc: str, use_match: bool = False) -> bool:
+            """Verifica se o padrão bate em tipo_local, tipo_cnj OU descricao."""
+            fn = pattern.match if use_match else pattern.search
+            return bool(fn(local)) or bool(cnj and fn(cnj)) or bool(desc and fn(desc))
 
         arq_idx = next(
-            (i for i, n in enumerate(nomes) if _ANCHOR_ARQUIVAMENTO.search(n)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_ARQUIVAMENTO, l, c, d)), None
         )
         suspenso_idx = next(
-            (i for i, n in enumerate(nomes) if _ANCHOR_SUSPENSO.search(n)), None
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_SUSPENSO, l, c, d)), None
         )
 
         anchors = {
@@ -450,7 +472,8 @@ class DocumentPhaseClassifier:
         def _decisive(idx):
             if idx is None:
                 return None, None
-            return ordered[idx].tipo_local, ordered[idx].data.isoformat()
+            m = ordered[idx]
+            return (m.tipo_local or m.tipo_cnj or m.descricao), m.data.isoformat()
 
         total = len(movimentos)
         context = cls._build_context_summary(ordered, nomes)
