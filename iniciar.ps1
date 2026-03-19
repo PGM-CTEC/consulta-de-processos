@@ -172,3 +172,32 @@ Write-Host "  Para encerrar use: ./encerrar.bat" -ForegroundColor Gray
 Write-Host "  Para debug use:    ./iniciar.bat --debug" -ForegroundColor Gray
 Write-Host "  =============================================" -ForegroundColor Cyan
 Write-Host ""
+
+# Monitorar processos continuamente
+Write-Host "  Monitorando servidores..." -ForegroundColor Gray
+$backendAlive = $true
+$frontendAlive = $true
+
+while ($backendAlive -and $frontendAlive) {
+    Start-Sleep -Seconds 5
+
+    # Verificar se processos estao vivos
+    $backendAlive = (Get-Process -Id $backendProc.Id -ErrorAction SilentlyContinue) -ne $null
+    $frontendAlive = (Get-Process -Id $frontendProc.Id -ErrorAction SilentlyContinue) -ne $null
+
+    if (-not $backendAlive) {
+        Write-Host ""
+        Write-Host "  [AVISO] Backend foi encerrado" -ForegroundColor Yellow
+    }
+    if (-not $frontendAlive) {
+        Write-Host ""
+        Write-Host "  [AVISO] Frontend foi encerrado" -ForegroundColor Yellow
+    }
+}
+
+Write-Host ""
+Write-Host "  Encerrando aplicacao..." -ForegroundColor Yellow
+try { Stop-Process -Id $backendProc.Id -ErrorAction SilentlyContinue } catch {}
+try { Stop-Process -Id $frontendProc.Id -ErrorAction SilentlyContinue } catch {}
+Write-Host "  Encerrado." -ForegroundColor Green
+exit 0

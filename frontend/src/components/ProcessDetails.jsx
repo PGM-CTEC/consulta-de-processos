@@ -1,17 +1,18 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { LoadingState, ErrorState } from './LoadingState';
-import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw, ArrowDownUp, Database, Pencil } from 'lucide-react';
+import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw, ArrowDownUp, Database, Pencil, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getPhaseColorClasses } from '../utils/phaseColors';
 import { normalizePhaseWithMovements, PHASE_BY_CODE } from '../constants/phases';
 import InstanceSelector from './InstanceSelector';
-import { getProcessInstance } from '../services/api';
+import { getProcessInstance, confirmPhase, getConfirmedProcesses, getLatestCorrections } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import PhaseEditModal from './PhaseEditModal';
+import ClassificationTrace from './ClassificationTrace';
 
 function ProcessDetails({ data }) {
     const [activeData, setActiveData] = useState(data);
@@ -75,6 +76,8 @@ function ProcessDetails({ data }) {
     const [fusionSort, setFusionSort] = useState('desc'); // 'desc' | 'asc' — movimentações Fusion
     const [manualPhase, setManualPhase] = useState(null);  // Fase corrigida manualmente
     const [showPhaseEdit, setShowPhaseEdit] = useState(false); // Modal de edição de fase
+    const [phaseConfirmed, setPhaseConfirmed] = useState(false);
+    const [confirmingPhase, setConfirmingPhase] = useState(false);
 
     const DOC_TYPES = useMemo(() => ({
         'Decisões': ['3', '193', '246', '80', '81'],
@@ -185,6 +188,44 @@ function ProcessDetails({ data }) {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+    };
+
+    // Carregar status de confirmação e correção existente quando o processo mudar
+    useEffect(() => {
+        const loadPhaseStatus = async () => {
+            try {
+                const [confirmResponse, correctionsResponse] = await Promise.all([
+                    getConfirmedProcesses(),
+                    getLatestCorrections(),
+                ]);
+                const isConfirmed = confirmResponse.confirmed_processes?.includes(activeData.number);
+                setPhaseConfirmed(isConfirmed || false);
+                const existingCorrection = correctionsResponse.corrections?.[activeData.number];
+                if (existingCorrection && !manualPhase) {
+                    setManualPhase(existingCorrection);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar status de fase:', error);
+                setPhaseConfirmed(false);
+            }
+        };
+        if (activeData?.number) {
+            loadPhaseStatus();
+        }
+    }, [activeData?.number]);
+
+    const handleConfirmPhase = async () => {
+        if (phaseConfirmed || confirmingPhase) return;
+        setConfirmingPhase(true);
+        try {
+            await confirmPhase(activeData.number, activeData.phase || correctedPhase);
+            setPhaseConfirmed(true);
+            toast.success('Fase confirmada como correta!');
+        } catch {
+            toast.error('Erro ao confirmar fase.');
+        } finally {
+            setConfirmingPhase(false);
+        }
     };
 
     const getCategoryStyles = (category) => {
@@ -321,6 +362,21 @@ function ProcessDetails({ data }) {
                                 >
                                     <Pencil className="h-4 w-4" />
                                 </button>
+                                {/* Botão de confirmação (visível apenas quando fase não foi corrigida manualmente) */}
+                                {!manualPhase && (
+                                    <button
+                                        onClick={handleConfirmPhase}
+                                        disabled={phaseConfirmed || confirmingPhase}
+                                        className={`p-1.5 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-green-500 font-semibold
+                                            ${phaseConfirmed
+                                                ? 'text-white bg-green-600 border-2 border-green-700 shadow-md hover:shadow-lg cursor-default'
+                                                : 'text-gray-400 hover:text-green-600 hover:bg-green-50 border-2 border-transparent'}`}
+                                        title={phaseConfirmed ? 'Fase confirmada como correta ✓' : 'Confirmar fase como correta'}
+                                        aria-label="Confirmar fase como correta"
+                                    >
+                                        <Check className="h-4 w-4" />
+                                    </button>
+                                )}
                             </div>
                             {/* Aviso quando fase não pôde ser determinada */}
                             {activeData.phase_warning && (
@@ -333,6 +389,31 @@ function ProcessDetails({ data }) {
                     </div>
                 </div>
             </Card>
+
+            {/* Fundamentos da Classificação */}
+            {activeData.raw_data?.__meta__?.classification_log && (
+                <Card className="p-0 overflow-hidden">
+                    <CardContent className="p-0">
+                        <div className="px-6 pt-4 pb-2 flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-indigo-500" aria-hidden="true" />
+                            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+                                Fundamentos da Classificação
+                            </h2>
+                            {manualPhase && (
+                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-violet-100 text-violet-800 border border-violet-300">
+                                    Fase foi corrigida manualmente
+                                </span>
+                            )}
+                        </div>
+                        <ClassificationTrace
+                            log={typeof activeData.raw_data.__meta__.classification_log === 'string'
+                                ? JSON.parse(activeData.raw_data.__meta__.classification_log)
+                                : activeData.raw_data.__meta__.classification_log}
+                            compact
+                        />
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Movimentações Fusion — exibido apenas quando há dados do PAV */}
             {fusionMovements.length > 0 && (
@@ -598,7 +679,7 @@ function ProcessDetails({ data }) {
             {showPhaseEdit && (
                 <PhaseEditModal
                     processNumber={activeData.number}
-                    currentPhase={correctedPhase}
+                    currentPhase={manualPhase || activeData?.phase}
                     classificationLog={activeData.raw_data?.__meta__?.classification_log}
                     sourceTab="single"
                     onClose={() => setShowPhaseEdit(false)}

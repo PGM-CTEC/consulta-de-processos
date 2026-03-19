@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { Search, Database, Layers, BarChart3, Settings, Sun, Moon } from 'lucide-react';
+import { Search, Database, Layers, BarChart3, Settings, Sun, Moon, CheckCircle } from 'lucide-react';
 import SearchProcess from './components/SearchProcess';
 import LoadingFallback from './components/LoadingFallback';
 import FeedbackButton from './components/FeedbackButton';
@@ -14,13 +14,14 @@ import { useTheme } from './hooks/useTheme';
 const ProcessDetails = lazy(() => import('./components/ProcessDetails'));
 const BulkSearch = lazy(() => import('./components/BulkSearch'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
+const PhaseCorrectionAnalytics = lazy(() => import('./components/PhaseCorrectionAnalytics'));
 const PhaseReference = lazy(() => import('./components/PhaseReference'));
 const SettingsComponent = lazy(() => import('./components/Settings'));
 
 function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('single'); // 'single' | 'bulk' | 'analytics' | 'history' | 'settings'
+  const [activeTab, setActiveTab] = useState('single'); // 'single' | 'bulk' | 'analytics' | 'correcoes' | 'history' | 'settings'
   const [showPhasesModal, setShowPhasesModal] = useState(false);
   const { labels, loading: labelsLoading } = useLabels();
   const { isDark, toggleTheme } = useTheme();
@@ -49,11 +50,6 @@ function App() {
     }
   };
 
-  const handleViewFromHistory = (processData) => {
-    // Muda para a aba "Consulta Individual" e exibe os dados
-    setActiveTab('single');
-    setData(processData);
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
@@ -92,6 +88,7 @@ function App() {
                 { id: 'single',    label: labels.nav.single,    icon: Search    },
                 { id: 'bulk',      label: labels.nav.bulk,      icon: Layers    },
                 { id: 'analytics', label: labels.nav.analytics, icon: BarChart3 },
+                { id: 'correcoes', label: 'Correções',          icon: CheckCircle },
                 { id: 'history',   label: labels.nav.history,   icon: Database  },
                 { id: 'settings',  label: 'Configurações',      icon: Settings  },
               ].map(({ id, label, icon: Icon }) => (
@@ -186,6 +183,19 @@ function App() {
             </div>
           )}
 
+          {activeTab === 'correcoes' && (
+            <div
+              id="tab-panel-correcoes"
+              role="tabpanel"
+              aria-labelledby="tab-correcoes"
+              className="animate-in fade-in slide-in-from-bottom-4 duration-700"
+            >
+              <Suspense fallback={<LoadingFallback message="Carregando análise de correções..." />}>
+                <PhaseCorrectionAnalytics />
+              </Suspense>
+            </div>
+          )}
+
           {activeTab === 'history' && (
             <div
               id="tab-panel-history"
@@ -193,7 +203,7 @@ function App() {
               aria-labelledby="tab-history"
               className="animate-in fade-in slide-in-from-bottom-4 duration-700"
             >
-              <HistoryTab labels={labels} onProcessView={handleViewFromHistory} />
+              <HistoryTab labels={labels} />
             </div>
           )}
 

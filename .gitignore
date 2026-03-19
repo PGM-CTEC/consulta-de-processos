@@ -67,7 +67,7 @@ playwright-report/
 test-results/
 
 # Database files (local instances, should not be committed)
-*.db
+# *.db  # COMENTADO: consulta_processual.db incluído no git para distribuição de seed data
 *.db-journal
 
 # Generated scripts

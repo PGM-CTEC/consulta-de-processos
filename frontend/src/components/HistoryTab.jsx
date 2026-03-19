@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Clock, Trash2, Copy, ExternalLink, FileText, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { Clock, Trash2, Copy, ExternalLink, FileText, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp, Pencil, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { getHistory, clearHistory, searchProcess } from '../services/api';
+import { getHistory, clearHistory, searchProcess, confirmPhase, getConfirmedProcesses, getLatestCorrections } from '../services/api';
 import { PHASE_BY_CODE } from '../constants/phases';
 import { getPhaseColorClasses } from '../utils/phaseColors';
 import PhaseEditModal from './PhaseEditModal';
+import ClassificationTrace from './ClassificationTrace';
+
+const ProcessDetails = lazy(() => import('./ProcessDetails'));
 
 const STATUS_LABELS = {
     found: { label: 'Encontrado', icon: CheckCircle, cls: 'text-green-600 bg-green-50 border-green-200' },
@@ -20,28 +23,6 @@ const FILTERS = [
     { value: 'error', label: 'Erros' },
 ];
 
-const RULE_LABELS = {
-    P1_arquivamento: 'Arquivamento encontrado (prioridade máxima)',
-    P2_transito_em_julgado: 'Certidão/Trânsito em Julgado detectado',
-    P3_sentenca_com_remessa_posterior: 'Sentença + remessa posterior',
-    P3_sentenca_sem_transito: 'Sentença sem trânsito em julgado',
-    P4_remessa_sem_sentenca: 'Remessa/recurso sem sentença prévia',
-    P5_suspensao: 'Suspensão/sobrestamento detectado',
-    P6_fallback_antes_sentenca: 'Nenhuma âncora encontrada (fase inicial)',
-    E1_arquivamento: 'Arquivamento em execução',
-    E2_suspensao: 'Suspensão em execução',
-    E3_fallback: 'Execução em andamento (nenhuma âncora)',
-    empty_list_fallback: 'Lista de movimentos vazia',
-    fusion_not_found: 'Processo não encontrado no Fusion/PAV',
-    fusion_error: 'Erro ao consultar Fusion/PAV',
-    fusion_unavailable: 'Serviço Fusion/PAV não configurado',
-};
-
-const BRANCH_LABELS = {
-    conhecimento: 'Conhecimento',
-    execucao: 'Execução',
-};
-
 function StatusBadge({ status }) {
     const cfg = STATUS_LABELS[status] ?? STATUS_LABELS.found;
     const Icon = cfg.icon;
@@ -53,13 +34,27 @@ function StatusBadge({ status }) {
     );
 }
 
-function PhaseBadge({ phase, corrected, onEdit }) {
+function PhaseBadge({ phase, corrected, onEdit, onConfirm, confirmed }) {
     if (!phase || phase === 'Indefinido') {
         return (
             <div className="flex items-center gap-1">
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-200">
                     Fase Indefinida
                 </span>
+                {onConfirm && !corrected && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onConfirm(); }}
+                        disabled={confirmed}
+                        className={`p-1.5 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-green-500 font-semibold
+                            ${confirmed
+                                ? 'text-white bg-green-600 border-2 border-green-700 shadow-md hover:shadow-lg cursor-default'
+                                : 'text-gray-400 hover:text-green-600 hover:bg-green-50 border-2 border-transparent'}`}
+                        title={confirmed ? 'Fase confirmada como correta ✓' : 'Confirmar fase como correta'}
+                        aria-label="Confirmar fase como correta"
+                    >
+                        <Check className="h-4 w-4" />
+                    </button>
+                )}
                 {onEdit && (
                     <button
                         onClick={(e) => { e.stopPropagation(); onEdit(); }}
@@ -85,8 +80,22 @@ function PhaseBadge({ phase, corrected, onEdit }) {
             </span>
             {corrected && (
                 <span className="px-1.5 py-0.5 text-xs rounded bg-violet-100 text-violet-700 border border-violet-200">
-                    ✓
+                    Corrigida
                 </span>
+            )}
+            {onConfirm && !corrected && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onConfirm(); }}
+                    disabled={confirmed}
+                    className={`p-1.5 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-green-500 font-semibold
+                        ${confirmed
+                            ? 'text-white bg-green-600 border-2 border-green-700 shadow-md hover:shadow-lg cursor-default'
+                            : 'text-gray-400 hover:text-green-600 hover:bg-green-50 border-2 border-transparent'}`}
+                    title={confirmed ? 'Fase confirmada como correta ✓' : 'Confirmar fase como correta'}
+                    aria-label="Confirmar fase como correta"
+                >
+                    <Check className="h-4 w-4" />
+                </button>
             )}
             {onEdit && (
                 <button
@@ -104,82 +113,18 @@ function PhaseBadge({ phase, corrected, onEdit }) {
     );
 }
 
-function ClassificationTrace({ log }) {
-    if (!log) return null;
-
-    return (
-        <div className="px-6 pb-4 bg-gray-50 border-t border-gray-100 animate-in fade-in duration-200">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 py-3 text-xs">
-                <div>
-                    <span className="text-gray-400 font-semibold uppercase tracking-wide block">Branch</span>
-                    <p className="text-gray-700 font-medium mt-0.5">
-                        {BRANCH_LABELS[log.branch] || log.branch || 'N/A'}
-                    </p>
-                </div>
-                <div>
-                    <span className="text-gray-400 font-semibold uppercase tracking-wide block">Movimentos</span>
-                    <p className="text-gray-700 mt-0.5">{log.total_movimentos ?? 0}</p>
-                </div>
-                <div>
-                    <span className="text-gray-400 font-semibold uppercase tracking-wide block">Classe</span>
-                    <p className="text-gray-700 mt-0.5 truncate" title={log.classe_normalizada || ''}>
-                        {log.classe_normalizada || 'N/A'}
-                    </p>
-                </div>
-                <div>
-                    <span className="text-gray-400 font-semibold uppercase tracking-wide block">Regra</span>
-                    <p className="text-gray-700 mt-0.5 font-medium">
-                        {RULE_LABELS[log.rule_applied] || log.rule_applied || 'N/A'}
-                    </p>
-                </div>
-            </div>
-
-            {log.decisive_movement && (
-                <div className="py-2 border-t border-gray-200 text-xs">
-                    <span className="text-gray-400 font-semibold uppercase tracking-wide block">Movimento decisivo</span>
-                    <p className="text-gray-800 font-semibold mt-0.5">
-                        {log.decisive_movement}
-                        {log.decisive_movement_date && (
-                            <span className="text-gray-500 font-normal ml-2">
-                                ({new Date(log.decisive_movement_date).toLocaleDateString('pt-BR')})
-                            </span>
-                        )}
-                    </p>
-                </div>
-            )}
-
-            {log.anchor_matches && Object.keys(log.anchor_matches).length > 0 && (
-                <div className="py-2 border-t border-gray-200 text-xs">
-                    <span className="text-gray-400 font-semibold uppercase tracking-wide block mb-1">
-                        Âncoras detectadas
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                        {Object.entries(log.anchor_matches).map(([key, idx]) => (
-                            <span
-                                key={key}
-                                className={`px-2 py-0.5 rounded text-xs font-mono ${
-                                    idx !== null
-                                        ? 'bg-green-50 text-green-700 border border-green-200'
-                                        : 'bg-gray-100 text-gray-400 border border-gray-200'
-                                }`}
-                            >
-                                {key}: {idx !== null ? `#${idx}` : '—'}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
-
-function HistoryTab({ labels, onProcessView }) {
+function HistoryTab({ labels }) {
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
     const [expandedId, setExpandedId] = useState(null);
     const [phaseCorrections, setPhaseCorrections] = useState({});
+    const [confirmedIds, setConfirmedIds] = useState(new Set());
     const [editingItem, setEditingItem] = useState(null);
+    // Inline details state
+    const [inlineDetailId, setInlineDetailId] = useState(null);
+    const [inlineDetailData, setInlineDetailData] = useState(null);
+    const [loadingDetail, setLoadingDetail] = useState(false);
 
     useEffect(() => {
         loadHistory();
@@ -188,8 +133,14 @@ function HistoryTab({ labels, onProcessView }) {
     const loadHistory = async () => {
         setLoading(true);
         try {
-            const data = await getHistory();
+            const [data, confirmed, corrections] = await Promise.all([
+                getHistory(),
+                getConfirmedProcesses(),
+                getLatestCorrections(),
+            ]);
             setHistory(data);
+            setConfirmedIds(new Set(confirmed.confirmed_processes || []));
+            setPhaseCorrections(corrections.corrections || {});
         } catch (error) {
             console.error('Error fetching history:', error);
             setHistory([]);
@@ -204,6 +155,10 @@ function HistoryTab({ labels, onProcessView }) {
             await clearHistory();
             setHistory([]);
             setExpandedId(null);
+            setConfirmedIds(new Set());
+            setPhaseCorrections({});
+            setInlineDetailId(null);
+            setInlineDetailData(null);
             toast.success('Histórico limpo com sucesso!');
         } catch {
             toast.error('Erro ao limpar histórico.');
@@ -219,16 +174,28 @@ function HistoryTab({ labels, onProcessView }) {
         });
     };
 
-    const handleViewProcess = async (number, event) => {
+    const handleViewProcess = async (item, event) => {
         event.stopPropagation();
+        // Toggle: se já está expandido, recolher
+        if (inlineDetailId === item.id) {
+            setInlineDetailId(null);
+            setInlineDetailData(null);
+            return;
+        }
+        setLoadingDetail(true);
+        setInlineDetailId(item.id);
+        setInlineDetailData(null);
         try {
             toast.loading('Buscando processo...', { id: 'search' });
-            const result = await searchProcess(number);
+            const result = await searchProcess(item.number);
             toast.success('Processo encontrado!', { id: 'search' });
-            if (onProcessView) onProcessView(result);
+            setInlineDetailData(result);
         } catch (error) {
             toast.error('Erro ao buscar processo.', { id: 'search' });
             console.error('Error fetching process:', error);
+            setInlineDetailId(null);
+        } finally {
+            setLoadingDetail(false);
         }
     };
 
@@ -315,6 +282,9 @@ function HistoryTab({ labels, onProcessView }) {
                             const tribunal = item.court?.split(' - ')[0] || item.tribunal_expected || null;
                             const isExpanded = expandedId === item.id;
                             const hasLog = !!item.classification_log;
+                            const isCorrected = !!phaseCorrections[item.number];
+                            const displayPhase = phaseCorrections[item.number] || item.phase;
+                            const isInlineOpen = inlineDetailId === item.id;
                             return (
                                 <li key={item.id} className="hover:bg-gray-50/50 transition-colors">
                                     <div className="px-6 py-4 flex items-center justify-between gap-4">
@@ -330,9 +300,19 @@ function HistoryTab({ labels, onProcessView }) {
                                                     <StatusBadge status={item.status || 'found'} />
                                                     {isFound && item.phase && (
                                                         <PhaseBadge
-                                                            phase={phaseCorrections[item.id] || item.phase}
-                                                            corrected={!!phaseCorrections[item.id]}
+                                                            phase={displayPhase}
+                                                            corrected={isCorrected}
+                                                            confirmed={confirmedIds.has(item.number)}
                                                             onEdit={() => setEditingItem(item)}
+                                                            onConfirm={async () => {
+                                                                try {
+                                                                    await confirmPhase(item.number, displayPhase);
+                                                                    setConfirmedIds(prev => new Set([...prev, item.number]));
+                                                                    toast.success('Fase confirmada como correta!');
+                                                                } catch {
+                                                                    toast.error('Erro ao confirmar fase.');
+                                                                }
+                                                            }}
                                                         />
                                                     )}
                                                 </div>
@@ -366,8 +346,8 @@ function HistoryTab({ labels, onProcessView }) {
                                                             ? 'text-indigo-600 bg-indigo-50'
                                                             : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'
                                                     }`}
-                                                    title="Ver log de classificação"
-                                                    aria-label="Ver log de classificação"
+                                                    title="Ver fundamentos da classificação"
+                                                    aria-label="Ver fundamentos da classificação"
                                                     aria-expanded={isExpanded}
                                                 >
                                                     {isExpanded
@@ -386,19 +366,39 @@ function HistoryTab({ labels, onProcessView }) {
                                             </button>
                                             {isFound && (
                                                 <button
-                                                    onClick={(e) => handleViewProcess(item.number, e)}
-                                                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-indigo-600 hover:text-white hover:bg-indigo-600 border border-indigo-200 rounded-lg transition-colors"
-                                                    title="Ver detalhes do processo"
-                                                    aria-label="Ver detalhes do processo"
+                                                    onClick={(e) => handleViewProcess(item, e)}
+                                                    className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border rounded-lg transition-colors ${
+                                                        isInlineOpen
+                                                            ? 'text-white bg-indigo-600 border-indigo-600'
+                                                            : 'text-indigo-600 hover:text-white hover:bg-indigo-600 border-indigo-200'
+                                                    }`}
+                                                    title={isInlineOpen ? 'Recolher detalhes' : 'Ver detalhes do processo'}
+                                                    aria-label={isInlineOpen ? 'Recolher detalhes' : 'Ver detalhes do processo'}
                                                 >
-                                                    <ExternalLink className="h-4 w-4" />
-                                                    <span>Ver Detalhes</span>
+                                                    {isInlineOpen
+                                                        ? <><ChevronUp className="h-4 w-4" /><span>Recolher</span></>
+                                                        : <><ExternalLink className="h-4 w-4" /><span>Ver Detalhes</span></>
+                                                    }
                                                 </button>
                                             )}
                                         </div>
                                     </div>
                                     {isExpanded && hasLog && (
                                         <ClassificationTrace log={item.classification_log} />
+                                    )}
+                                    {/* Inline ProcessDetails */}
+                                    {isInlineOpen && (
+                                        <div className="border-t border-gray-200 bg-gray-50/50 px-4 py-4">
+                                            {loadingDetail ? (
+                                                <div className="flex justify-center py-8">
+                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+                                                </div>
+                                            ) : inlineDetailData ? (
+                                                <Suspense fallback={<div className="animate-pulse h-48 bg-gray-100 rounded-lg" />}>
+                                                    <ProcessDetails data={inlineDetailData} />
+                                                </Suspense>
+                                            ) : null}
+                                        </div>
                                     )}
                                 </li>
                             );
@@ -411,14 +411,14 @@ function HistoryTab({ labels, onProcessView }) {
             {editingItem && (
                 <PhaseEditModal
                     processNumber={editingItem.number}
-                    currentPhase={phaseCorrections[editingItem.id] || editingItem.phase}
+                    currentPhase={phaseCorrections[editingItem.number] || editingItem.phase}
                     classificationLog={typeof editingItem.classification_log === 'string' ? JSON.parse(editingItem.classification_log) : editingItem.classification_log}
                     sourceTab="history"
                     onClose={() => setEditingItem(null)}
                     onSuccess={(newPhaseCode) => {
                         setPhaseCorrections(prev => ({
                             ...prev,
-                            [editingItem.id]: newPhaseCode,
+                            [editingItem.number]: newPhaseCode,
                         }));
                         toast.success('Fase corrigida com sucesso!');
                         setEditingItem(null);

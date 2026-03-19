@@ -54,6 +54,14 @@ export default defineConfig(({ mode }) => {
           target: target,
           changeOrigin: true,
         },
+        '/phase-corrections': {
+          target: target,
+          changeOrigin: true,
+        },
+        '/phase-confirmations': {
+          target: target,
+          changeOrigin: true,
+        },
       },
     },
   }

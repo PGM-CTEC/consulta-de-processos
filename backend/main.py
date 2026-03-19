@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from sqlalchemy import text
+from sqlalchemy import text, func, distinct
 from sqlalchemy.orm import Session
 from .database import get_db, SessionLocal
 from .services.process_service import ProcessService
@@ -496,9 +496,22 @@ async def get_search_history(db: Session = Depends(get_db)):
 @app.delete("/history")
 async def clear_search_history(db: Session = Depends(get_db)):
     """Clear all search history."""
-    db.query(models.SearchHistory).delete()
+    db.query(models.SearchHistory).delete(synchronize_session=False)
+    db.query(models.PhaseCorrection).delete(synchronize_session=False)
+    db.query(models.PhaseConfirmation).delete(synchronize_session=False)
     db.commit()
     return {"message": "Histórico limpo"}
+
+
+@app.delete("/stats", tags=["processes"])
+async def clear_stats(db: Session = Depends(get_db)):
+    """Remove todos os processos e movimentos armazenados localmente."""
+    db.query(models.Movement).delete(synchronize_session=False)
+    db.query(models.Process).delete(synchronize_session=False)
+    db.query(models.PhaseCorrection).delete(synchronize_session=False)
+    db.query(models.PhaseConfirmation).delete(synchronize_session=False)
+    db.commit()
+    return {"message": "Estatísticas resetadas"}
 
 
 @app.get("/metrics", response_model=schemas.MetricsResponse, tags=["metrics"])
@@ -564,6 +577,128 @@ async def submit_phase_correction(
     db.refresh(phase_correction)
 
     return phase_correction
+
+
+@app.get("/phase-corrections/analytics", tags=["processes"])
+@limiter.limit("60/minute")
+async def get_phase_corrections_analytics(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Retorna estatísticas de correções de classificação de fase.
+
+    Métricas retornadas:
+    - total_consultados: total de processos consultados no histórico
+    - total_corrigidos: total de processos com pelo menos uma correção
+    - total_sem_correcao: total_consultados - total_corrigidos (processos sem erro)
+    - taxa_acerto_pct: percentual de processos sem correção (acerto do classificador)
+    - correcoes_por_fase_original: fases que geraram mais erros, ordenadas por frequência
+    - correcoes_por_fase_corrigida: para quais fases os erros foram corrigidos
+    """
+    total_consultados = db.query(func.count(models.SearchHistory.id)).scalar()
+    total_corrigidos = db.query(func.count(distinct(models.PhaseCorrection.process_number))).scalar()
+    total_sem_correcao = max(0, total_consultados - total_corrigidos)
+    taxa_acerto = (
+        round((total_sem_correcao / total_consultados) * 100, 1)
+        if total_consultados > 0
+        else 0.0
+    )
+
+    por_fase_original = (
+        db.query(
+            models.PhaseCorrection.original_phase,
+            func.count(models.PhaseCorrection.id).label("total"),
+        )
+        .group_by(models.PhaseCorrection.original_phase)
+        .order_by(func.count(models.PhaseCorrection.id).desc())
+        .all()
+    )
+
+    por_fase_corrigida = (
+        db.query(
+            models.PhaseCorrection.corrected_phase,
+            func.count(models.PhaseCorrection.id).label("total"),
+        )
+        .group_by(models.PhaseCorrection.corrected_phase)
+        .order_by(models.PhaseCorrection.corrected_phase)
+        .all()
+    )
+
+    total_confirmados = db.query(func.count(models.PhaseConfirmation.id)).scalar()
+
+    return {
+        "total_consultados": total_consultados,
+        "total_corrigidos": total_corrigidos,
+        "total_sem_correcao": total_sem_correcao,
+        "taxa_acerto_pct": taxa_acerto,
+        "total_confirmados": total_confirmados,
+        "correcoes_por_fase_original": [
+            {"fase": r.original_phase or "Indefinido", "total": r.total}
+            for r in por_fase_original
+        ],
+        "correcoes_por_fase_corrigida": [
+            {"fase": r.corrected_phase, "total": r.total}
+            for r in por_fase_corrigida
+        ],
+    }
+
+
+@app.get("/phase-corrections/latest", tags=["processes"])
+@limiter.limit("100/minute")
+async def get_latest_phase_corrections(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Retorna a correção mais recente por processo (mapa process_number → corrected_phase)."""
+    subq = (
+        db.query(
+            models.PhaseCorrection.process_number,
+            func.max(models.PhaseCorrection.id).label("max_id"),
+        )
+        .group_by(models.PhaseCorrection.process_number)
+        .subquery()
+    )
+    rows = (
+        db.query(models.PhaseCorrection.process_number, models.PhaseCorrection.corrected_phase)
+        .join(subq, models.PhaseCorrection.id == subq.c.max_id)
+        .all()
+    )
+    return {"corrections": {r.process_number: r.corrected_phase for r in rows}}
+
+
+@app.get("/phase-confirmations", tags=["processes"])
+@limiter.limit("100/minute")
+async def list_confirmed_processes(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Retorna lista de process_numbers que foram confirmados como corretos."""
+    confirmed = db.query(models.PhaseConfirmation.process_number).all()
+    return {"confirmed_processes": [r[0] for r in confirmed]}
+
+
+@app.post("/phase-confirmations", tags=["processes"])
+@limiter.limit("60/minute")
+async def confirm_phase(
+    request: Request,
+    body: dict,
+    db: Session = Depends(get_db),
+):
+    """Registra que a classificação de fase está correta (sem necessidade de correção)."""
+    existing = db.query(models.PhaseConfirmation).filter_by(
+        process_number=body["process_number"]
+    ).first()
+    if existing:
+        existing.confirmed_phase = body["confirmed_phase"]
+        db.commit()
+        return {"message": "updated"}
+    db.add(models.PhaseConfirmation(
+        process_number=body["process_number"],
+        confirmed_phase=body["confirmed_phase"],
+    ))
+    db.commit()
+    return {"message": "confirmed"}
 
 
 @app.get("/phase-corrections", response_model=List[schemas.PhaseCorrectionResponse], tags=["processes"])

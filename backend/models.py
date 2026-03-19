@@ -105,6 +105,15 @@ class PhaseCorrection(Base):
     )
 
 
+class PhaseConfirmation(Base):
+    __tablename__ = "phase_confirmations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    process_number = Column(String, nullable=False, unique=True, index=True)
+    confirmed_phase = Column(String(20), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class AuditLog(Base):
     __tablename__ = 'audit_log'
 

@@ -102,6 +102,11 @@ export const clearHistory = async () => {
     return response.data;
 };
 
+export const clearStats = async () => {
+    const response = await api.delete('/stats');
+    return response.data;
+};
+
 export const getMetrics = async (hours = 24) => {
     const response = await api.get('/metrics', {
         params: { hours }
@@ -130,6 +135,29 @@ export const getFusionStatus = async () => {
 
 export const updateFusionCookie = async (cookie) => {
     const response = await api.patch('/fusion/cookie', { cookie });
+    return response.data;
+};
+
+export const getPhaseCorrectionsAnalytics = async () => {
+    const response = await api.get('/phase-corrections/analytics');
+    return response.data;
+};
+
+export const getLatestCorrections = async () => {
+    const response = await api.get('/phase-corrections/latest');
+    return response.data;
+};
+
+export const getConfirmedProcesses = async () => {
+    const response = await api.get('/phase-confirmations');
+    return response.data;
+};
+
+export const confirmPhase = async (processNumber, confirmedPhase) => {
+    const response = await api.post('/phase-confirmations', {
+        process_number: processNumber,
+        confirmed_phase: confirmedPhase,
+    });
     return response.data;
 };
 

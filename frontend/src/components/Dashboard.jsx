@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { BarChart3, TrendingUp, Database, Calendar, RefreshCw, Loader2, AlertCircle, Filter } from 'lucide-react';
-import { getStats } from '../services/api';
+import { BarChart3, TrendingUp, Database, Calendar, RefreshCw, Loader2, AlertCircle, Filter, Trash2 } from 'lucide-react';
+import { getStats, clearStats } from '../services/api';
+import { toast } from 'react-hot-toast';
 import { getPhaseColorClasses, getPhaseProgressBarClasses } from '../utils/phaseColors';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -11,6 +12,8 @@ const Dashboard = () => {
     const [error, setError] = useState(null);
     // Filters and sorting for phases section
     const [phaseSortBy, setPhaseSortBy] = useState('logical'); // logical|count-desc|count-asc|name-asc
+    const [confirmReset, setConfirmReset] = useState(false);
+    const [resetting, setResetting] = useState(false);
 
     const loadStats = async () => {
         setLoading(true);
@@ -26,9 +29,31 @@ const Dashboard = () => {
         }
     };
 
+    const handleReset = async () => {
+        if (!confirmReset) { setConfirmReset(true); return; }
+        setResetting(true);
+        try {
+            await clearStats();
+            toast.success('Estatísticas resetadas com sucesso.');
+            setStats(null);
+            loadStats();
+        } catch {
+            toast.error('Falha ao resetar histórico.');
+        } finally {
+            setResetting(false);
+            setConfirmReset(false);
+        }
+    };
+
     useEffect(() => {
         loadStats();
     }, []);
+
+    useEffect(() => {
+        if (!confirmReset) return;
+        const timer = setTimeout(() => setConfirmReset(false), 4000);
+        return () => clearTimeout(timer);
+    }, [confirmReset]);
 
     // Must be before early returns to comply with React Rules of Hooks
     const filteredAndSortedPhases = useMemo(() => {
@@ -105,14 +130,29 @@ const Dashboard = () => {
                             Estatísticas do banco de dados local
                         </p>
                     </div>
-                    <Button
-                        onClick={loadStats}
-                        variant="ghost"
-                        className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 font-bold flex items-center space-x-2"
-                    >
-                        <RefreshCw className="h-4 w-4" />
-                        <span>Atualizar</span>
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                        <Button
+                            onClick={loadStats}
+                            variant="ghost"
+                            className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 font-bold flex items-center space-x-2"
+                        >
+                            <RefreshCw className="h-4 w-4" />
+                            <span>Atualizar</span>
+                        </Button>
+                        <Button
+                            onClick={handleReset}
+                            disabled={resetting}
+                            variant="ghost"
+                            className={`px-4 py-2 font-bold flex items-center space-x-2 transition-colors ${
+                                confirmReset
+                                    ? 'bg-red-500/80 hover:bg-red-600/90 text-white'
+                                    : 'bg-white/20 hover:bg-white/30 text-white'
+                            }`}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            <span>{confirmReset ? 'Confirmar?' : 'Resetar histórico'}</span>
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Key Metrics */}
