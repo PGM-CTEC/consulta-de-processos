@@ -455,3 +455,285 @@ class TestClassificacaoViaDescricao:
         ]
         result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
         assert result == "15"
+
+
+# ====================================================================
+# Padrão 3: Classes de execução com nome variante
+# ====================================================================
+
+class TestClasseExecucaoVariantes:
+    """Classes de execução com nomes estendidos devem ir para fases 10+."""
+
+    def test_execucao_titulo_extrajudicial_contra_fazenda(self):
+        """Classe 'Execução de Título Extrajudicial contra a Fazenda Pública' → Fase 10+."""
+        result = DocumentPhaseClassifier.classify(
+            [], "Execução de Título Extrajudicial contra a Fazenda Pública"
+        )
+        assert int(result) >= 10, f"Classe de execução retornou fase {result}"
+
+    def test_execucao_contra_fazenda_publica(self):
+        """Classe 'Execução Contra a Fazenda Pública' → Fase 10+."""
+        result = DocumentPhaseClassifier.classify(
+            [], "Execução Contra a Fazenda Pública"
+        )
+        assert int(result) >= 10
+
+    def test_cumprimento_provisorio_sentenca_contra_fazenda(self):
+        """Classe 'Cumprimento Provisório de Sentença contra a Fazenda Pública' → Fase 10+."""
+        result = DocumentPhaseClassifier.classify(
+            [], "Cumprimento Provisório de Sentença contra a Fazenda Pública"
+        )
+        assert int(result) >= 10
+
+    def test_classes_exatas_continuam_funcionando(self):
+        """Classes exatas originais continuam retornando Fase 10+."""
+        classes = [
+            "Cumprimento de sentença",
+            "Execução fiscal",
+            "Execução",
+            "Execução de Título Extrajudicial",
+            "Execução por Quantia Certa",
+        ]
+        for cls_name in classes:
+            result = DocumentPhaseClassifier.classify([], cls_name)
+            assert int(result) >= 10, f"{cls_name} retornou fase {result}"
+
+    def test_classe_conhecimento_nao_confunde_com_execucao(self):
+        """Classes de conhecimento NÃO devem ser classificadas como execução."""
+        classes = [
+            "Procedimento Comum Cível",
+            "Ação Civil Pública",
+            "Mandado de Segurança",
+            "Ação Popular",
+        ]
+        for cls_name in classes:
+            result = DocumentPhaseClassifier.classify([], cls_name)
+            assert int(result) < 10, f"{cls_name} retornou fase {result} (execução)"
+
+
+# ====================================================================
+# Padrão 4: Reativação explícita reverte arquivamento
+# ====================================================================
+
+class TestReativacaoExplicita:
+    """Desarquivamento explícito deve reverter Fase 15 mesmo com poucos movimentos."""
+
+    def test_desarquivamento_explicito_reverte_arquivamento(self):
+        """Baixa Definitiva + Desarquivamento (sem 6 atividades) → NÃO Fase 15."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Baixa Definitiva", "01/06/2024 10:00"),
+            _mov("Desarquivamento", "01/09/2024 10:00"),
+            _mov("Redistribuição", "02/09/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result != "15", "Desarquivamento explícito deveria reverter Fase 15"
+
+    def test_reativacao_explicita_reverte_arquivamento(self):
+        """Arquivamento + Reativação (keyword) → NÃO Fase 15."""
+        movimentos = [
+            _mov("Arquivamento", "01/01/2024 10:00"),
+            _mov("Reativação", "01/03/2024 10:00"),
+            _mov("Despacho", "01/04/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result != "15"
+
+    def test_arquivamento_sem_reativacao_mantem_15(self):
+        """Arquivamento + apenas intimações (<=5, sem desarquivamento) → mantém Fase 15."""
+        movimentos = [
+            _mov("Arquivamento", "01/01/2024 10:00"),
+            _mov("Intimação", "01/02/2024 10:00"),
+            _mov("Citação", "01/03/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "15"
+
+    def test_regressao_arquivamento_final_continua_15(self):
+        """Regressão: arquivamento como último movimento → ainda Fase 15."""
+        movimentos = [
+            _mov("Sentença", "01/01/2024 10:00"),
+            _mov("Trânsito em Julgado", "01/02/2024 10:00"),
+            _mov("Arquivamento", "01/03/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "15"
+
+
+# ====================================================================
+# Padrão 2: Detecção de sentença por resultado de julgamento
+# ====================================================================
+
+class TestSentencaPorResultado:
+    """Desfechos de julgamento no campo descricao devem indicar sentença."""
+
+    def test_procedencia_na_descricao_retorna_02(self):
+        """Descrição 'Procedência' indica sentença → Fase 02."""
+        movimentos = [
+            _mov("Indisponível", "01/01/2024 10:00", descricao="Distribuído por sorteio"),
+            _mov("Indisponível", "01/06/2024 10:00", tipo_cnj="Julgamento", descricao="Procedência"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "02"
+
+    def test_improcedencia_na_descricao_retorna_02(self):
+        """Descrição 'Improcedência' indica sentença → Fase 02."""
+        movimentos = [
+            _mov("Indisponível", "01/01/2024 10:00", descricao="Distribuído"),
+            _mov("Indisponível", "01/06/2024 10:00", descricao="Improcedência"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "02"
+
+    def test_julgando_parcialmente_procedente_retorna_02(self):
+        """Descrição 'julgando parcialmente procedente' → Fase 02."""
+        movimentos = [
+            _mov("Indisponível", "01/01/2024 10:00", descricao="Petição inicial"),
+            _mov("Indisponível", "01/06/2024 10:00",
+                 descricao="Julgando parcialmente procedente o pedido"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "02"
+
+    def test_julgado_procedente_via_tipo_cnj_retorna_02(self):
+        """tipo_cnj 'Julgado procedente o pedido' → Fase 02."""
+        movimentos = [
+            _mov("Indisponível", "01/01/2024 10:00"),
+            _mov("Indisponível", "01/06/2024 10:00",
+                 tipo_cnj="Julgado procedente o pedido"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "02"
+
+    def test_despacho_sentenca_decisao_continua_ignorado(self):
+        """Regressão: 'Despacho / Sentença / Decisão' genérico NÃO deve disparar sentença."""
+        movimentos = [
+            _mov("Despacho / Sentença / Decisão", "01/01/2024 10:00"),
+            _mov("Despacho / Sentença / Decisão", "01/06/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "01"  # deve permanecer como fallback
+
+    def test_sentenca_literal_continua_funcionando(self):
+        """Regressão: 'Sentença' literal continua retornando Fase 02."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Sentença", "01/06/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "02"
+
+    def test_procedencia_com_remessa_posterior_retorna_04(self):
+        """Procedência + remessa posterior → Fase 04 (recurso)."""
+        movimentos = [
+            _mov("Indisponível", "01/01/2024 10:00", descricao="Distribuído"),
+            _mov("Indisponível", "01/06/2024 10:00", descricao="Procedência"),
+            _mov("Remessa", "01/08/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "04"
+
+
+# ====================================================================
+# Padrão 1: Remessa superior vs lateral (intra-G1)
+# ====================================================================
+
+class TestRemessaSuperiorVsLateral:
+    """Remessa lateral (declínio/redistribuição) NÃO deve disparar Fase 04."""
+
+    def test_declinio_competencia_retorna_01(self):
+        """Declínio de competência entre varas G1 → Fase 01 (não é recurso)."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Declínio de Competência", "01/06/2024 10:00"),
+            _mov("Despacho", "01/07/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "01", f"Declínio de competência retornou fase {result}"
+
+    def test_redistribuicao_entre_varas_retorna_01(self):
+        """Redistribuição entre varas G1 → Fase 01 (não é recurso)."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Redistribuição", "01/06/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "01"
+
+    def test_declinio_com_sentenca_retorna_02(self):
+        """Declínio de competência + sentença → Fase 02 (sentença detectada, não recurso)."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Declínio de Competência", "01/04/2024 10:00"),
+            _mov("Sentença", "01/08/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "02"
+
+    def test_remessa_generica_com_saneamento_posterior_retorna_01(self):
+        """Remessa genérica + saneamento posterior (ato G1) → Fase 01."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Remessa", "01/06/2024 10:00"),
+            _mov("Decisão de Saneamento", "01/08/2024 10:00", descricao="Saneamento e organização"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "01", f"Remessa + saneamento retornou {result}"
+
+    def test_apelacao_retorna_04(self):
+        """'Apelação' é remessa explícita ao tribunal → Fase 04."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Sentença", "01/06/2024 10:00"),
+            _mov("Apelação", "01/08/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "04"
+
+    def test_agravo_de_instrumento_retorna_04(self):
+        """'Agravo de Instrumento' é recurso → Fase 04."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Agravo de Instrumento", "01/06/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "04"
+
+    def test_recurso_especial_retorna_04(self):
+        """'Recurso Especial' é recurso → Fase 04."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Recurso Especial", "01/06/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "04"
+
+    def test_remessa_necessaria_retorna_04(self):
+        """'Remessa necessária' é recurso obrigatório → Fase 04."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Sentença", "01/06/2024 10:00"),
+            _mov("Remessa Necessária", "01/08/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "04"
+
+    def test_remessa_generica_sem_contexto_g1_retorna_04(self):
+        """Remessa genérica SEM atos G1 posteriores → mantém Fase 04 (comportamento conservador)."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Sentença", "01/06/2024 10:00"),
+            _mov("Remessa", "01/08/2024 10:00"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "04"
+
+    def test_descricao_cap13vfaz_tjrj_indica_remessa_tribunal(self):
+        """Descrição 'CAP13VFAZ -> TJRJ' indica remessa ao tribunal via descrição."""
+        movimentos = [
+            _mov("Petição Inicial", "01/01/2024 10:00"),
+            _mov("Indisponível", "01/06/2024 10:00",
+                 descricao="CAP13VFAZ -> TJRJ"),
+        ]
+        result = DocumentPhaseClassifier.classify(movimentos, "Ação Cível")
+        assert result == "04"

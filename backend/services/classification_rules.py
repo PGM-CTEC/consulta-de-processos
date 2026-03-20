@@ -447,8 +447,19 @@ class ClassificadorFases:
         return False
     
     def _eh_classe_execucao(self, processo: ProcessoJudicial) -> bool:
-        """Verifica se a classe processual é de execução."""
-        return processo.classe_codigo in CodigosCNJ.CLASSES_EXECUCAO
+        """
+        Verifica se a classe processual é de execução.
+        Usa código CNJ + fallback por descrição para cobrir variantes como
+        'Execução de Título Extrajudicial contra a Fazenda Pública'.
+        """
+        if processo.classe_codigo in CodigosCNJ.CLASSES_EXECUCAO:
+            return True
+        # Fallback por descrição normalizada
+        if processo.classe_descricao:
+            desc_norm = _normalizar_texto(processo.classe_descricao)
+            if desc_norm.startswith("execucao") or desc_norm.startswith("cumprimento"):
+                return True
+        return False
     
     def _verificar_transito_julgado(self, processo: ProcessoJudicial) -> bool:
         """

@@ -79,8 +79,49 @@ _ANCHOR_SENTENCA = re.compile(
     r'^(minutar\s+)?sentenca(\s+(de\s+merito|homologatoria|parcial|condenatoria|declaratoria|constitutiva))?$'
 )
 
-# Fase 04+ — Remessa / recurso para instância superior
-_ANCHOR_REMESSA = re.compile(r'(remessa\b|declinio\s+de\s+competencia|redistribuicao)')
+# Desfechos de julgamento que indicam que sentença foi proferida, mesmo
+# quando o documento não se chama "Sentença" — captura descrições do Fusion/PAV
+# como "Procedência", "Julgado procedente o pedido", etc.
+_ANCHOR_SENTENCA_RESULTADO = re.compile(
+    r'(^procedencia$|^improcedencia$|'
+    r'julg(ando|ou|ado|ada)\s+(im)?procedente|'
+    r'parcialmente\s+procedente|'
+    r'extincao\s+(do|de)\s+processo\s+com\s+resolucao|'
+    r'homologacao\s+de?\s+(acordo|transacao)|'
+    r'^sem\s+resolucao\s+de?\s+merito$)'
+)
+
+# Fase 04+ — Remessa explícita para instância SUPERIOR (tribunal, G2, STJ, etc.)
+_ANCHOR_REMESSA_SUPERIOR = re.compile(
+    r'(apelacao|agravo\s+de\s+instrumento|recurso\s+(especial|extraordinario|inominado|ordinario)|'
+    r'remessa\s+necessaria|'
+    r'remessa\s+(ao|para\s+o?)\s*(tribunal|tj|trf|stj|stf)|'
+    r'->\s*(tj|trf|stj|stf))'
+)
+
+# Remessa lateral — transferências entre juízos de MESMA instância (intra-G1)
+_ANCHOR_REMESSA_LATERAL = re.compile(
+    r'(declinio\s+de\s+competencia|redistribuicao)'
+)
+
+# Remessa genérica — sinal ambíguo que precisa de contexto (bare word "remessa")
+_ANCHOR_REMESSA_GENERICA = re.compile(r'\bremessa\b')
+
+# Combinado para backward-compat em context_summary
+_ANCHOR_REMESSA = re.compile(
+    r'(remessa\b|declinio\s+de\s+competencia|redistribuicao|apelacao|'
+    r'agravo\s+de\s+instrumento|recurso\s+(especial|extraordinario|inominado|ordinario))'
+)
+
+# Indicadores de atividade típica de 1ª instância APÓS uma remessa genérica
+# Se presentes, a remessa genérica é tratada como lateral (intra-G1), não como recurso
+_ANCHOR_ATIVIDADE_G1 = re.compile(
+    r'(saneamento|audiencia\s+de\s+instrucao|'
+    r'conclus(ao|os)\s+(para\s+)?(despacho|decisao|julgamento|sentenca)|'
+    r'decisao\s+(de\s+saneamento|interlocutoria)|'
+    r'despacho\s+de\s+(mero\s+expediente|citacao)|'
+    r'julgamento|contestacao|replica|impugnacao)'
+)
 
 # Fase 05 — Acórdão / Certidão de Julgamento (julgado na 2ª instância, sem trânsito)
 # "Certidão de julgamento" ≠ "Certidão de trânsito em julgado"
@@ -88,6 +129,11 @@ _ANCHOR_ACORDAO = re.compile(r'(acordao|certidao\s+de\s+julgamento)')
 
 # Fase 13 — Suspenso/Sobrestado
 _ANCHOR_SUSPENSO = re.compile(r'(suspensao|sobrestamento|processo\s+suspenso)')
+
+# Reativação EXPLÍCITA — um único match já reverte o arquivamento.
+_ANCHOR_REATIVACAO_EXPLICITA = re.compile(
+    r'(desarquivamento|reativacao|reaber)'
+)
 
 # Atividade substancial posterior a um arquivamento — indica que o processo
 # foi reaberto e NÃO está definitivamente arquivado.
@@ -117,6 +163,17 @@ _CLASSES_EXECUCAO = {
 }
 
 
+def _is_classe_execucao(classe_norm: str) -> bool:
+    """
+    Verifica se a classe processual normalizada indica execução.
+    Usa set exato + fallback por prefixo para cobrir variantes como
+    "execucao de titulo extrajudicial contra a fazenda publica".
+    """
+    if classe_norm in _CLASSES_EXECUCAO:
+        return True
+    return classe_norm.startswith("execucao") or classe_norm.startswith("cumprimento")
+
+
 # ---------------------------------------------------------------------------
 # Classifier
 # ---------------------------------------------------------------------------
@@ -128,24 +185,43 @@ class DocumentPhaseClassifier:
     """
 
     @classmethod
+    def _has_g1_indicators_after(cls, nomes: List[str], remessa_idx: int) -> bool:
+        """
+        Verifica se há atos típicos de 1ª instância APÓS uma remessa genérica.
+
+        Se existem, a remessa foi intra-G1 (lateral) e NÃO um recurso à 2ª instância.
+        """
+        if remessa_idx == 0:
+            return False
+        for i in range(remessa_idx):
+            if _ANCHOR_ATIVIDADE_G1.search(nomes[i]):
+                return True
+        return False
+
+    @classmethod
     def _has_substantive_posterior_activity(cls, nomes: List[str], anchor_idx: int) -> bool:
         """
         Verifica se há atividade substancial POSTERIOR à âncora encontrada.
 
         A lista ``nomes`` está em ordem DESC (idx 0 = mais recente).
         Movimentos em idx < anchor_idx são mais recentes que a âncora.
-        Retorna True se algum deles indica atividade real (petições,
-        despachos, citações, etc.), o que sugere que o processo foi
-        reaberto após o arquivamento.
+
+        Lógica em dois níveis:
+        - Reativação EXPLÍCITA (desarquivamento, reativação, reabertura):
+          um único match é suficiente para reverter o arquivamento.
+        - Atividade IMPLÍCITA (despachos, petições, etc.):
+          exige >5 ocorrências para reverter (threshold conservador).
         """
         if anchor_idx == 0:
             return False  # âncora é o mais recente → nada posterior
 
-        count = 0
+        implicit_count = 0
         for i in range(anchor_idx):
+            if _ANCHOR_REATIVACAO_EXPLICITA.search(nomes[i]):
+                return True  # reativação explícita: um basta
             if _ANCHOR_REATIVACAO.search(nomes[i]):
-                count += 1
-        return count > 5
+                implicit_count += 1
+        return implicit_count > 5
 
     @classmethod
     def _build_context_summary(cls, ordered: List[FusionMovimento], nomes: List[str]) -> dict:
@@ -157,7 +233,7 @@ class DocumentPhaseClassifier:
         anchor_counts = {
             "arquivamento": sum(1 for n in nomes if _ANCHOR_ARQUIVAMENTO.search(n)),
             "transito": sum(1 for n in nomes if _ANCHOR_TRANSITO.search(n)),
-            "sentenca": sum(1 for n in nomes if _ANCHOR_SENTENCA.match(n)),
+            "sentenca": sum(1 for n in nomes if _ANCHOR_SENTENCA.match(n) or _ANCHOR_SENTENCA_RESULTADO.search(n)),
             "remessa": sum(1 for n in nomes if _ANCHOR_REMESSA.search(n)),
             "acordao": sum(1 for n in nomes if _ANCHOR_ACORDAO.search(n)),
             "suspenso": sum(1 for n in nomes if _ANCHOR_SUSPENSO.search(n)),
@@ -242,7 +318,7 @@ class DocumentPhaseClassifier:
         """
         classe_norm = cls._normalize(classe_processual)
 
-        if classe_norm in _CLASSES_EXECUCAO:
+        if _is_classe_execucao(classe_norm):
             return cls._classify_execucao_traced(movimentos, classe_norm)
 
         return cls._classify_conhecimento_traced(movimentos, classe_norm)
@@ -286,12 +362,47 @@ class DocumentPhaseClassifier:
         sentenca_idx = next(
             (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_SENTENCA, l, c, d, use_match=True)), None
         )
-        remessa_idx = next(
-            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_REMESSA, l, c, d)), None
+        # Desfecho de julgamento via descrição (Procedência, Improcedência, etc.)
+        sentenca_resultado_idx = next(
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_SENTENCA_RESULTADO, l, c, d)), None
         )
+        # Sentença efetiva: o mais recente entre sentença literal e resultado de julgamento
+        if sentenca_idx is not None and sentenca_resultado_idx is not None:
+            sentenca_idx = min(sentenca_idx, sentenca_resultado_idx)  # menor idx = mais recente em DESC
+        elif sentenca_resultado_idx is not None:
+            sentenca_idx = sentenca_resultado_idx
+        # Remessa: sistema de 3 níveis
+        remessa_superior_idx = next(
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_REMESSA_SUPERIOR, l, c, d)), None
+        )
+        remessa_lateral_idx = next(
+            (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_REMESSA_LATERAL, l, c, d)), None
+        )
+        remessa_generica_idx = next(
+            (i for i, (l, c, d) in enumerate(nomes_triple)
+             if _any_match(_ANCHOR_REMESSA_GENERICA, l, c, d)
+             and not (remessa_superior_idx is not None and remessa_superior_idx == i)
+             and not (remessa_lateral_idx is not None and remessa_lateral_idx == i)), None
+        )
+
         acordao_idx = next(
             (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_ACORDAO, l, c, d)), None
         )
+
+        # Resolver remessa_idx efetiva com contexto completo (incluindo acórdão)
+        # Superior sempre conta; genérica conta se (a) há acórdão posterior, ou (b) não há G1 posterior
+        if remessa_superior_idx is not None:
+            remessa_idx = remessa_superior_idx
+        elif remessa_generica_idx is not None:
+            has_acordao_after = (acordao_idx is not None and acordao_idx < remessa_generica_idx)
+            has_g1_after = cls._has_g1_indicators_after(nomes, remessa_generica_idx)
+            if has_acordao_after or not has_g1_after:
+                remessa_idx = remessa_generica_idx
+            else:
+                remessa_idx = None  # genérica com G1 posterior e sem acórdão → não é recurso
+        else:
+            remessa_idx = None  # lateral pura → não é recurso
+
         suspenso_idx = next(
             (i for i, (l, c, d) in enumerate(nomes_triple) if _any_match(_ANCHOR_SUSPENSO, l, c, d)), None
         )
