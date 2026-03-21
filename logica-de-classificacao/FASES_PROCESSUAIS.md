@@ -273,6 +273,39 @@ Palavras-chave mapeadas:
 - 2ª Instância (G2/TR) → Fases 04-06
 - Tribunais Superiores → Fases 07-09
 
+### 5. **Árvore de Documentos PAV (3ª Fonte — Março 2026)**
+
+**Endpoint:** `GET /services/arquivos/arvore-processo-by-sistema/{cnj}`
+
+Cada documento juntado ao processo (`nomeArquivo` + `dataAutuacao`) é tratado como um
+"batismo" e processado pelo `DocumentPhaseClassifier`, da mesma forma que os movimentos
+do Fusion. Por representar os documentos **realmente juntados aos autos**, esta fonte
+é particularmente precisa para:
+
+| Documento na árvore | Inferência de fase |
+|--------------------|--------------------|
+| "Sentença de Mérito", "Sentença" | Fase 02 (sem trânsito) ou 03 (com certidão) |
+| "Apelação", "Agravo de Instrumento" | Fase 04 (recurso em 2ª instância) |
+| "Acórdão", "Certidão de Julgamento" | Fase 05 (julgado na 2ª instância) |
+| "Certidão de Trânsito em Julgado" | Fase 03 ou superior |
+| "Arquivamento", "Baixa Definitiva" | Fase 15 |
+| Documentos G1 após "Remessa" | Remessa foi lateral — NÃO é fase 04 |
+
+**Ordenação interna por tribunal:**
+- DCP (TJRJ legado): por `numeroFolha` ASC
+- PJe, eProc, STJ, STF, TRT, TRF2: por `id` (numérico) ASC
+
+**Consolidação tri-fonte (prioridade decrescente):**
+1. Execução sobrescreve Conhecimento em qualquer das 3 fontes
+2. PAV Tree + Fusion concordam → PAV Tree (alta confiança)
+3. PAV Tree disponível → PAV Tree preferida sobre Fusion e DataJud
+4. Somente Fusion → Fusion
+5. Somente DataJud → DataJud (fallback final)
+
+Esta fonte também é exibida visualmente na interface acima das "Movimentações Fusion"
+e das "Movimentações DataJud", permitindo ao usuário verificar os documentos ao avaliar
+a fase do processo.
+
 ---
 
 ## Baixa Definitiva e Arquivamento

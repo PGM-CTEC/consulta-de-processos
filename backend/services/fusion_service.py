@@ -8,7 +8,7 @@ import logging
 from typing import Optional
 
 from .fusion_sql_client import FusionSQLClient, FusionSQLException
-from .fusion_api_client import FusionAPIClient, FusionResult
+from .fusion_api_client import FusionAPIClient, FusionResult, PAVArvoreResult
 
 logger = logging.getLogger(__name__)
 
@@ -62,4 +62,17 @@ class FusionService:
             return result
         except Exception as e:
             logger.error(f"Fusion API erro para {numero_cnj}: {e}")
+            return None
+
+    async def get_arvore_processo(self, numero_cnj: str) -> Optional[PAVArvoreResult]:
+        """
+        Busca a árvore de documentos do PAV — 3ª fonte complementar para classificação.
+
+        Só disponível via API REST (sem equivalente SQL).
+        Falhas são silenciosas: a árvore é uma fonte opcional.
+        """
+        try:
+            return await self._api.get_arvore_processo(numero_cnj)
+        except Exception as e:
+            logger.warning(f"PAV árvore: falha para {numero_cnj}: {e}")
             return None

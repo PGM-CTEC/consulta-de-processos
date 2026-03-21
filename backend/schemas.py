@@ -14,6 +14,11 @@ class FusionMovimentoResponse(BaseModel):
     description: str
     code: Optional[str] = None
 
+
+class PAVTreeDocumentResponse(BaseModel):
+    name: str
+    date: datetime
+
 class MovementCreate(MovementBase):
     pass
 
@@ -74,6 +79,7 @@ class ProcessResponse(ProcessBase):
     raw_data: Optional[Any] = None
     movements: List[MovementResponse] = []
     fusion_movements: List[FusionMovimentoResponse] = []
+    pav_tree_documents: List[PAVTreeDocumentResponse] = []
 
     class Config:
         from_attributes = True
@@ -85,6 +91,9 @@ class ProcessResponse(ProcessBase):
             raw_movs = meta.get('fusion_movements') or []
             if raw_movs:
                 self.fusion_movements = [FusionMovimentoResponse(**m) for m in raw_movs]
+            raw_docs = meta.get('pav_tree_documents') or []
+            if raw_docs:
+                self.pav_tree_documents = [PAVTreeDocumentResponse(**d) for d in raw_docs]
         return self
 
 class BulkProcessRequest(BaseModel):

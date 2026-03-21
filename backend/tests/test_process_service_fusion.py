@@ -34,6 +34,7 @@ class TestProcessServiceFusionFallback:
 
         mock_fusion = MagicMock()
         mock_fusion.get_document_tree = AsyncMock(return_value=fusion_result)
+        mock_fusion.get_arvore_processo = AsyncMock(return_value=None)
 
         service = ProcessService(
             db=test_db,
@@ -48,8 +49,8 @@ class TestProcessServiceFusionFallback:
         assert result.phase_source == "fusion_api"
 
     @pytest.mark.asyncio
-    async def test_nao_ativa_fusion_quando_datajud_retorna_dados(self, test_db):
-        """TC-2: FusionService NÃO é chamado quando DataJud encontra o processo."""
+    async def test_consulta_fusion_e_pav_tree_quando_datajud_retorna_dados(self, test_db):
+        """TC-2: FusionService é consultado (dual-source) mesmo quando DataJud encontra o processo."""
         mock_datajud = MagicMock()
         mock_datajud.get_process = AsyncMock(return_value={"hits": {"hits": [{"_source": {
             "numeroJudicial": "0000001-01.2020.8.19.0001",
@@ -58,7 +59,8 @@ class TestProcessServiceFusionFallback:
         }}]}})
 
         mock_fusion = MagicMock()
-        mock_fusion.get_document_tree = AsyncMock()
+        mock_fusion.get_document_tree = AsyncMock(return_value=None)
+        mock_fusion.get_arvore_processo = AsyncMock(return_value=None)
 
         service = ProcessService(
             db=test_db,
@@ -68,5 +70,7 @@ class TestProcessServiceFusionFallback:
 
         result = await service.get_or_update_process("0000001-01.2020.8.19.0001")
 
-        mock_fusion.get_document_tree.assert_not_called()
+        # Classificação dual/tri-fonte: Fusion e PAV tree são consultados mesmo com DataJud ativo
+        mock_fusion.get_document_tree.assert_called_once()
+        mock_fusion.get_arvore_processo.assert_called_once()
         assert result is not None

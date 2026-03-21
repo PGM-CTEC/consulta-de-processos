@@ -76,6 +76,18 @@ class FusionResult:
             self.data_consulta = datetime.utcnow()
 
 
+@dataclass
+class PAVArvoreResult:
+    numero_cnj: str
+    movimentos: list          # List[FusionMovimento], ordenado ASC por data
+    tribunais: list           # Raw tribunal data para contexto/debug
+    data_consulta: datetime = None
+
+    def __post_init__(self):
+        if self.data_consulta is None:
+            self.data_consulta = datetime.utcnow()
+
+
 class FusionAPIClient:
     """
     Cliente HTTP para a API REST do PAV.
@@ -83,6 +95,7 @@ class FusionAPIClient:
     """
 
     _ENDPOINT = "/services/custom-consulta-rapida-de-procesos/dados-da-consulta/{cnj}"
+    _ARVORE_ENDPOINT = "/services/arquivos/arvore-processo-by-sistema/{cnj}"
 
     def __init__(self, base_url: str, session_cookie: str, timeout: int = 30):
         self._base_url = base_url.rstrip("/")
@@ -199,6 +212,96 @@ class FusionAPIClient:
             sistema=dados_gerais.get("descricaoSistema", ""),
             movimentos=movimentos,
             fonte="fusion_api",
+        )
+
+    async def get_arvore_processo(self, numero_cnj: str) -> Optional[PAVArvoreResult]:
+        """
+        Busca a árvore de documentos do processo no PAV.
+
+        Retorna PAVArvoreResult com todos os documentos da árvore convertidos em
+        FusionMovimento (nomeArquivo → tipo_local), prontos para classificação.
+        Retorna None se o endpoint falhar ou não retornar documentos.
+
+        Ordenação:
+          - DCP (TJRJ-DCP): por numeroFolha (int) ASC
+          - Demais: por id (int) ASC
+        """
+        cnj_digits = re.sub(r"\D", "", numero_cnj)
+        url = self._base_url + self._ARVORE_ENDPOINT.format(cnj=cnj_digits)
+
+        try:
+            response = await self._http.get(url)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            logger.warning(f"PAV árvore HTTP error for {cnj_digits}: {e.response.status_code}")
+            return None
+        except httpx.RequestError as e:
+            logger.warning(f"PAV árvore request error for {cnj_digits}: {e}")
+            return None
+
+        try:
+            raw_text = response.content.decode("utf-8")
+        except UnicodeDecodeError:
+            raw_text = response.content.decode("iso-8859-1")
+
+        try:
+            data = json.loads(raw_text)
+        except json.JSONDecodeError as e:
+            logger.warning(f"PAV árvore JSON decode error for {cnj_digits}: {e}")
+            return None
+
+        tribunais = data.get("tribunal") or []
+        if not tribunais:
+            logger.info(f"PAV árvore: nenhum tribunal retornado para {cnj_digits}")
+            return None
+
+        movimentos: list = []
+        for tribunal in tribunais:
+            destino = (tribunal.get("destino") or "").upper()
+            is_dcp = "DCP" in destino
+            documentos = tribunal.get("documentos") or []
+
+            # Ordenar dentro do tribunal antes de converter
+            if is_dcp:
+                documentos = sorted(
+                    documentos,
+                    key=lambda d: int(d.get("numeroFolha") or 0),
+                )
+            else:
+                documentos = sorted(
+                    documentos,
+                    key=lambda d: int(d.get("id") or 0),
+                )
+
+            for doc in documentos:
+                nome = doc.get("nomeArquivo") or ""
+                data_aut = doc.get("dataAutuacao") or ""
+                tipo = str(doc.get("tipo") or "")
+                if not nome and not data_aut:
+                    continue
+                try:
+                    movimentos.append(FusionMovimento(
+                        data=_parse_date(data_aut) if data_aut else None,
+                        tipo_local=nome,
+                        tipo_cnj=tipo,
+                        descricao="",
+                    ))
+                except Exception as e:
+                    logger.warning(f"PAV árvore: erro ao parsear documento {doc}: {e}")
+
+        # Filtrar movimentos sem data e re-ordenar por data ASC global
+        movimentos = [m for m in movimentos if m.data is not None]
+        movimentos.sort(key=lambda m: m.data)
+
+        if not movimentos:
+            logger.info(f"PAV árvore: nenhum documento válido para {cnj_digits}")
+            return None
+
+        logger.info(f"PAV árvore: {len(movimentos)} documentos carregados para {cnj_digits}")
+        return PAVArvoreResult(
+            numero_cnj=numero_cnj,
+            movimentos=movimentos,
+            tribunais=tribunais,
         )
 
     async def aclose(self):

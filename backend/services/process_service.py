@@ -32,6 +32,64 @@ def _extrair_codigo_fase(fase_str: str) -> str:
     return fase_str.split()[0] if fase_str.split() else ""
 
 
+def _consolidar_tres_fontes(
+    fase_datajud: str, fase_fusion: str, fase_pav_tree: str
+) -> tuple[str, str]:
+    """
+    Consolida fases de DataJud, Fusion e Árvore PAV usando as seguintes regras:
+
+    1. Execução sobrescreve Conhecimento (qualquer fonte com 10-14 anula 01-09)
+    2. PAV Tree + Fusion concordam → usa PAV Tree (alta confiança)
+    3. PAV Tree disponível → PAV Tree tem precedência
+    4. Fallback Fusion → fallback DataJud
+    """
+    cod_dj  = _extrair_codigo_fase(fase_datajud)
+    cod_fu  = _extrair_codigo_fase(fase_fusion)
+    cod_pav = _extrair_codigo_fase(fase_pav_tree)
+
+    logger.debug(
+        f"_consolidar_tres_fontes: DataJud={fase_datajud} (cod={cod_dj}), "
+        f"Fusion={fase_fusion} (cod={cod_fu}), PAVTree={fase_pav_tree} (cod={cod_pav})"
+    )
+
+    all_valid = [c for c in [cod_dj, cod_fu, cod_pav] if c]
+    has_exec = any(c in _FASES_EXECUCAO for c in all_valid)
+    has_conh = any(c in _FASES_CONHECIMENTO for c in all_valid)
+
+    # Regra 1: Execução > Conhecimento
+    if has_exec and has_conh:
+        if cod_pav in _FASES_EXECUCAO:
+            logger.debug(f"-> PAV Tree execução override: {fase_pav_tree}")
+            return fase_pav_tree, "pav_tree_execucao_override"
+        if cod_fu in _FASES_EXECUCAO:
+            logger.debug(f"-> Fusion execução override: {fase_fusion}")
+            return fase_fusion, "fusion_execucao_override"
+        if cod_dj in _FASES_EXECUCAO:
+            logger.debug(f"-> DataJud execução override: {fase_datajud}")
+            return fase_datajud, "datajud_execucao_override"
+
+    # Regra 2: PAV Tree + Fusion concordam
+    if cod_pav and cod_fu and cod_pav == cod_fu:
+        logger.debug(f"-> PAV Tree + Fusion concordam: {fase_pav_tree}")
+        return fase_pav_tree, "pav_tree_fusion_concordam"
+
+    # Regra 3: PAV Tree disponível
+    if cod_pav:
+        logger.debug(f"-> PAV Tree preferred: {fase_pav_tree}")
+        return fase_pav_tree, "pav_tree_preferred"
+
+    # Regra 4: Fallbacks
+    if cod_fu:
+        logger.debug(f"-> Fusion preferred: {fase_fusion}")
+        return fase_fusion, "fusion_preferred"
+    if cod_dj:
+        logger.debug(f"-> DataJud fallback: {fase_datajud}")
+        return fase_datajud, "datajud_fallback"
+
+    logger.debug("-> Todas indefinidas")
+    return "Indefinido", "todas_indefinidas"
+
+
 def _consolidar_fases(fase_datajud: str, fase_fusion: str) -> tuple[str, str]:
     """
     Consolida fases de DataJud e Fusion usando regra: Execução sempre sobrescreve Conhecimento.
@@ -147,6 +205,7 @@ class ProcessService:
             logger.error(f"✗ Error calculating DataJud phase for {process_number}: {e}", exc_info=True)
             _meta_fo["datajud_phase"] = "Indefinido"
 
+        fusion_result = None
         if self.fusion_service:
             try:
                 fusion_result = await self.fusion_service.get_document_tree(process_number)
@@ -213,6 +272,41 @@ class ProcessService:
                 "decisive_movement": None, "decisive_movement_date": None,
                 "anchor_matches": {},
             }
+
+        # PAV Document Tree — 3ª fonte de classificação
+        if self.fusion_service:
+            try:
+                arvore_result = await self.fusion_service.get_arvore_processo(process_number)
+                if arvore_result and arvore_result.movimentos:
+                    classe_for_tree = ""
+                    if fusion_result and fusion_result.classe_processual:
+                        classe_for_tree = fusion_result.classe_processual
+                    else:
+                        classe_for_tree = (api_data.get("classe") or {}).get("nome", "")
+                    tree_classification = DocumentPhaseClassifier.classify_with_trace(
+                        arvore_result.movimentos, classe_for_tree
+                    )
+                    _meta_fo["pav_tree_phase"] = tree_classification.phase
+                    _meta_fo["pav_tree_classification_log"] = tree_classification.to_dict()
+                    _meta_fo["pav_tree_total_docs"] = len(arvore_result.movimentos)
+                    _meta_fo["pav_tree_documents"] = [
+                        {"name": m.tipo_local, "date": m.data.isoformat()}
+                        for m in arvore_result.movimentos
+                    ]
+                    logger.info(
+                        f"[PAV Tree] {process_number}: fase={tree_classification.phase}, "
+                        f"regra={tree_classification.rule_applied}, "
+                        f"docs={len(arvore_result.movimentos)}"
+                    )
+                else:
+                    _meta_fo["pav_tree_phase"] = "Indefinido"
+                    _meta_fo["pav_tree_classification_log"] = {"rule_applied": "pav_tree_not_found"}
+                    _meta_fo["pav_tree_documents"] = []
+            except Exception as e:
+                logger.warning(f"[PAV Tree] {process_number}: erro ao buscar árvore: {e}")
+                _meta_fo["pav_tree_phase"] = "Indefinido"
+                _meta_fo["pav_tree_classification_log"] = {"rule_applied": "pav_tree_error"}
+                _meta_fo["pav_tree_documents"] = []
 
         # Transform and Save with transaction management
         process = self._save_process_data(process_number, api_data)
@@ -408,15 +502,16 @@ class ProcessService:
             phase = meta["phase_override"]
             meta["phase_analysis_mode"] = "manual_override"
         else:
-            # Consolidar fases DataJud e Fusion usando regra:
-            # Execução sempre sobrescreve Conhecimento
-            fase_datajud = meta.get("datajud_phase", "")
-            fase_fusion = meta.get("fusion_phase_override", "")
+            # Consolidar fases DataJud, Fusion e Árvore PAV (tri-fonte)
+            fase_datajud  = meta.get("datajud_phase", "")
+            fase_fusion   = meta.get("fusion_phase_override", "")
+            fase_pav_tree = meta.get("pav_tree_phase", "")
 
-            phase, modo = _consolidar_fases(fase_datajud, fase_fusion)
+            phase, modo = _consolidar_tres_fontes(fase_datajud, fase_fusion, fase_pav_tree)
             meta["phase_analysis_mode"] = modo
-            meta["datajud_phase_input"] = fase_datajud
-            meta["fusion_phase_input"] = fase_fusion
+            meta["datajud_phase_input"]  = fase_datajud
+            meta["fusion_phase_input"]   = fase_fusion
+            meta["pav_tree_phase_input"] = fase_pav_tree
 
         phase_source = meta.get("fusion_phase_source", "datajud")
 

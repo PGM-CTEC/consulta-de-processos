@@ -1,24 +1,54 @@
 # Relatório Completo: Sistema de Classificação e Definição de Fases Processuais
 
-**Data do Relatório:** 13 de março de 2026
+**Data do Relatório:** 13 de março de 2026 (atualizado em 21 de março de 2026)
 **Escopo:** Análise integrada do sistema de classificação de fases processuais
-**Status:** Sistema completo e funcional com 15 fases jurídicas definidas
+**Status:** Sistema completo e funcional com 15 fases jurídicas e 3 fontes de classificação
 
 ---
 
 ## Sumário Executivo
 
-O sistema de classificação e definição de fases processuais é um componente crítico que funciona em **três camadas integradas**:
+O sistema de classificação e definição de fases processuais é um componente crítico que funciona em **quatro camadas integradas**:
 
-1. **Frontend (React)** - Constantes, normalização e visualização
-2. **Backend (Python/FastAPI)** - Lógica determinística de classificação
+1. **Frontend (React)** - Constantes, normalização e visualização (inclui exibição da árvore PAV)
+2. **Backend (Python/FastAPI)** - Lógica determinística de classificação tri-fonte
 3. **Modelos de Dados (SQLAlchemy/Pydantic)** - Persistência e schema
+4. **Árvore de Documentos PAV** - 3ª fonte de classificação a partir dos documentos juntados
 
-O sistema implementa o **modelo PGM-Rio v2.0 (Fevereiro 2026)** com 15 fases processuais distribuídas em categorias:
+O sistema implementa o **modelo PGM-Rio v2.1 (Março 2026)** com 15 fases processuais distribuídas em categorias:
+
 - **Fases de Conhecimento:** 01-09 (recursos e instâncias)
 - **Fases de Execução:** 10-12, 14 (cumprimento de sentença)
 - **Fases Transversais:** 13 (suspensão)
 - **Fases Finais:** 15 (arquivamento)
+
+### Arquitetura de Classificação Tri-Fonte (v2.1)
+
+A fase é determinada pela consolidação de **três fontes independentes**:
+
+| Fonte | Endpoint / Arquivo | Classificador | Campo no meta |
+|-------|--------------------|---------------|---------------|
+| DataJud | API CNJ | `ClassificadorFases` (códigos) | `datajud_phase` |
+| Fusion PAV (movimentos) | `dados-da-consulta/{cnj}` | `DocumentPhaseClassifier` (batismos) | `fusion_phase_override` |
+| PAV Árvore de Documentos | `arvore-processo-by-sistema/{cnj}` | `DocumentPhaseClassifier` (nomeArquivo) | `pav_tree_phase` |
+
+**Prioridade de consolidação (`_consolidar_tres_fontes`):**
+1. Execução sobrescreve Conhecimento (qualquer fonte)
+2. PAV Tree + Fusion concordam → PAV Tree (alta confiança)
+3. PAV Tree disponível → PAV Tree preferida
+4. Fusion disponível → Fusion
+5. DataJud → fallback final
+
+### Análise de Correções Manuais (banco de dados — Março 2026)
+
+Foram identificadas 9 correções manuais com os seguintes padrões:
+
+| Padrão | Ocorrências | Correção original → correta | Como a árvore PAV ajuda |
+|--------|------------|------------------------------|--------------------------|
+| Remessa lateral (intra-G1) confundida com remessa a 2ª instância | 5/9 | 04 → 01 ou 02 | Docs G1 após "Remessa" na árvore confirmam que foi lateral |
+| Sentença ignorada (apenas na descrição) | 2/9 | 01 → 02 | "Sentença de Mérito" na árvore é prova direta |
+| Arquivamento não revertido por atividade posterior | 1/9 | 15 → 01 | Documentos posteriores ao "Arquivamento" indicam reativação |
+| Classe "Execução" não detectada | 1/9 | 01 → 11 | Árvore com "Penhora", "Cumprimento" reforça ramo de execução |
 
 ---
 

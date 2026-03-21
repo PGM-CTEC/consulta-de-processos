@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { LoadingState, ErrorState } from './LoadingState';
-import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw, ArrowDownUp, Database, Pencil, Check } from 'lucide-react';
+import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw, ArrowDownUp, Database, Pencil, Check, FileStack } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getPhaseColorClasses } from '../utils/phaseColors';
@@ -70,10 +70,12 @@ function ProcessDetails({ data }) {
 
     const [showAll, setShowAll] = useState(false);
     const [showAllFusion, setShowAllFusion] = useState(false);
+    const [showAllTree, setShowAllTree] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDocTypes, setSelectedDocTypes] = useState([]); // Empty array means 'Todos'
     const [movSort, setMovSort] = useState('desc');       // 'desc' | 'asc' — movimentações DataJud
     const [fusionSort, setFusionSort] = useState('desc'); // 'desc' | 'asc' — movimentações Fusion
+    const [treeSort, setTreeSort] = useState('desc');     // 'desc' | 'asc' — árvore de documentos PAV
     const [manualPhase, setManualPhase] = useState(null);  // Fase corrigida manualmente
     const [showPhaseEdit, setShowPhaseEdit] = useState(false); // Modal de edição de fase
     const [phaseConfirmed, setPhaseConfirmed] = useState(false);
@@ -143,6 +145,18 @@ function ProcessDetails({ data }) {
 
     const displayedFusionMovements = showAllFusion ? fusionMovements : fusionMovements.slice(0, 20);
     const hasFusionMore = fusionMovements.length > 20;
+
+    const pavTreeDocuments = useMemo(() => {
+        const docs = activeData?.pav_tree_documents;
+        if (!docs?.length) return [];
+        return [...docs].sort((a, b) => {
+            const diff = new Date(a.date) - new Date(b.date);
+            return treeSort === 'asc' ? diff : -diff;
+        });
+    }, [activeData?.pav_tree_documents, treeSort]);
+
+    const displayedTreeDocs = showAllTree ? pavTreeDocuments : pavTreeDocuments.slice(0, 20);
+    const hasTreeMore = pavTreeDocuments.length > 20;
 
     const toggleFilter = (type) => {
         if (type === 'Todos') {
@@ -412,6 +426,73 @@ function ProcessDetails({ data }) {
                             compact
                         />
                     </CardContent>
+                </Card>
+            )}
+
+            {/* Árvore de Documentos PAV — exibida acima das movimentações */}
+            {pavTreeDocuments.length > 0 && (
+                <Card className="p-0">
+                <CardContent className="p-6" aria-labelledby="pav-tree-heading">
+                    <div className="flex items-center justify-between mb-5">
+                        <h2 id="pav-tree-heading" className="text-lg font-bold text-gray-900 flex items-center mb-0">
+                            <FileStack className="mr-2 h-5 w-5 text-teal-500" aria-hidden="true" />
+                            Árvore de Documentos PAV
+                            <span className="ml-2 px-2 py-0.5 bg-teal-50 text-teal-600 rounded text-xs font-bold border border-teal-200">
+                                {pavTreeDocuments.length}
+                            </span>
+                            <span className="ml-2 px-2 py-0.5 bg-teal-100 text-teal-700 rounded text-xs font-semibold border border-teal-200">
+                                PAV
+                            </span>
+                        </h2>
+                        <button
+                            onClick={() => { setTreeSort(s => s === 'asc' ? 'desc' : 'asc'); setShowAllTree(false); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition-colors"
+                            title={treeSort === 'asc' ? 'Ordenado: mais antigo primeiro' : 'Ordenado: mais recente primeiro'}
+                        >
+                            <ArrowDownUp className="h-3.5 w-3.5" />
+                            {treeSort === 'asc' ? 'Mais antigo' : 'Mais recente'}
+                        </button>
+                    </div>
+                    <ol className="relative border-l-2 border-teal-100 ml-3 space-y-4 pl-8 pb-2 list-none">
+                        {displayedTreeDocs.map((doc, idx) => (
+                            <li key={idx} className="relative">
+                                <span className="absolute -left-[41px] top-1 h-5 w-5 rounded-full border-4 border-white bg-teal-400 shadow-sm" aria-hidden="true" />
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+                                    <p className="text-base font-medium text-gray-900 flex-1 pr-4">
+                                        {doc.name || '—'}
+                                    </p>
+                                    <time
+                                        dateTime={doc.date}
+                                        className="text-xs font-mono text-teal-600 whitespace-nowrap bg-teal-50 px-2 py-1 rounded mt-1 sm:mt-0 font-bold"
+                                    >
+                                        {format(new Date(doc.date), "dd MMM yyyy, HH:mm", { locale: ptBR })}
+                                    </time>
+                                </div>
+                            </li>
+                        ))}
+                    </ol>
+                    {hasTreeMore && (
+                        <div className="mt-6 flex justify-center">
+                            <Button
+                                onClick={() => setShowAllTree(!showAllTree)}
+                                variant="outline"
+                                className="flex items-center space-x-2 px-6 py-2.5 bg-teal-50 text-teal-700 rounded-full font-bold text-sm hover:bg-teal-100 transition-all border border-teal-100 shadow-sm"
+                            >
+                                {showAllTree ? (
+                                    <>
+                                        <ChevronUp className="h-4 w-4" />
+                                        <span>Recolher documentos</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <ChevronDown className="h-4 w-4" />
+                                        <span>Ver mais {pavTreeDocuments.length - 20} documentos</span>
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
                 </Card>
             )}
 
