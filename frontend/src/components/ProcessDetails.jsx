@@ -416,7 +416,7 @@ function ProcessDetails({ data }) {
                                                 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700'
                                                 : 'bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600'
                                         }`}>
-                                            TJ: {TRANSIT_OPTIONS[activeData.classification.transit_julgado]?.label || activeData.classification.transit_julgado}
+                                            Trâns. Julg.: {TRANSIT_OPTIONS[activeData.classification.transit_julgado]?.label || activeData.classification.transit_julgado}
                                         </span>
                                     )}
                                 </div>
