@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { Clock, Trash2, Copy, ExternalLink, FileText, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp, Pencil, Check } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { Clock, Trash2, Copy, ExternalLink, FileText, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp, Pencil, Check, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { toast } from 'react-hot-toast';
 import { getHistory, clearHistory, searchProcess, confirmPhase, getConfirmedProcesses, getLatestCorrections } from '../services/api';
 import { STAGES, SUBSTAGES, TRANSIT_OPTIONS } from '../constants/phases';
@@ -22,17 +23,6 @@ const FILTERS = [
     { value: 'not_found', label: 'Não localizados' },
     { value: 'error', label: 'Erros' },
 ];
-
-function StatusBadge({ status }) {
-    const cfg = STATUS_LABELS[status] ?? STATUS_LABELS.found;
-    const Icon = cfg.icon;
-    return (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${cfg.cls}`}>
-            <Icon className="h-3 w-3" />
-            {cfg.label}
-        </span>
-    );
-}
 
 function ClassificationBadge({ classification, corrected, onEdit, onConfirm, confirmed }) {
     const transit = classification?.transit_julgado;
@@ -115,6 +105,9 @@ function HistoryTab({ labels }) {
     const [inlineDetailId, setInlineDetailId] = useState(null);
     const [inlineDetailData, setInlineDetailData] = useState(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
+    // Export menu
+    const [exportMenuOpen, setExportMenuOpen] = useState(false);
+    const exportMenuRef = useRef(null);
 
     useEffect(() => {
         loadHistory();
@@ -137,6 +130,71 @@ function HistoryTab({ labels }) {
         } finally {
             setLoading(false);
         }
+    };
+
+    useEffect(() => {
+        if (!exportMenuOpen) return;
+        const handleClickOutside = (e) => {
+            if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) {
+                setExportMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [exportMenuOpen]);
+
+    const handleExportXLSX = () => {
+        const rows = filtered.map(item => ({
+            'Número': item.number,
+            'Status': STATUS_LABELS[item.status]?.label || 'Encontrado',
+            'Fase': item.classification?.stage_label || 'Indefinido',
+            'Tribunal': item.court || '',
+            'Data': new Date(item.created_at).toLocaleString('pt-BR'),
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Histórico');
+        XLSX.writeFile(wb, `historico_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        setExportMenuOpen(false);
+    };
+
+    const handleExportPDF = () => {
+        const esc = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const rows = filtered.map(item => [
+            '<tr>',
+            `<td>${esc(item.number)}</td>`,
+            `<td>${esc(STATUS_LABELS[item.status]?.label || 'Encontrado')}</td>`,
+            `<td>${esc(item.classification?.stage_label || 'Indefinido')}</td>`,
+            `<td>${esc(item.court)}</td>`,
+            `<td>${esc(new Date(item.created_at).toLocaleString('pt-BR'))}</td>`,
+            '</tr>',
+        ].join('')).join('');
+        const html = [
+            '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">',
+            '<title>Histórico de Consultas</title><style>',
+            'body{font-family:Arial,sans-serif;font-size:12px;padding:20px}',
+            'h1{font-size:18px;margin-bottom:4px}p{color:#666;margin-bottom:16px;font-size:11px}',
+            'table{width:100%;border-collapse:collapse}',
+            'th{background:#4f46e5;color:#fff;padding:8px 10px;text-align:left;font-size:11px}',
+            'td{padding:6px 10px;border-bottom:1px solid #e5e7eb}',
+            'tr:nth-child(even) td{background:#f9fafb}',
+            '@media print{body{padding:0}}',
+            '</style></head><body>',
+            '<h1>Histórico de Consultas</h1>',
+            `<p>Exportado em ${esc(new Date().toLocaleString('pt-BR'))} \u2014 ${filtered.length} registros</p>`,
+            '<table><thead><tr><th>Número</th><th>Status</th><th>Fase</th><th>Tribunal</th><th>Data</th></tr></thead>',
+            `<tbody>${rows}</tbody></table></body></html>`,
+        ].join('');
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, '_blank');
+        if (win) {
+            win.addEventListener('load', () => {
+                win.print();
+                URL.revokeObjectURL(url);
+            });
+        }
+        setExportMenuOpen(false);
     };
 
     const handleClear = async () => {
@@ -212,13 +270,44 @@ function HistoryTab({ labels }) {
                     <p className="text-gray-500 mt-2">Acompanhe suas últimas consultas realizadas.</p>
                 </div>
                 {history.length > 0 && (
-                    <button
-                        onClick={handleClear}
-                        className="flex items-center space-x-2 text-red-600 hover:text-red-700 font-bold px-4 py-2 border border-red-200 rounded-lg bg-red-50 transition-colors"
-                    >
-                        <Trash2 className="h-4 w-4" />
-                        <span>Limpar Histórico</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {/* Exportar dropdown */}
+                        <div className="relative" ref={exportMenuRef}>
+                            <button
+                                onClick={() => setExportMenuOpen(v => !v)}
+                                className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-bold px-4 py-2 border border-indigo-200 rounded-lg bg-indigo-50 transition-colors"
+                            >
+                                <Download className="h-4 w-4" />
+                                <span>Exportar</span>
+                                <ChevronDown className={`h-3 w-3 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} />
+                            </button>
+                            {exportMenuOpen && (
+                                <div className="absolute right-0 mt-1 w-44 bg-white rounded-lg border border-gray-200 shadow-lg z-10 overflow-hidden">
+                                    <button
+                                        onClick={handleExportXLSX}
+                                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                                    >
+                                        <FileText className="h-4 w-4" />
+                                        Exportar XLSX
+                                    </button>
+                                    <button
+                                        onClick={handleExportPDF}
+                                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                                    >
+                                        <FileText className="h-4 w-4" />
+                                        Exportar PDF
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        <button
+                            onClick={handleClear}
+                            className="flex items-center space-x-2 text-red-600 hover:text-red-700 font-bold px-4 py-2 border border-red-200 rounded-lg bg-red-50 transition-colors"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            <span>Limpar Histórico</span>
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -286,7 +375,6 @@ function HistoryTab({ labels }) {
                                                     <p className="font-bold text-gray-900 font-mono text-sm">
                                                         {item.number}
                                                     </p>
-                                                    <StatusBadge status={item.status || 'found'} />
                                                     {isFound && (
                                                         <ClassificationBadge
                                                             classification={item.classification}

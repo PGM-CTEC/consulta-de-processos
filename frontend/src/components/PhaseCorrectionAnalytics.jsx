@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Database, AlertCircle, CheckCircle, TrendingUp, RefreshCw, Loader2 } from 'lucide-react';
-import { getPhaseCorrectionsAnalytics } from '../services/api';
+import { Database, AlertCircle, CheckCircle, TrendingUp, RefreshCw, Loader2, Trash2 } from 'lucide-react';
+import { getPhaseCorrectionsAnalytics, clearPhaseCorrections } from '../services/api';
 import { getStageColorClasses } from '../utils/phaseColors';
 import { PHASE_BY_CODE, PHASE_BY_NAME } from '../constants/phases';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -29,6 +29,8 @@ const PhaseCorrectionAnalytics = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [confirmReset, setConfirmReset] = useState(false);
+    const [resetting, setResetting] = useState(false);
 
     const loadAnalytics = async () => {
         setLoading(true);
@@ -46,9 +48,31 @@ const PhaseCorrectionAnalytics = () => {
         }
     };
 
+    const handleReset = async () => {
+        if (!confirmReset) { setConfirmReset(true); return; }
+        setResetting(true);
+        try {
+            await clearPhaseCorrections();
+            toast.success('Dados de Analytics/BI resetados com sucesso.');
+            setData(null);
+            loadAnalytics();
+        } catch {
+            toast.error('Falha ao resetar dados de Analytics/BI.');
+        } finally {
+            setResetting(false);
+            setConfirmReset(false);
+        }
+    };
+
     useEffect(() => {
         loadAnalytics();
     }, []);
+
+    useEffect(() => {
+        if (!confirmReset) return;
+        const timer = setTimeout(() => setConfirmReset(false), 4000);
+        return () => clearTimeout(timer);
+    }, [confirmReset]);
 
     if (loading) {
         return (
@@ -89,15 +113,32 @@ const PhaseCorrectionAnalytics = () => {
                         Estatísticas da classificação automática de fases e correções manuais
                     </p>
                 </div>
-                <Button
-                    onClick={loadAnalytics}
-                    variant="outline"
-                    size="icon"
-                    className="rounded-lg"
-                    aria-label="Atualizar dados"
-                >
-                    <RefreshCw className="h-5 w-5" />
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        onClick={loadAnalytics}
+                        variant="outline"
+                        size="icon"
+                        className="rounded-lg"
+                        aria-label="Atualizar dados"
+                    >
+                        <RefreshCw className="h-5 w-5" />
+                    </Button>
+                    <Button
+                        onClick={handleReset}
+                        disabled={resetting}
+                        variant={confirmReset ? 'destructive' : 'outline'}
+                        className="rounded-lg gap-2"
+                        aria-label="Resetar dados de Analytics/BI"
+                    >
+                        {resetting
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <Trash2 className="h-4 w-4" />
+                        }
+                        <span className="text-sm">
+                            {confirmReset ? 'Confirmar reset?' : 'Resetar'}
+                        </span>
+                    </Button>
+                </div>
             </div>
 
             {/* Metric Cards */}

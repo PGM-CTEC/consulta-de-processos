@@ -148,6 +148,11 @@ export const getLatestCorrections = async () => {
     return response.data;
 };
 
+export const clearPhaseCorrections = async () => {
+    const response = await api.delete('/phase-corrections');
+    return response.data;
+};
+
 export const getConfirmedProcesses = async () => {
     const response = await api.get('/phase-confirmations');
     return response.data;

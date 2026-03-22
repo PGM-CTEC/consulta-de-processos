@@ -346,11 +346,18 @@ class ProcessService:
         # Transform and Save with transaction management
         process = self._save_process_data(process_number, api_data)
 
-        # Record search in history
+        # Record search in history — usa o log da fonte vencedora da consolidação
         if process:
+            _mode = _meta_fo.get("phase_analysis_mode", "")
+            if _mode.startswith("pav_tree"):
+                _cl = _meta_fo.get("pav_tree_classification_log")
+            elif _mode.startswith("fusion"):
+                _cl = _meta_fo.get("fusion_classification_log")
+            else:
+                _cl = _meta_fo.get("fusion_classification_log")  # fallback (datajud ou manual)
             self._record_history(
                 process,
-                classification_log=_meta_fo.get("fusion_classification_log"),
+                classification_log=_cl,
             )
 
         return process

@@ -720,6 +720,15 @@ async def confirm_phase(
     return {"message": "confirmed"}
 
 
+@app.delete("/phase-corrections", tags=["processes"])
+async def clear_phase_corrections(db: Session = Depends(get_db)):
+    """Remove todas as correções e confirmações de fase registradas."""
+    db.query(models.PhaseCorrection).delete(synchronize_session=False)
+    db.query(models.PhaseConfirmation).delete(synchronize_session=False)
+    db.commit()
+    return {"message": "Correções de fase resetadas"}
+
+
 @app.get("/phase-corrections", response_model=List[schemas.PhaseCorrectionResponse], tags=["processes"])
 @limiter.limit("100/minute")
 async def list_phase_corrections(
