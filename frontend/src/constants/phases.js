@@ -415,7 +415,7 @@ export function getSubstagesForStage(stage) {
  * Necessário para enviar corrected_phase ao backend sem exibir o código ao usuário.
  * @param {number} stage
  * @param {string} substage
- * @param {string} transit - "sim" | "nao" | "na" | null
+ * @param {string} transit - "sim" | "nao" | "n/a" | null
  * @returns {string} código de fase "01"-"15"
  */
 export function hierarchyToLegacyPhase(stage, substage, transit) {
