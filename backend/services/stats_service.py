@@ -121,6 +121,38 @@ class StatsService:
             ]
             timeline.reverse()  # Oldest to newest
 
+            # Group by stage and substage (hierarchical classification)
+            stage_substage_counts = (
+                self.db.query(
+                    models.Process.stage,
+                    models.Process.substage,
+                    func.count(models.Process.id).label('count')
+                )
+                .filter(models.Process.stage.isnot(None))
+                .group_by(models.Process.stage, models.Process.substage)
+                .order_by(models.Process.stage, models.Process.substage)
+                .all()
+            )
+
+            # Build hierarchical stages list
+            from collections import defaultdict
+            stage_map: dict = defaultdict(lambda: {'count': 0, 'substages': {}})
+            for stage_val, substage_val, count in stage_substage_counts:
+                stage_map[stage_val]['count'] += count
+                stage_map[stage_val]['substages'][substage_val] = count
+
+            stages = [
+                schemas.StageStats(
+                    stage=stage_val,
+                    count=data['count'],
+                    substages=[
+                        schemas.SubstageStats(substage=ss, count=c)
+                        for ss, c in sorted(data['substages'].items(), key=lambda x: (x[0] or ''))
+                    ]
+                )
+                for stage_val, data in sorted(stage_map.items())
+            ]
+
             # Most recent update
             last_updated = (
                 self.db.query(func.max(models.Process.last_update))
@@ -134,6 +166,7 @@ class StatsService:
                 phases=phases,
                 timeline=timeline,
                 classes=classes,
+                stages=stages,
                 last_updated=last_updated
             )
 

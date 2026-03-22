@@ -272,6 +272,15 @@ class ClassStats(BaseModel):
     class_nature: str
     count: int
 
+class SubstageStats(BaseModel):
+    substage: Optional[str]
+    count: int
+
+class StageStats(BaseModel):
+    stage: int
+    count: int
+    substages: List[SubstageStats] = []
+
 class DatabaseStats(BaseModel):
     total_processes: int
     total_movements: int
@@ -279,6 +288,7 @@ class DatabaseStats(BaseModel):
     phases: List[PhaseStats]
     timeline: List[TimelineStats]
     classes: List[ClassStats] = []
+    stages: List[StageStats] = []
     last_updated: Optional[datetime] = None
 
 class SQLConnectionConfig(BaseModel):

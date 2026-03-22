@@ -117,6 +117,23 @@ export function getStageColorClasses(stage) {
 }
 
 /**
+ * Get Tailwind CSS background color class for a stage's progress bar
+ *
+ * @param {number} stage - Stage number (1-5)
+ * @returns {string} Tailwind CSS background class
+ */
+export function getStageProgressBarClasses(stage) {
+  const colorMap = {
+    1: 'bg-blue-500 dark:bg-blue-400',
+    2: 'bg-orange-500 dark:bg-orange-400',
+    3: 'bg-lime-500 dark:bg-lime-400',
+    4: 'bg-slate-500 dark:bg-slate-400',
+    5: 'bg-green-500 dark:bg-green-400',
+  };
+  return colorMap[stage] || 'bg-gray-500 dark:bg-gray-400';
+}
+
+/**
  * Get phase icon emoji (optional, for future use)
  *
  * @param {string} phase - The process phase name

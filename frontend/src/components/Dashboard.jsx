@@ -2,19 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { BarChart3, TrendingUp, Database, Calendar, RefreshCw, Loader2, AlertCircle, Filter, Trash2 } from 'lucide-react';
 import { getStats, clearStats } from '../services/api';
 import { toast } from 'react-hot-toast';
-import { getPhaseProgressBarClasses, getStageColorClasses } from '../utils/phaseColors';
-import { PHASE_BY_CODE } from '../constants/phases';
-
-// Mapeia código legado para número de stage (1-5)
-function stageFromCode(code) {
-    const n = parseInt(code, 10);
-    if (n >= 1 && n <= 9) return 1;
-    if (n >= 10 && n <= 12) return 2;
-    if (n === 13) return 3;
-    if (n === 14) return 5;
-    if (n === 15) return 4;
-    return 1;
-}
+import { getStageColorClasses, getStageProgressBarClasses } from '../utils/phaseColors';
+import { STAGES, SUBSTAGES } from '../constants/phases';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
@@ -23,7 +12,6 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     // Filters and sorting for phases section
-    const [phaseSortBy, setPhaseSortBy] = useState('logical'); // logical|count-desc|count-asc|name-asc
     const [confirmReset, setConfirmReset] = useState(false);
     const [resetting, setResetting] = useState(false);
 
@@ -67,30 +55,18 @@ const Dashboard = () => {
         return () => clearTimeout(timer);
     }, [confirmReset]);
 
-    // Must be before early returns to comply with React Rules of Hooks
-    const filteredAndSortedPhases = useMemo(() => {
-        if (!stats?.phases) return [];
-
-        let filtered = [...stats.phases];
-
-        // Apply sorting
-        filtered.sort((a, b) => {
-            if (phaseSortBy === 'logical') {
-                // Logical order is already provided by backend (01 to 15)
-                // We just need to preserve it or re-sort if someone changed it
-                return a.phase.localeCompare(b.phase, 'pt-BR');
-            } else if (phaseSortBy === 'count-desc') {
-                return b.count - a.count;
-            } else if (phaseSortBy === 'count-asc') {
-                return a.count - b.count;
-            } else if (phaseSortBy === 'name-asc') {
-                return a.phase.localeCompare(b.phase, 'pt-BR');
-            }
-            return 0;
-        });
-
-        return filtered;
-    }, [stats?.phases, phaseSortBy]);
+    // Build hierarchical stages list merging backend data with frontend labels
+    const stagesWithLabels = useMemo(() => {
+        if (!stats?.stages) return [];
+        return stats.stages.map(s => ({
+            ...s,
+            label: STAGES[s.stage]?.label || `Estágio ${s.stage}`,
+            substages: s.substages.map(ss => ({
+                ...ss,
+                label: ss.substage ? (SUBSTAGES[ss.substage]?.label || ss.substage) : 'Não classificado',
+            })),
+        }));
+    }, [stats?.stages]);
 
     if (loading) {
         return (
@@ -126,7 +102,7 @@ const Dashboard = () => {
 
     const maxTribunalCount = Math.max(...stats.tribunals.map(t => t.count), 1);
     const maxTimelineCount = Math.max(...stats.timeline.map(t => t.count), 1);
-    const maxPhaseCount = Math.max(...filteredAndSortedPhases.map(p => p.count), 1);
+    const maxStageCount = Math.max(...(stats.stages?.map(s => s.count) || []), 1);
 
     return (
         <div className="space-y-6">
@@ -235,54 +211,56 @@ const Dashboard = () => {
                     )}
                 </section>
 
-                {/* Phases Chart */}
+                {/* Stages Chart — Hierarchical */}
                 <section className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 p-6">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                        <div>
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Processos por Fase</h2>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Distribuição por estágio processual
-                            </p>
-                        </div>
-                        <div className="flex gap-2">
-                            {/* Sort by */}
-                            <select
-                                value={phaseSortBy}
-                                onChange={(e) => setPhaseSortBy(e.target.value)}
-                                className="px-3 py-1.5 text-sm border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                            >
-                                <option value="logical">Ordem Jurídica</option>
-                                <option value="count-desc">Maior quantidade</option>
-                                <option value="count-asc">Menor quantidade</option>
-                                <option value="name-asc">Nome (A-Z)</option>
-                            </select>
-                        </div>
+                    <div className="mb-6">
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">Processos por Estágio</h2>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Classificação hierárquica: estágio / subfase
+                        </p>
                     </div>
 
-                    <figure>
-                        <ul className="space-y-3 list-none p-0">
-                            {filteredAndSortedPhases.map((phase, idx) => (
-                                <li key={idx} className="space-y-1">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <div className="flex items-center space-x-2">
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${getStageColorClasses(stageFromCode(phase.phase))}`}>
-                                                {PHASE_BY_CODE[phase.phase]?.name || phase.phase}
+                    {stagesWithLabels.length > 0 ? (
+                        <figure>
+                            <ul className="space-y-5 list-none p-0">
+                                {stagesWithLabels.map((stage) => (
+                                    <li key={stage.stage}>
+                                        {/* Stage bar */}
+                                        <div className="flex justify-between items-center text-sm mb-1">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${getStageColorClasses(stage.stage)}`}>
+                                                {stage.stage}. {stage.label}
+                                            </span>
+                                            <span className="font-bold text-gray-800 dark:text-gray-200">
+                                                {stage.count.toLocaleString()}
                                             </span>
                                         </div>
-                                        <span className={`font-bold ${phase.count > 0 ? 'text-indigo-600' : 'text-gray-300'}`}>
-                                            {phase.count.toLocaleString()}
-                                        </span>
-                                    </div>
-                                    <div className="w-full bg-gray-100 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
-                                        <div
-                                            className={`${phase.count > 0 ? getPhaseProgressBarClasses(phase.phase) : 'bg-gray-200 dark:bg-slate-600'} h-3 rounded-full transition-all duration-500`}
-                                            style={{ width: `${(phase.count / maxPhaseCount) * 100}%` }}
-                                        />
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </figure>
+                                        <div className="w-full bg-gray-100 dark:bg-slate-700 rounded-full h-3 overflow-hidden mb-2">
+                                            <div
+                                                className={`h-3 rounded-full transition-all duration-500 ${getStageProgressBarClasses(stage.stage)}`}
+                                                style={{ width: `${(stage.count / maxStageCount) * 100}%` }}
+                                            />
+                                        </div>
+                                        {/* Substages */}
+                                        {stage.substages.length > 0 && (
+                                            <ul className="ml-4 space-y-1 list-none p-0">
+                                                {stage.substages.map((ss) => (
+                                                    <li key={ss.substage || 'null'} className="flex items-center gap-2 text-xs">
+                                                        <span className="text-gray-400 font-mono w-6 shrink-0">{ss.substage || '—'}</span>
+                                                        <span className="text-gray-600 dark:text-gray-400 flex-1 truncate">{ss.label}</span>
+                                                        <span className="font-semibold text-gray-700 dark:text-gray-300 tabular-nums">{ss.count.toLocaleString()}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        </figure>
+                    ) : (
+                        <p className="text-gray-500 dark:text-gray-400 text-sm italic">
+                            Nenhum dado hierárquico disponível. Consulte processos primeiro.
+                        </p>
+                    )}
                 </section>
             </div>
 

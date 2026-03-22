@@ -4,6 +4,7 @@ import { Search, Database, Layers, BarChart3, Settings, Sun, Moon, CheckCircle }
 import SearchProcess from './components/SearchProcess';
 import LoadingFallback from './components/LoadingFallback';
 import FeedbackButton from './components/FeedbackButton';
+import ClassificationFootnote from './components/ClassificationFootnote';
 import HistoryTab from './components/HistoryTab'; // Import direto para evitar erro com React 19
 import { searchProcess } from './services/api';
 import { useLabels } from './hooks/useLabels';
@@ -157,18 +158,16 @@ function App() {
             </div>
           )}
 
-          {activeTab === 'bulk' && (
-            <div
-              id="tab-panel-bulk"
-              role="tabpanel"
-              aria-labelledby="tab-bulk"
-              className="animate-in fade-in slide-in-from-bottom-4 duration-700"
-            >
-              <Suspense fallback={<LoadingFallback message="Carregando consulta em lote..." />}>
-                <BulkSearch onShowPhases={() => setShowPhasesModal(true)} />
-              </Suspense>
-            </div>
-          )}
+          <div
+            id="tab-panel-bulk"
+            role="tabpanel"
+            aria-labelledby="tab-bulk"
+            style={{ display: activeTab === 'bulk' ? 'block' : 'none' }}
+          >
+            <Suspense fallback={<LoadingFallback message="Carregando consulta em lote..." />}>
+              <BulkSearch onShowPhases={() => setShowPhasesModal(true)} />
+            </Suspense>
+          </div>
 
           {activeTab === 'analytics' && (
             <div
@@ -220,6 +219,7 @@ function App() {
             </div>
           )}
 
+          <ClassificationFootnote onShowPhases={() => setShowPhasesModal(true)} />
         </div>
       </main>
 
