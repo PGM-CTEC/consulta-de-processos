@@ -2,27 +2,55 @@ import { useState, useEffect } from 'react';
 import { Database, AlertCircle, CheckCircle, TrendingUp, RefreshCw, Loader2, Trash2 } from 'lucide-react';
 import { getPhaseCorrectionsAnalytics, clearPhaseCorrections } from '../services/api';
 import { getStageColorClasses } from '../utils/phaseColors';
-import { PHASE_BY_CODE, PHASE_BY_NAME } from '../constants/phases';
+import { LEGACY_PHASE_TO_HIERARCHY, STAGES, SUBSTAGES, TRANSIT_OPTIONS } from '../constants/phases';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { toast } from 'react-hot-toast';
 
-function stageFromCode(code) {
-    const n = parseInt(String(code).padStart(2, '0'), 10);
-    if (n >= 1 && n <= 9) return 1;
-    if (n >= 10 && n <= 12) return 2;
-    if (n === 13) return 3;
-    if (n === 14) return 5;
-    if (n === 15) return 4;
-    return 1;
-}
+/**
+ * Renderiza uma célula com a classificação hierárquica a partir de um código de fase legado
+ * @param {string|number} faseCode - Código de fase legado (01-15)
+ * @returns {JSX.Element}
+ */
+function renderHierarchyCell(faseCode) {
+    if (!faseCode || faseCode === 'Indefinido') {
+        return <span className="text-gray-500">Indefinido</span>;
+    }
 
-function getPhaseLabel(fase) {
-    if (!fase || fase === 'Indefinido') return 'Indefinido';
-    const code = String(fase).padStart(2, '0');
-    if (PHASE_BY_CODE[code]) return PHASE_BY_CODE[code].name;
-    if (PHASE_BY_NAME[fase]) return fase;
-    return fase;
+    const code = String(faseCode).padStart(2, '0');
+    const hierarchy = LEGACY_PHASE_TO_HIERARCHY[code];
+
+    if (!hierarchy) {
+        return <span className="text-gray-500">Indefinido</span>;
+    }
+
+    const { stage, substage, transit } = hierarchy;
+    const stageInfo = STAGES[stage];
+
+    if (!stageInfo) {
+        return <span className="text-gray-500">Indefinido</span>;
+    }
+
+    const substageInfo = substage ? SUBSTAGES[substage] : null;
+    const showTransit = transit === 'sim';
+
+    return (
+        <div className="flex items-center gap-3 flex-wrap">
+            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStageColorClasses(stage)}`}>
+                {stageInfo.label}
+            </span>
+            {substageInfo && (
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {substageInfo.label}
+                </span>
+            )}
+            {showTransit && (
+                <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-700">
+                    TJ
+                </span>
+            )}
+        </div>
+    );
 }
 
 const PhaseCorrectionAnalytics = () => {
@@ -254,9 +282,7 @@ const PhaseCorrectionAnalytics = () => {
                                                 className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                             >
                                                 <td className="py-3 px-4">
-                                                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStageColorClasses(stageFromCode(row.fase))}`}>
-                                                        {getPhaseLabel(row.fase)}
-                                                    </span>
+                                                    {renderHierarchyCell(row.fase)}
                                                 </td>
                                                 <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white">
                                                     {row.total}
@@ -311,9 +337,7 @@ const PhaseCorrectionAnalytics = () => {
                                                 className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                             >
                                                 <td className="py-3 px-4">
-                                                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStageColorClasses(stageFromCode(row.fase))}`}>
-                                                        {getPhaseLabel(row.fase)}
-                                                    </span>
+                                                    {renderHierarchyCell(row.fase)}
                                                 </td>
                                                 <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white">
                                                     {row.total}

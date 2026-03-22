@@ -459,3 +459,25 @@ export function formatClassification(classification) {
 
   return parts.join(' — ');
 }
+
+/**
+ * Mapeamento reverso de código de fase legado (01-15) para classificação hierárquica
+ * Necessário para analytics que retorna apenas códigos legados
+ */
+export const LEGACY_PHASE_TO_HIERARCHY = {
+  '01': { stage: 1, substage: '1.1', transit: 'na'  },
+  '02': { stage: 1, substage: '1.2', transit: 'nao' },
+  '03': { stage: 1, substage: '1.2', transit: 'sim' },
+  '04': { stage: 1, substage: '1.3', transit: 'na'  },
+  '05': { stage: 1, substage: '1.4', transit: 'nao' },
+  '06': { stage: 1, substage: '1.4', transit: 'sim' },
+  '07': { stage: 1, substage: '1.5', transit: 'na'  },
+  '08': { stage: 1, substage: '1.6', transit: 'nao' },
+  '09': { stage: 1, substage: '1.6', transit: 'sim' },
+  '10': { stage: 2, substage: '2.1', transit: 'na'  },
+  '11': { stage: 2, substage: '2.3', transit: 'na'  },
+  '12': { stage: 2, substage: '2.2', transit: 'na'  },
+  '13': { stage: 3, substage: null,  transit: 'na'  },
+  '14': { stage: 5, substage: null,  transit: 'na'  },
+  '15': { stage: 4, substage: null,  transit: 'na'  },
+};
