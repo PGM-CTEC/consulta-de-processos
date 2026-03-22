@@ -5,8 +5,8 @@ import { useForm } from 'react-hook-form';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { bulkSubmit, getBulkJob, getFusionStatus } from '../services/api';
 import * as XLSX from 'xlsx';
-import { getPhaseColorClasses, getPhaseDisplayName } from '../utils/phaseColors';
-import { PHASE_BY_CODE } from '../constants/phases';
+import { getPhaseColorClasses, getPhaseDisplayName, getStageColorClasses } from '../utils/phaseColors';
+import { PHASE_BY_CODE, STAGES } from '../constants/phases';
 import { exporters } from '../utils/exportHelpers';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -56,6 +56,12 @@ const ResultRow = React.memo(({ result, correctedPhase, onEditPhase }) => {
                             title={`Classificado via ${result.phase_source}`}
                         >
                             F
+                        </span>
+                    )}
+                    {/* Stage badge hierárquico */}
+                    {result.classification?.stage && (
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${getStageColorClasses(result.classification.stage)}`}>
+                            {result.classification.stage_label || STAGES[result.classification.stage]?.label}
                         </span>
                     )}
                     {/* Botão de edição */}

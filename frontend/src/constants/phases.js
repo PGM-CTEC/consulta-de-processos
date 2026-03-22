@@ -359,3 +359,71 @@ export function getPhaseInfo(phaseInput, classNature = null) {
   const normalizedName = normalizePhase(phaseInput, classNature);
   return PHASE_BY_NAME[normalizedName] || VALID_PHASES.CONHECIMENTO_ANTES_SENTENCA;
 }
+
+
+// ============================================================
+// Classificação Hierárquica — 3 Campos Independentes
+// ============================================================
+
+/**
+ * Stages (Campo 1): Estágio principal do processo
+ */
+export const STAGES = {
+  1: { value: 1, label: 'Conhecimento', color: 'blue' },
+  2: { value: 2, label: 'Execução', color: 'orange' },
+  3: { value: 3, label: 'Suspensão / Sobrestamento', color: 'lime' },
+  4: { value: 4, label: 'Arquivamento', color: 'slate' },
+  5: { value: 5, label: 'Conversão em Renda', color: 'green' },
+};
+
+/**
+ * Substages (Campo 2): Subfase dentro do stage
+ */
+export const SUBSTAGES = {
+  '1.1': { value: '1.1', label: 'Antes da Sentença', stage: 1 },
+  '1.2': { value: '1.2', label: 'Sentença Proferida', stage: 1 },
+  '1.3': { value: '1.3', label: 'Pendente Julgamento Tribunal Local', stage: 1 },
+  '1.4': { value: '1.4', label: 'Julgamento no Tribunal (Monocrático ou Acórdão)', stage: 1 },
+  '1.5': { value: '1.5', label: 'Pendente Julgamento Tribunal Superior', stage: 1 },
+  '1.6': { value: '1.6', label: 'Julgamento no Tribunal Superior (Monocrático ou Acórdão)', stage: 1 },
+  '2.1': { value: '2.1', label: 'Execução Normal', stage: 2 },
+  '2.2': { value: '2.2', label: 'Execução Suspensa Parcialmente', stage: 2 },
+  '2.3': { value: '2.3', label: 'Execução Suspensa', stage: 2 },
+};
+
+/**
+ * Transit (Campo 3): Trânsito em julgado
+ */
+export const TRANSIT_OPTIONS = {
+  sim: { value: 'sim', label: 'Sim' },
+  nao: { value: 'nao', label: 'Não' },
+  na:  { value: 'na',  label: 'N/A' },
+};
+
+/**
+ * Retorna substages filtradas por stage
+ * @param {number} stage
+ * @returns {Array<{value: string, label: string}>}
+ */
+export function getSubstagesForStage(stage) {
+  return Object.values(SUBSTAGES).filter(s => s.stage === stage);
+}
+
+/**
+ * Formata a classificação hierárquica para exibição
+ * @param {object} classification - {stage, stage_label, substage, substage_label, transit_julgado}
+ * @returns {string}
+ */
+export function formatClassification(classification) {
+  if (!classification || !classification.stage) return null;
+
+  const stageLabel = classification.stage_label || STAGES[classification.stage]?.label || '';
+  const substageLabel = classification.substage_label || SUBSTAGES[classification.substage]?.label || '';
+  const transit = classification.transit_julgado;
+
+  let parts = [stageLabel];
+  if (substageLabel) parts.push(substageLabel);
+  if (transit === 'sim') parts.push('(Trânsito em Julgado)');
+
+  return parts.join(' — ');
+}

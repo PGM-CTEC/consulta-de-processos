@@ -76,6 +76,25 @@ async def lifespan(app: FastAPI):
     if "phase_corrections" not in existing_tables:
         models.Base.metadata.tables["phase_corrections"].create(bind=engine)
 
+    # Migrate: add hierarchical classification columns (stage, substage, transit_julgado)
+    _hierarchical_cols = {
+        "processes": ["stage", "substage", "transit_julgado"],
+        "search_history": ["stage", "substage", "transit_julgado"],
+        "phase_corrections": ["corrected_stage", "corrected_substage", "corrected_transit"],
+        "phase_confirmations": ["confirmed_stage", "confirmed_substage", "confirmed_transit"],
+    }
+    inspector = sa_inspect(engine)
+    with engine.connect() as conn:
+        for table_name, cols in _hierarchical_cols.items():
+            if table_name not in {t.lower() for t in inspector.get_table_names()}:
+                continue
+            existing = {c["name"] for c in inspector.get_columns(table_name)}
+            for col in cols:
+                if col not in existing:
+                    col_type = "INTEGER" if col.endswith("stage") and not col.endswith("substage") else "VARCHAR"
+                    conn.execute(sa_text(f"ALTER TABLE {table_name} ADD COLUMN {col} {col_type}"))
+            conn.commit()
+
     yield
 
 load_dotenv()

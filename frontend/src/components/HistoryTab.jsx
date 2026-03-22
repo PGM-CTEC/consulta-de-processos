@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Clock, Trash2, Copy, ExternalLink, FileText, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp, Pencil, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { getHistory, clearHistory, searchProcess, confirmPhase, getConfirmedProcesses, getLatestCorrections } from '../services/api';
-import { PHASE_BY_CODE } from '../constants/phases';
-import { getPhaseColorClasses } from '../utils/phaseColors';
+import { PHASE_BY_CODE, STAGES, SUBSTAGES, TRANSIT_OPTIONS } from '../constants/phases';
+import { getPhaseColorClasses, getStageColorClasses } from '../utils/phaseColors';
 import PhaseEditModal from './PhaseEditModal';
 import ClassificationTrace from './ClassificationTrace';
 
@@ -323,6 +323,16 @@ function HistoryTab({ labels }) {
                                                             }}
                                                         />
                                                     )}
+                                                    {isFound && item.classification?.stage && (
+                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getStageColorClasses(item.classification.stage)}`}>
+                                                            {item.classification.stage_label || STAGES[item.classification.stage]?.label}
+                                                            {item.classification.substage && (
+                                                                <span className="ml-1 font-normal opacity-75">
+                                                                    / {item.classification.substage_label || SUBSTAGES[item.classification.substage]?.label}
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="text-xs text-gray-500 mt-1 space-y-0.5">
                                                     {isFound && tribunal && (
@@ -392,7 +402,7 @@ function HistoryTab({ labels }) {
                                         </div>
                                     </div>
                                     {isExpanded && hasLog && (
-                                        <ClassificationTrace log={item.classification_log} />
+                                        <ClassificationTrace log={item.classification_log} classification={item.classification} />
                                     )}
                                     {/* Inline ProcessDetails */}
                                     {isInlineOpen && (

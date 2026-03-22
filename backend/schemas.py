@@ -28,6 +28,50 @@ class MovementResponse(MovementBase):
     class Config:
         from_attributes = True
 
+class ClassificationResponse(BaseModel):
+    """Classificação hierárquica em 3 campos."""
+    stage: Optional[int] = None              # 1-5
+    stage_label: Optional[str] = None        # "Conhecimento", "Execução", etc.
+    substage: Optional[str] = None           # "1.1"-"2.3" ou null
+    substage_label: Optional[str] = None     # "Antes da Sentença", etc.
+    transit_julgado: Optional[str] = None    # "sim", "nao", "na"
+    phase_legacy: Optional[str] = None       # "01"-"15" (compatibilidade)
+
+
+# Labels para exibição
+STAGE_LABELS = {
+    1: "Conhecimento",
+    2: "Execução",
+    3: "Suspensão / Sobrestamento",
+    4: "Arquivamento",
+    5: "Conversão em Renda",
+}
+
+SUBSTAGE_LABELS = {
+    "1.1": "Antes da Sentença",
+    "1.2": "Sentença Proferida",
+    "1.3": "Pendente Julgamento Tribunal Local",
+    "1.4": "Julgamento no Tribunal (Monocrático ou Acórdão)",
+    "1.5": "Pendente Julgamento Tribunal Superior",
+    "1.6": "Julgamento no Tribunal Superior (Monocrático ou Acórdão)",
+    "2.1": "Execução Normal",
+    "2.2": "Execução Suspensa Parcialmente",
+    "2.3": "Execução Suspensa",
+}
+
+
+def build_classification_response(stage, substage, transit_julgado, phase_legacy=None):
+    """Constrói ClassificationResponse a partir dos campos brutos."""
+    return ClassificationResponse(
+        stage=stage,
+        stage_label=STAGE_LABELS.get(stage),
+        substage=substage,
+        substage_label=SUBSTAGE_LABELS.get(substage),
+        transit_julgado=transit_julgado,
+        phase_legacy=phase_legacy,
+    )
+
+
 class ProcessBase(BaseModel):
     number: str
     class_nature: Optional[str] = None
@@ -41,6 +85,7 @@ class ProcessBase(BaseModel):
     phase: Optional[str] = None
     phase_warning: Optional[str] = None
     phase_source: Optional[str] = None
+    classification: Optional[ClassificationResponse] = None
 
 class HistoryResponse(BaseModel):
     id: int
@@ -53,10 +98,24 @@ class HistoryResponse(BaseModel):
     phase_source: Optional[str] = None
     phase: Optional[str] = None
     classification_log: Optional[Any] = None
+    classification: Optional[ClassificationResponse] = None
     created_at: datetime
+
+    # Campos do DB para build
+    stage: Optional[int] = None
+    substage: Optional[str] = None
+    transit_julgado: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+    @model_validator(mode='after')
+    def build_classification(self):
+        if self.stage is not None:
+            self.classification = build_classification_response(
+                self.stage, self.substage, self.transit_julgado, self.phase
+            )
+        return self
 
     @model_validator(mode='after')
     def parse_classification_log(self):
@@ -81,8 +140,21 @@ class ProcessResponse(ProcessBase):
     fusion_movements: List[FusionMovimentoResponse] = []
     pav_tree_documents: List[PAVTreeDocumentResponse] = []
 
+    # Campos do DB lidos via from_attributes, excluídos do output JSON
+    stage: Optional[int] = None
+    substage: Optional[str] = None
+    transit_julgado: Optional[str] = None
+
     class Config:
         from_attributes = True
+
+    @model_validator(mode='after')
+    def build_classification(self):
+        if self.stage is not None:
+            self.classification = build_classification_response(
+                self.stage, self.substage, self.transit_julgado, self.phase
+            )
+        return self
 
     @model_validator(mode='after')
     def extract_fusion_movements(self):
@@ -154,9 +226,23 @@ class ProcessBulkResult(BaseModel):
     phase_source: Optional[str] = None
     class_nature: Optional[str] = None
     last_update: Optional[datetime] = None
+    classification: Optional[ClassificationResponse] = None
+
+    # Campos do DB para build
+    stage: Optional[int] = None
+    substage: Optional[str] = None
+    transit_julgado: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+    @model_validator(mode='after')
+    def build_classification(self):
+        if self.stage is not None:
+            self.classification = build_classification_response(
+                self.stage, self.substage, self.transit_julgado, self.phase
+            )
+        return self
 
 class BulkJobResultsResponse(BaseModel):
     """Full results response with pagination."""
@@ -242,7 +328,10 @@ class AlertResponse(BaseModel):
 
 class PhaseCorrectionCreate(BaseModel):
     """Schema para criar uma correção de fase."""
-    corrected_phase: str = Field(..., description="Código de fase corrigida (01-15)")
+    corrected_phase: str = Field(..., description="Código de fase corrigida (01-15) — legacy")
+    corrected_stage: Optional[int] = Field(None, description="Stage corrigido (1-5)")
+    corrected_substage: Optional[str] = Field(None, description="Substage corrigido")
+    corrected_transit: Optional[str] = Field(None, description="Transit corrigido (sim/nao/na)")
     reason: str = Field(..., min_length=10, max_length=2000, description="Motivo da correção")
     source_tab: Optional[str] = Field(None, pattern="^(single|bulk|history)$", description="Aba de origem")
     original_phase: Optional[str] = None

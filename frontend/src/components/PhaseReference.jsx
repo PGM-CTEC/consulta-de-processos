@@ -1,7 +1,7 @@
 import React from 'react';
 import { BookOpen, Info } from 'lucide-react';
-import { ALL_PHASES } from '../constants/phases';
-import { getPhaseColorClasses, getPhaseIcon } from '../utils/phaseColors';
+import { ALL_PHASES, STAGES, SUBSTAGES, TRANSIT_OPTIONS, getSubstagesForStage } from '../constants/phases';
+import { getPhaseColorClasses, getPhaseIcon, getStageColorClasses } from '../utils/phaseColors';
 
 /**
  * Componente de referência que exibe as 15 fases processuais oficiais
@@ -98,6 +98,53 @@ const PhaseReference = () => {
           </div>
         </div>
       ))}
+
+      {/* Classificação Hierárquica */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-gray-100 px-6 py-4">
+          <h2 className="text-lg font-bold text-gray-900">Classificação Hierárquica (3 Campos)</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Sistema alternativo que separa a classificação em Estágio, Subfase e Trânsito em Julgado
+          </p>
+        </div>
+        <div className="p-6 space-y-6">
+          {/* Stages */}
+          {Object.values(STAGES).map((stage) => {
+            const substages = getSubstagesForStage(stage.value);
+            return (
+              <div key={stage.value} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${getStageColorClasses(stage.value)}`}>
+                    {stage.value}. {stage.label}
+                  </span>
+                </div>
+                {substages.length > 0 && (
+                  <div className="ml-6 space-y-1">
+                    {substages.map((ss) => (
+                      <div key={ss.value} className="flex items-center gap-2 text-sm text-gray-700">
+                        <span className="font-mono text-xs text-gray-400 w-8">{ss.value}</span>
+                        <span>{ss.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Transit */}
+          <div className="border-t border-gray-200 pt-4">
+            <h3 className="text-sm font-bold text-gray-900 mb-2">Trânsito em Julgado (campo independente)</h3>
+            <div className="flex gap-3">
+              {Object.values(TRANSIT_OPTIONS).map((t) => (
+                <span key={t.value} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                  {t.value} = {t.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Documentation Link */}
       <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-6 text-center border border-gray-200">

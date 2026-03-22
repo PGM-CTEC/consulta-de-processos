@@ -14,6 +14,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
 
+from .hierarchical_classification import (
+    Stage, Substage, Transit, HierarchicalResult,
+    derive_legacy_phase, detect_transit_from_class_text,
+    PHASE_TO_STAGE_SUBSTAGE, _PHASES_WITH_IMPLICIT_TRANSIT,
+)
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -44,6 +50,11 @@ class ClassificationResult:
     context_summary: dict = field(default_factory=dict)
     # context_summary: resumo do conjunto completo de movimentos
 
+    # Classificação hierárquica (3 campos)
+    stage: int = 1
+    substage: Optional[str] = None
+    transit_julgado: str = "nao"
+
     def to_dict(self) -> dict:
         """Retorna dict serializável para JSON."""
         return {
@@ -57,7 +68,21 @@ class ClassificationResult:
             "anchor_matches": self.anchor_matches,
             "confidence": self.confidence,
             "context_summary": self.context_summary,
+            "stage": self.stage,
+            "substage": self.substage,
+            "transit_julgado": self.transit_julgado,
         }
+
+    def to_hierarchical(self) -> HierarchicalResult:
+        """Converte para resultado hierárquico."""
+        return HierarchicalResult(
+            stage=self.stage,
+            substage=self.substage,
+            transit_julgado=self.transit_julgado,
+            phase_legacy=self.phase,
+            rules_applied=[self.rule_applied],
+            confidence=self.confidence or 0.0,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -322,9 +347,33 @@ class DocumentPhaseClassifier:
         classe_norm = cls._normalize(classe_processual)
 
         if _is_classe_execucao(classe_norm):
-            return cls._classify_execucao_traced(movimentos, classe_norm)
+            result = cls._classify_execucao_traced(movimentos, classe_norm)
+        else:
+            result = cls._classify_conhecimento_traced(movimentos, classe_norm)
 
-        return cls._classify_conhecimento_traced(movimentos, classe_norm)
+        cls._computar_hierarquia(result, classe_norm)
+        return result
+
+    @classmethod
+    def _computar_hierarquia(cls, result: ClassificationResult, classe_norm: str):
+        """Computa stage, substage e transit_julgado a partir da fase classificada."""
+        stage, substage = PHASE_TO_STAGE_SUBSTAGE.get(
+            result.phase, (Stage.CONHECIMENTO, Substage.ANTES_SENTENCA)
+        )
+        result.stage = stage
+        result.substage = substage
+
+        # Decisão 3: Transit em julgado
+        # Prioridade: classe processual → fase implícita → âncora de trânsito → fallback
+        transit_from_class = detect_transit_from_class_text(classe_norm)
+        if transit_from_class is not None:
+            result.transit_julgado = transit_from_class
+        elif result.phase in _PHASES_WITH_IMPLICIT_TRANSIT:
+            result.transit_julgado = Transit.SIM
+        elif result.anchor_matches.get("transito") is not None:
+            result.transit_julgado = Transit.SIM
+        else:
+            result.transit_julgado = Transit.NAO
 
     # ------------------------------------------------------------------
     # Branch: conhecimento (fases 01–09, 13, 15)

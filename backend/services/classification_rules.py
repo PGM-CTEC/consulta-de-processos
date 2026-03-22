@@ -13,12 +13,18 @@ Data: Fevereiro/2026
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Tuple, Set
+from typing import List, Dict, Optional, Set
 from enum import Enum
 from datetime import datetime
 import json
 import logging
 import unicodedata
+
+from .hierarchical_classification import (
+    Stage, Substage, Transit, HierarchicalResult,
+    derive_legacy_phase, detect_transit_from_class,
+    PHASE_TO_STAGE_SUBSTAGE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +185,12 @@ class ResultadoClassificacao:
     movimentos_determinantes: List[MovimentoProcessual]
     alertas: List[str]
     contexto_llm: Dict
-    
+
+    # Classificação hierárquica (3 campos)
+    stage: int = 1
+    substage: Optional[str] = None
+    transit_julgado: str = "nao"
+
     def to_dict(self) -> Dict:
         """Converte para dicionário para serialização."""
         return {
@@ -192,12 +203,26 @@ class ResultadoClassificacao:
                 for m in self.movimentos_determinantes
             ],
             "alertas": self.alertas,
-            "contexto_llm": self.contexto_llm
+            "contexto_llm": self.contexto_llm,
+            "stage": self.stage,
+            "substage": self.substage,
+            "transit_julgado": self.transit_julgado,
         }
-    
+
     def to_json(self) -> str:
         """Serializa para JSON."""
         return json.dumps(self.to_dict(), ensure_ascii=False, indent=2)
+
+    def to_hierarchical(self) -> HierarchicalResult:
+        """Converte para resultado hierárquico."""
+        return HierarchicalResult(
+            stage=self.stage,
+            substage=self.substage,
+            transit_julgado=self.transit_julgado,
+            phase_legacy=self.fase.value,
+            rules_applied=self.regras_aplicadas,
+            confidence=self.confianca,
+        )
 
 
 class CodigosCNJ:
@@ -298,24 +323,45 @@ class CodigosCNJ:
 class ClassificadorFases:
     """
     Classificador de fases processuais baseado em regras determinísticas.
-    
+
     Implementa o algoritmo de classificação que analisa classe processual,
     movimentos e documentos para determinar a fase atual do processo.
     """
-    
+
     def __init__(self):
         self.codigos = CodigosCNJ()
-    
+
     def classificar(self, processo: ProcessoJudicial) -> ResultadoClassificacao:
         """
         Classifica o processo em uma das 15 fases definidas.
 
         Aplica as regras por código em ordem de prioridade, depois aplica
         override por descrição textual de movimentos quando pertinente.
+        Após, computa os campos hierárquicos (stage, substage, transit_julgado).
         """
         resultado = self._classificar_por_codigos(processo)
         resultado = self._aplicar_override_por_descricao(processo, resultado)
+        self._computar_hierarquia(processo, resultado)
         return resultado
+
+    def _computar_hierarquia(self, processo: ProcessoJudicial, resultado: ResultadoClassificacao):
+        """Computa stage, substage e transit_julgado a partir da fase classificada."""
+        fase_code = resultado.fase.value
+        stage, substage = PHASE_TO_STAGE_SUBSTAGE.get(fase_code, (Stage.CONHECIMENTO, Substage.ANTES_SENTENCA))
+        resultado.stage = stage
+        resultado.substage = substage
+
+        # Decisão 3: Transit em julgado (independente do stage)
+        # T0: Classe é execução originária → na
+        transit_from_class = detect_transit_from_class(
+            processo.classe_codigo, processo.classe_descricao
+        )
+        if transit_from_class is not None:
+            resultado.transit_julgado = transit_from_class
+        elif self._verificar_transito_julgado(processo):
+            resultado.transit_julgado = Transit.SIM
+        else:
+            resultado.transit_julgado = Transit.NAO
 
     def _classificar_por_codigos(self, processo: ProcessoJudicial) -> ResultadoClassificacao:
         """

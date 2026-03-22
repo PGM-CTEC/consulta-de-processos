@@ -121,6 +121,29 @@ def _consolidar_fases(fase_datajud: str, fase_fusion: str) -> tuple[str, str]:
     return "Indefinido", "ambos_indefinidos"
 
 
+def _extrair_hierarquia_da_fonte(modo: str, meta: dict) -> tuple:
+    """
+    Extrai (stage, substage, transit_julgado) da fonte vencedora da consolidação.
+
+    O parâmetro 'modo' é o segundo valor retornado por _consolidar_tres_fontes(),
+    e indica qual fonte "venceu" (pav_tree_*, fusion_*, datajud_*).
+    """
+    if modo.startswith("pav_tree"):
+        prefix = "pav_tree"
+    elif modo.startswith("fusion"):
+        prefix = "fusion"
+    elif modo.startswith("datajud"):
+        prefix = "datajud"
+    else:
+        return (None, None, None)
+
+    return (
+        meta.get(f"{prefix}_stage"),
+        meta.get(f"{prefix}_substage"),
+        meta.get(f"{prefix}_transit"),
+    )
+
+
 class ProcessService:
     def __init__(
         self,
@@ -191,7 +214,7 @@ class ProcessService:
 
             logger.debug(f"Calculating DataJud phase: class={class_code}, tribunal={tribunal}, grau={grau}, movements={len(movements)}")
 
-            datajud_phase = PhaseAnalyzer.analyze(
+            datajud_resultado = PhaseAnalyzer.analyze_full(
                 class_code=class_code,
                 movements=movements,
                 tribunal=tribunal,
@@ -199,7 +222,13 @@ class ProcessService:
                 process_number=process_number,
                 raw_data=api_data,
             )
+            datajud_phase = f"{datajud_resultado.fase.value} {datajud_resultado.fase.descricao}"
+            if PhaseAnalyzer._is_dcp_process(api_data, tribunal):
+                datajud_phase += " *"
             _meta_fo["datajud_phase"] = datajud_phase
+            _meta_fo["datajud_stage"] = datajud_resultado.stage
+            _meta_fo["datajud_substage"] = datajud_resultado.substage
+            _meta_fo["datajud_transit"] = datajud_resultado.transit_julgado
             logger.info(f"✓ DataJud phase for {process_number}: {datajud_phase}")
         except Exception as e:
             logger.error(f"✗ Error calculating DataJud phase for {process_number}: {e}", exc_info=True)
@@ -225,6 +254,9 @@ class ProcessService:
                     _meta_fo["fusion_fonte"] = fusion_result.fonte
                     _meta_fo["fusion_classe_processual"] = fusion_result.classe_processual
                     _meta_fo["fusion_classification_log"] = classification.to_dict()
+                    _meta_fo["fusion_stage"] = classification.stage
+                    _meta_fo["fusion_substage"] = classification.substage
+                    _meta_fo["fusion_transit"] = classification.transit_julgado
                     logger.info(
                         f"[Fusion-only] {process_number}: fase={fusion_phase}, "
                         f"fonte={fusion_result.fonte}, regra={classification.rule_applied}"
@@ -288,6 +320,9 @@ class ProcessService:
                     )
                     _meta_fo["pav_tree_phase"] = tree_classification.phase
                     _meta_fo["pav_tree_classification_log"] = tree_classification.to_dict()
+                    _meta_fo["pav_tree_stage"] = tree_classification.stage
+                    _meta_fo["pav_tree_substage"] = tree_classification.substage
+                    _meta_fo["pav_tree_transit"] = tree_classification.transit_julgado
                     _meta_fo["pav_tree_total_docs"] = len(arvore_result.movimentos)
                     _meta_fo["pav_tree_documents"] = [
                         {"name": m.tipo_local, "date": m.data.isoformat()}
@@ -341,6 +376,9 @@ class ProcessService:
                 existing.phase_source = process.phase_source
                 existing.phase = process.phase
                 existing.classification_log = log_json
+                existing.stage = process.stage
+                existing.substage = process.substage
+                existing.transit_julgado = process.transit_julgado
                 existing.error_type = None
                 existing.error_message = None
             else:
@@ -352,6 +390,9 @@ class ProcessService:
                     phase_source=process.phase_source,
                     phase=process.phase,
                     classification_log=log_json,
+                    stage=process.stage,
+                    substage=process.substage,
+                    transit_julgado=process.transit_julgado,
                 )
                 self.db.add(history_entry)
 
@@ -498,6 +539,10 @@ class ProcessService:
             meta["phase_source_grau"] = data["grau"]
 
         # Verificar se há override manual (maior prioridade)
+        stage = None
+        substage = None
+        transit_julgado = None
+
         if meta.get("phase_override"):
             phase = meta["phase_override"]
             meta["phase_analysis_mode"] = "manual_override"
@@ -513,9 +558,15 @@ class ProcessService:
             meta["fusion_phase_input"]   = fase_fusion
             meta["pav_tree_phase_input"] = fase_pav_tree
 
+            # Extrair campos hierárquicos da fonte vencedora
+            stage, substage, transit_julgado = _extrair_hierarquia_da_fonte(modo, meta)
+
         phase_source = meta.get("fusion_phase_source", "datajud")
 
         meta["unified_phase"] = phase
+        meta["unified_stage"] = stage
+        meta["unified_substage"] = substage
+        meta["unified_transit"] = transit_julgado
 
         # Warning: usa aviso injetado pelo get_or_update_process()
         phase_warning = meta.get("fusion_phase_warning")
@@ -533,6 +584,9 @@ class ProcessService:
             "phase": phase,
             "phase_warning": phase_warning,
             "phase_source": phase_source,
+            "stage": stage,
+            "substage": substage,
+            "transit_julgado": transit_julgado,
             "raw_data": raw_payload
         }
 
@@ -894,12 +948,18 @@ class ProcessService:
                     tribunal_name=fusion_result.sistema,
                     phase=phase,
                     phase_source=fusion_result.fonte,
+                    stage=classification.stage,
+                    substage=classification.substage,
+                    transit_julgado=classification.transit_julgado,
                     raw_data=fusion_raw,
                 )
                 self.db.add(process)
             else:
                 process.phase = phase
                 process.phase_source = fusion_result.fonte
+                process.stage = classification.stage
+                process.substage = classification.substage
+                process.transit_julgado = classification.transit_julgado
                 process.raw_data = fusion_raw
                 if fusion_result.classe_processual:
                     process.class_nature = fusion_result.classe_processual
@@ -920,6 +980,9 @@ class ProcessService:
                 existing.court = fusion_result.sistema
                 existing.phase = phase
                 existing.classification_log = log_json
+                existing.stage = classification.stage
+                existing.substage = classification.substage
+                existing.transit_julgado = classification.transit_julgado
                 existing.error_type = None
                 existing.error_message = None
             else:
@@ -931,6 +994,9 @@ class ProcessService:
                     phase_source=fusion_result.fonte,
                     phase=phase,
                     classification_log=log_json,
+                    stage=classification.stage,
+                    substage=classification.substage,
+                    transit_julgado=classification.transit_julgado,
                 )
                 self.db.add(history_entry)
 

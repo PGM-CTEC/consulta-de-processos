@@ -4,8 +4,8 @@ import { LoadingState, ErrorState } from './LoadingState';
 import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw, ArrowDownUp, Database, Pencil, Check, FileStack } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getPhaseColorClasses } from '../utils/phaseColors';
-import { normalizePhaseWithMovements, PHASE_BY_CODE } from '../constants/phases';
+import { getPhaseColorClasses, getStageColorClasses } from '../utils/phaseColors';
+import { normalizePhaseWithMovements, PHASE_BY_CODE, STAGES, SUBSTAGES, TRANSIT_OPTIONS } from '../constants/phases';
 import InstanceSelector from './InstanceSelector';
 import { getProcessInstance, confirmPhase, getConfirmedProcesses, getLatestCorrections } from '../services/api';
 import { toast } from 'react-hot-toast';
@@ -399,6 +399,28 @@ function ProcessDetails({ data }) {
                                     {activeData.phase_warning}
                                 </p>
                             )}
+                            {/* Classificação hierárquica inline */}
+                            {activeData.classification?.stage && (
+                                <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-semibold ${getStageColorClasses(activeData.classification.stage)}`}>
+                                        {activeData.classification.stage_label || STAGES[activeData.classification.stage]?.label}
+                                    </span>
+                                    {activeData.classification.substage && (
+                                        <span className="text-gray-500 dark:text-gray-400">
+                                            {activeData.classification.substage_label || SUBSTAGES[activeData.classification.substage]?.label}
+                                        </span>
+                                    )}
+                                    {activeData.classification.transit_julgado && activeData.classification.transit_julgado !== 'na' && (
+                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+                                            activeData.classification.transit_julgado === 'sim'
+                                                ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700'
+                                                : 'bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600'
+                                        }`}>
+                                            TJ: {TRANSIT_OPTIONS[activeData.classification.transit_julgado]?.label || activeData.classification.transit_julgado}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -423,6 +445,7 @@ function ProcessDetails({ data }) {
                             log={typeof activeData.raw_data.__meta__.classification_log === 'string'
                                 ? JSON.parse(activeData.raw_data.__meta__.classification_log)
                                 : activeData.raw_data.__meta__.classification_log}
+                            classification={activeData.classification}
                             compact
                         />
                     </CardContent>

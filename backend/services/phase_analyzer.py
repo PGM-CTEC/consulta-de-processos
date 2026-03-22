@@ -5,7 +5,7 @@ from datetime import datetime
 
 from .classification_rules import (
     ClassificadorFases, ProcessoJudicial, MovimentoProcessual,
-    GrauJurisdicao, DocumentoProcessual
+    GrauJurisdicao, DocumentoProcessual, ResultadoClassificacao
 )
 
 logger = logging.getLogger(__name__)
@@ -37,55 +37,48 @@ class PhaseAnalyzer:
     @staticmethod
     def analyze(class_code: int, movements: List[Dict], tribunal: str = "", grau: str = "G1", process_number: str = "", raw_data: Optional[Dict[str, Any]] = None) -> str:
         """
-        Main entry point for phase analysis. Adapts the input data to the
-        ProcessoJudicial dataclass and runs the ClassificadorFases.
-        
-        Args:
-            class_code: CNJ Class Code (int)
-            movements: List of movement dicts (must contain 'codigo' and 'dataHora')
-            tribunal: Tribunal identifier
-            grau: 'G1', 'G2', 'STJ', etc.
-            process_number: Process number (CNJ format)
-            raw_data: Full raw data from DataJud (optional, but useful for extra fields)
+        Main entry point for phase analysis. Returns phase string.
         """
         try:
-            grau_enum = PhaseAnalyzer._map_grau(grau)
-            movimentos_adaptados = PhaseAnalyzer._adapt_movements(movements or [], grau_enum)
-
-            class_desc = ""
-            if raw_data:
-                class_desc = raw_data.get('classe', {}).get('nome', '')
-
-            # Determinar situação: BAIXADO se há baixa definitiva não revertida
-            situacao = "MOVIMENTO"
-            if PhaseAnalyzer._instance_has_baixa(movimentos_adaptados):
-                situacao = "BAIXADO"
-                logger.info(f"Processo {process_number} detectado como BAIXADO (instância única)")
-
-            processo = ProcessoJudicial(
-                numero=process_number or "0000000-00.0000.0.00.0000",
-                classe_codigo=int(class_code or 0),
-                classe_descricao=class_desc,
-                grau_atual=grau_enum,
-                situacao=situacao,
-                movimentos=movimentos_adaptados,
-                documentos=[],
-                polo_fazenda="RE"
-            )
-
-            # 2. Run Classification
-            classificador = ClassificadorFases()
-            resultado = classificador.classificar(processo)
-            
-            # 3. Return Phase Code + Description (com sufixo DCP se aplicável)
+            resultado = PhaseAnalyzer.analyze_full(class_code, movements, tribunal, grau, process_number, raw_data)
             phase_str = f"{resultado.fase.value} {resultado.fase.descricao}"
             if PhaseAnalyzer._is_dcp_process(raw_data, tribunal):
                 phase_str += " *"
             return phase_str
-
         except Exception as e:
             logger.error(f"Error in PhaseAnalyzer: {e}")
             return "Erro na Análise"
+
+    @staticmethod
+    def analyze_full(class_code: int, movements: List[Dict], tribunal: str = "", grau: str = "G1", process_number: str = "", raw_data: Optional[Dict[str, Any]] = None) -> ResultadoClassificacao:
+        """
+        Retorna ResultadoClassificacao completo (inclui stage, substage, transit_julgado).
+        """
+        grau_enum = PhaseAnalyzer._map_grau(grau)
+        movimentos_adaptados = PhaseAnalyzer._adapt_movements(movements or [], grau_enum)
+
+        class_desc = ""
+        if raw_data:
+            class_desc = raw_data.get('classe', {}).get('nome', '')
+
+        situacao = "MOVIMENTO"
+        if PhaseAnalyzer._instance_has_baixa(movimentos_adaptados):
+            situacao = "BAIXADO"
+            logger.info(f"Processo {process_number} detectado como BAIXADO (instância única)")
+
+        processo = ProcessoJudicial(
+            numero=process_number or "0000000-00.0000.0.00.0000",
+            classe_codigo=int(class_code or 0),
+            classe_descricao=class_desc,
+            grau_atual=grau_enum,
+            situacao=situacao,
+            movimentos=movimentos_adaptados,
+            documentos=[],
+            polo_fazenda="RE"
+        )
+
+        classificador = ClassificadorFases()
+        return classificador.classificar(processo)
 
     @staticmethod
     def _is_dcp_process(raw_data: Optional[Dict[str, Any]], tribunal: str) -> bool:
@@ -337,70 +330,70 @@ class PhaseAnalyzer:
         tribunal: str = ""
     ) -> str:
         """
-        Analisa a fase processual de forma unificada, considerando TODAS as instâncias.
-
-        Mescla movimentos de todas as instâncias, determina o grau efetivo
-        (maior grau ativo) e a situação efetiva (BAIXADO só se TODAS baixadas),
-        e roda o ClassificadorFases sobre o conjunto completo.
-
-        Args:
-            all_instances: Lista de dicts (cada um é um _source completo do DataJud)
-            process_number: Número do processo CNJ
-            tribunal: Identificador do tribunal
-        Returns:
-            String da fase no formato "XX Descrição" (ex: "04 Conhecimento - Recurso 2ª Instância...")
+        Analisa a fase processual de forma unificada. Retorna string da fase.
         """
         try:
-            # Verificar ausência de retorno da 1ª instância no DataJud.
-            # Condições (todas obrigatórias):
-            #   1. Número do processo com final ≠ "0000" → tramitou em G1
-            #   2. DataJud retornou apenas instâncias G2/TR (sem G1 nem JE)
-            #   3. A instância G2 tem baixa/arquivamento dos autos
-            # Indica que o tribunal baixou os autos para a origem, mas a 1ª
-            # instância ainda não atualizou o DataJud com sua movimentação.
-            if (
-                PhaseAnalyzer._process_number_ends_with_nonzero(process_number)
-                and PhaseAnalyzer._has_only_g2_instances(all_instances)
-                and PhaseAnalyzer._g2_has_baixa_arquivamento(all_instances)
-            ):
-                logger.info(
-                    f"Processo {process_number}: Ausência retorno Datajud 1a instancia "
-                    f"(somente G2 com baixa, numero final != 0000)"
-                )
+            resultado = PhaseAnalyzer.analyze_unified_full(all_instances, process_number, tribunal)
+            if resultado is None:
                 return "Ausência retorno Datajud 1ª instância"
-
-            movements, effective_grau, situacao, class_code, class_desc = \
-                PhaseAnalyzer._merge_instance_movements(all_instances)
-
-            processo = ProcessoJudicial(
-                numero=process_number or "0000000-00.0000.0.00.0000",
-                classe_codigo=class_code,
-                classe_descricao=class_desc,
-                grau_atual=effective_grau,
-                situacao=situacao,
-                movimentos=movements,
-                documentos=[],
-                polo_fazenda="RE"
-            )
-
-            classificador = ClassificadorFases()
-            resultado = classificador.classificar(processo)
 
             phase_str = f"{resultado.fase.value} {resultado.fase.descricao}"
 
-            # Verificar DCP em cada instância (basta uma ser DCP)
             for inst in all_instances:
                 if PhaseAnalyzer._is_dcp_process(inst, tribunal):
                     phase_str += " *"
                     break
 
-            logger.info(
-                f"Unified phase for {process_number}: {phase_str} "
-                f"(effective_grau={effective_grau.value}, situacao={situacao}, "
-                f"instances={len(all_instances)}, movements={len(movements)})"
-            )
             return phase_str
 
         except Exception as e:
             logger.error(f"Error in analyze_unified: {e}", exc_info=True)
             return "Erro na Análise"
+
+    @staticmethod
+    def analyze_unified_full(
+        all_instances: List[Dict[str, Any]],
+        process_number: str = "",
+        tribunal: str = ""
+    ) -> Optional[ResultadoClassificacao]:
+        """
+        Retorna ResultadoClassificacao completo (inclui stage, substage, transit_julgado).
+        Retorna None se detectada ausência de retorno da 1ª instância.
+        """
+        # Verificar ausência de retorno da 1ª instância no DataJud
+        if (
+            PhaseAnalyzer._process_number_ends_with_nonzero(process_number)
+            and PhaseAnalyzer._has_only_g2_instances(all_instances)
+            and PhaseAnalyzer._g2_has_baixa_arquivamento(all_instances)
+        ):
+            logger.info(
+                f"Processo {process_number}: Ausência retorno Datajud 1a instancia "
+                f"(somente G2 com baixa, numero final != 0000)"
+            )
+            return None
+
+        movements, effective_grau, situacao, class_code, class_desc = \
+            PhaseAnalyzer._merge_instance_movements(all_instances)
+
+        processo = ProcessoJudicial(
+            numero=process_number or "0000000-00.0000.0.00.0000",
+            classe_codigo=class_code,
+            classe_descricao=class_desc,
+            grau_atual=effective_grau,
+            situacao=situacao,
+            movimentos=movements,
+            documentos=[],
+            polo_fazenda="RE"
+        )
+
+        classificador = ClassificadorFases()
+        resultado = classificador.classificar(processo)
+
+        logger.info(
+            f"Unified phase for {process_number}: {resultado.fase.value} "
+            f"(stage={resultado.stage}, substage={resultado.substage}, "
+            f"transit={resultado.transit_julgado}, "
+            f"effective_grau={effective_grau.value}, situacao={situacao}, "
+            f"instances={len(all_instances)}, movements={len(movements)})"
+        )
+        return resultado

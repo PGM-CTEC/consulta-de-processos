@@ -1,4 +1,4 @@
-import { PHASE_BY_CODE } from '../constants/phases';
+import { PHASE_BY_CODE, STAGES, SUBSTAGES, TRANSIT_OPTIONS } from '../constants/phases';
 
 export const RULE_LABELS = {
     P1_arquivamento: 'Fase 15 — Arquivamento/Baixa Definitiva detectada como último evento relevante. Indica encerramento do processo.',
@@ -35,7 +35,7 @@ function ConfidenceBadge({ confidence }) {
     );
 }
 
-export default function ClassificationTrace({ log, compact = false }) {
+export default function ClassificationTrace({ log, classification, compact = false }) {
     if (!log) return null;
 
     const phaseCode = log.phase ? String(log.phase).padStart(2, '0') : null;
@@ -44,9 +44,40 @@ export default function ClassificationTrace({ log, compact = false }) {
 
     return (
         <div className={`${compact ? 'p-4' : 'px-6 pb-4'} bg-gray-50 border-t border-gray-100 animate-in fade-in duration-200`}>
-            {/* Resultado da classificação */}
+            {/* Classificação hierárquica (3 campos) */}
+            {classification && classification.stage && (
+                <div className="py-2 mb-2">
+                    <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide block mb-2">Classificação Hierárquica</span>
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-white rounded-lg border border-gray-200 p-2.5">
+                            <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide block">Estágio</span>
+                            <p className="text-sm font-bold text-gray-800 mt-0.5">
+                                {classification.stage_label || STAGES[classification.stage]?.label || '—'}
+                            </p>
+                        </div>
+                        <div className="bg-white rounded-lg border border-gray-200 p-2.5">
+                            <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide block">Subfase</span>
+                            <p className="text-sm font-bold text-gray-800 mt-0.5">
+                                {classification.substage
+                                    ? (classification.substage_label || SUBSTAGES[classification.substage]?.label || classification.substage)
+                                    : '—'}
+                            </p>
+                        </div>
+                        <div className="bg-white rounded-lg border border-gray-200 p-2.5">
+                            <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide block">Trânsito em Julgado</span>
+                            <p className="text-sm font-bold text-gray-800 mt-0.5">
+                                {classification.transit_julgado
+                                    ? (TRANSIT_OPTIONS[classification.transit_julgado]?.label || classification.transit_julgado)
+                                    : '—'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Resultado da classificação (legacy) */}
             <div className="flex items-center gap-2 py-2 mb-1">
-                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Resultado:</span>
+                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Resultado (legacy):</span>
                 <span className="text-sm font-bold text-indigo-700">{phaseLabel}</span>
                 <ConfidenceBadge confidence={log.confidence} />
             </div>

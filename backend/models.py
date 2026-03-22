@@ -41,9 +41,14 @@ class Process(Base, SoftDeleteMixin):
     district = Column(String, nullable=True)     # Comarca
     
     distribution_date = Column(DateTime(timezone=True), nullable=True)
-    phase = Column(String, nullable=True)
+    phase = Column(String, nullable=True)  # Legacy: "01"-"15" (derivado de stage/substage/transit)
     phase_warning = Column(String, nullable=True)  # Aviso de classificação incerta (ex: DCP TJRJ)
     phase_source = Column(String(20), nullable=True, server_default="datajud")  # datajud | fusion_api | fusion_sql
+
+    # Classificação hierárquica (substitui o campo phase flat)
+    stage = Column(Integer, nullable=True)          # 1=Conhecimento, 2=Execução, 3=Suspensão, 4=Arquivamento, 5=Conversão
+    substage = Column(String(4), nullable=True)     # "1.1"-"1.6" (Conhecimento), "2.1"-"2.3" (Execução), null (outros)
+    transit_julgado = Column(String(3), nullable=True)  # "sim", "nao", "na"
     last_update = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     # Raw JSON data from DataJud for future proofing
@@ -82,8 +87,14 @@ class SearchHistory(Base):
     tribunal_expected = Column(String, nullable=True)  # Tribunal inferido pelo número CNJ
     court = Column(String, nullable=True)  # Tribunal real (quando encontrado)
     phase_source = Column(String(20), nullable=True)  # datajud | fusion_api | fusion_sql | null
-    phase = Column(String, nullable=True)  # "01"–"15" ou "Indefinido"
+    phase = Column(String, nullable=True)  # Legacy: "01"–"15" ou "Indefinido"
     classification_log = Column(Text, nullable=True)  # JSON string — trace da classificação
+
+    # Classificação hierárquica
+    stage = Column(Integer, nullable=True)
+    substage = Column(String(4), nullable=True)
+    transit_julgado = Column(String(3), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -93,7 +104,10 @@ class PhaseCorrection(Base):
     id = Column(Integer, primary_key=True, index=True)
     process_number = Column(String, nullable=False, index=True)
     original_phase = Column(String(20), nullable=True)
-    corrected_phase = Column(String(20), nullable=False)
+    corrected_phase = Column(String(20), nullable=False)  # Legacy
+    corrected_stage = Column(Integer, nullable=True)
+    corrected_substage = Column(String(4), nullable=True)
+    corrected_transit = Column(String(3), nullable=True)
     reason = Column(Text, nullable=False)
     source_tab = Column(String(20), nullable=True)  # "single"|"bulk"|"history"
     classification_log_snapshot = Column(Text, nullable=True)  # JSON string
@@ -110,7 +124,10 @@ class PhaseConfirmation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     process_number = Column(String, nullable=False, unique=True, index=True)
-    confirmed_phase = Column(String(20), nullable=False)
+    confirmed_phase = Column(String(20), nullable=False)  # Legacy
+    confirmed_stage = Column(Integer, nullable=True)
+    confirmed_substage = Column(String(4), nullable=True)
+    confirmed_transit = Column(String(3), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

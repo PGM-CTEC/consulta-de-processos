@@ -5,7 +5,7 @@
  * Based on the PGM-Rio classification model (Version 2.0 - February 2026)
  */
 
-import { getPhaseInfo, normalizePhase, VALID_PHASES } from '../constants/phases';
+import { getPhaseInfo, normalizePhase, VALID_PHASES, STAGES } from '../constants/phases';
 
 /**
  * Get Tailwind CSS classes for a given process phase
@@ -93,6 +93,27 @@ export function getPhaseDisplayName(phase, classNature = null) {
 export function isTerminalPhase(phase) {
   const normalizedPhase = normalizePhase(phase);
   return normalizedPhase === VALID_PHASES.ARQUIVADO.name;
+}
+
+/**
+ * Get Tailwind CSS classes for a stage (hierarchical classification)
+ *
+ * @param {number} stage - Stage number (1-5)
+ * @returns {string} Tailwind CSS classes for styling the stage badge
+ */
+export function getStageColorClasses(stage) {
+  const stageInfo = STAGES[stage];
+  if (!stageInfo) return 'bg-gray-100 text-gray-800 dark:bg-gray-900/40 dark:text-gray-300 border border-gray-200 dark:border-gray-800';
+
+  const colorMap = {
+    'blue': 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800',
+    'orange': 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800',
+    'lime': 'bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-300 border border-lime-200 dark:border-lime-800',
+    'slate': 'bg-slate-100 text-slate-800 dark:bg-slate-900/40 dark:text-slate-300 border border-slate-200 dark:border-slate-800',
+    'green': 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-200 dark:border-green-800',
+  };
+
+  return colorMap[stageInfo.color] || 'bg-gray-100 text-gray-800 dark:bg-gray-900/40 dark:text-gray-300 border border-gray-200 dark:border-gray-800';
 }
 
 /**

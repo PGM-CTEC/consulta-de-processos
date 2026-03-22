@@ -1,21 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
-import { ALL_PHASES } from '../constants/phases';
+import { ALL_PHASES, STAGES, SUBSTAGES, TRANSIT_OPTIONS, getSubstagesForStage } from '../constants/phases';
 import { submitPhaseCorrection } from '../services/phaseCorrections';
 
 export default function PhaseEditModal({
   processNumber,
   currentPhase,
+  currentClassification,
   classificationLog,
   sourceTab,
   onClose,
   onSuccess,
 }) {
   const [selectedPhase, setSelectedPhase] = useState('');
+  const [selectedStage, setSelectedStage] = useState('');
+  const [selectedSubstage, setSelectedSubstage] = useState('');
+  const [selectedTransit, setSelectedTransit] = useState('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const closeRef = useRef(null);
+
+  const availableSubstages = selectedStage ? getSubstagesForStage(Number(selectedStage)) : [];
 
   // Setup Escape key handler e focus
   useEffect(() => {
@@ -41,6 +47,9 @@ export default function PhaseEditModal({
     try {
       await submitPhaseCorrection(processNumber, {
         corrected_phase: selectedPhase,
+        corrected_stage: selectedStage ? Number(selectedStage) : undefined,
+        corrected_substage: selectedSubstage || undefined,
+        corrected_transit: selectedTransit || undefined,
         reason: reason.trim(),
         source_tab: sourceTab,
         original_phase: currentPhase,
@@ -131,6 +140,79 @@ export default function PhaseEditModal({
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Classificação Hierárquica (3 campos) */}
+          <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              Classificação Hierárquica (opcional)
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label htmlFor="stage-select" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Estágio
+                </label>
+                <select
+                  id="stage-select"
+                  value={selectedStage}
+                  onChange={(e) => {
+                    setSelectedStage(e.target.value);
+                    setSelectedSubstage('');
+                  }}
+                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600
+                             rounded-lg text-gray-900 dark:text-white
+                             focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">—</option>
+                  {Object.values(STAGES).map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="substage-select" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Subfase
+                </label>
+                <select
+                  id="substage-select"
+                  value={selectedSubstage}
+                  onChange={(e) => setSelectedSubstage(e.target.value)}
+                  disabled={!selectedStage || availableSubstages.length === 0}
+                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600
+                             rounded-lg text-gray-900 dark:text-white disabled:opacity-50
+                             focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">—</option>
+                  {availableSubstages.map((ss) => (
+                    <option key={ss.value} value={ss.value}>
+                      {ss.value} — {ss.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="transit-select" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Trânsito
+                </label>
+                <select
+                  id="transit-select"
+                  value={selectedTransit}
+                  onChange={(e) => setSelectedTransit(e.target.value)}
+                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600
+                             rounded-lg text-gray-900 dark:text-white
+                             focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">—</option>
+                  {Object.values(TRANSIT_OPTIONS).map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
           {/* Motivo da Correção */}
