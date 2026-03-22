@@ -410,6 +410,38 @@ export function getSubstagesForStage(stage) {
 }
 
 /**
+ * Deriva o código de fase legado (01-15) a partir dos 3 campos hierárquicos.
+ * Espelha a lógica do backend derive_legacy_phase().
+ * Necessário para enviar corrected_phase ao backend sem exibir o código ao usuário.
+ * @param {number} stage
+ * @param {string} substage
+ * @param {string} transit - "sim" | "nao" | "na" | null
+ * @returns {string} código de fase "01"-"15"
+ */
+export function hierarchyToLegacyPhase(stage, substage, transit) {
+  const s = Number(stage);
+  if (s === 4) return '15';
+  if (s === 3) return '13';
+  if (s === 5) return '14';
+  if (s === 2) {
+    if (substage === '2.1') return '10';
+    if (substage === '2.2') return '12';
+    if (substage === '2.3') return '11';
+    return '10';
+  }
+  if (s === 1) {
+    if (substage === '1.1') return '01';
+    if (substage === '1.2') return transit === 'sim' ? '03' : '02';
+    if (substage === '1.3') return '04';
+    if (substage === '1.4') return transit === 'sim' ? '06' : '05';
+    if (substage === '1.5') return '07';
+    if (substage === '1.6') return transit === 'sim' ? '09' : '08';
+    return '01';
+  }
+  return '01';
+}
+
+/**
  * Formata a classificação hierárquica para exibição
  * @param {object} classification - {stage, stage_label, substage, substage_label, transit_julgado}
  * @returns {string}

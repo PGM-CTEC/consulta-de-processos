@@ -4,7 +4,7 @@ import { LoadingState, ErrorState } from './LoadingState';
 import { Calendar, Building2, Gavel, FileText, ChevronDown, ChevronUp, Search, X, FileJson, Download, RefreshCw, ArrowDownUp, Database, Pencil, Check, FileStack } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getPhaseColorClasses, getStageColorClasses } from '../utils/phaseColors';
+import { getStageColorClasses } from '../utils/phaseColors';
 import { normalizePhaseWithMovements, PHASE_BY_CODE, STAGES, SUBSTAGES, TRANSIT_OPTIONS } from '../constants/phases';
 import InstanceSelector from './InstanceSelector';
 import { getProcessInstance, confirmPhase, getConfirmedProcesses, getLatestCorrections } from '../services/api';
@@ -347,9 +347,34 @@ function ProcessDetails({ data }) {
                         <div className="flex-1">
                             <p className="text-xs text-gray-500 uppercase font-semibold">Fase Atual</p>
                             <div className="mt-1 flex items-center flex-wrap gap-1.5">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${correctedPhase === 'Indefinido' ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-300 dark:border-gray-600' : getPhaseColorClasses(correctedPhase, activeData.class_nature)}`}>
-                                    {correctedPhase}
-                                </span>
+                                {/* Stage badge (classificação hierárquica principal) */}
+                                {activeData.classification?.stage ? (
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${getStageColorClasses(activeData.classification.stage)}`}>
+                                        {activeData.classification.stage_label || STAGES[activeData.classification.stage]?.label}
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-300 dark:border-gray-600">
+                                        Indefinido
+                                    </span>
+                                )}
+                                {/* Subfase */}
+                                {activeData.classification?.substage && (
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                                        {activeData.classification.substage_label || SUBSTAGES[activeData.classification.substage]?.label}
+                                    </span>
+                                )}
+                                {/* Trâns. Julg. badge separado */}
+                                {activeData.classification?.transit_julgado && (
+                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+                                        activeData.classification.transit_julgado === 'sim'
+                                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700'
+                                            : activeData.classification.transit_julgado === 'nao'
+                                            ? 'bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600'
+                                            : 'bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600'
+                                    }`}>
+                                        Trâns. Julg.: {TRANSIT_OPTIONS[activeData.classification.transit_julgado]?.label || activeData.classification.transit_julgado}
+                                    </span>
+                                )}
                                 {/* Badge "Corrigida" quando manualmente editada */}
                                 {manualPhase && (
                                     <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-violet-100 text-violet-800 border border-violet-300 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-700">
@@ -376,7 +401,7 @@ function ProcessDetails({ data }) {
                                 >
                                     <Pencil className="h-4 w-4" />
                                 </button>
-                                {/* Botão de confirmação (visível apenas quando fase não foi corrigida manualmente) */}
+                                {/* Botão de confirmação */}
                                 {!manualPhase && (
                                     <button
                                         onClick={handleConfirmPhase}
@@ -398,28 +423,6 @@ function ProcessDetails({ data }) {
                                     <span aria-hidden="true">⚠</span>
                                     {activeData.phase_warning}
                                 </p>
-                            )}
-                            {/* Classificação hierárquica inline */}
-                            {activeData.classification?.stage && (
-                                <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-semibold ${getStageColorClasses(activeData.classification.stage)}`}>
-                                        {activeData.classification.stage_label || STAGES[activeData.classification.stage]?.label}
-                                    </span>
-                                    {activeData.classification.substage && (
-                                        <span className="text-gray-500 dark:text-gray-400">
-                                            {activeData.classification.substage_label || SUBSTAGES[activeData.classification.substage]?.label}
-                                        </span>
-                                    )}
-                                    {activeData.classification.transit_julgado && activeData.classification.transit_julgado !== 'na' && (
-                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
-                                            activeData.classification.transit_julgado === 'sim'
-                                                ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700'
-                                                : 'bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600'
-                                        }`}>
-                                            Trâns. Julg.: {TRANSIT_OPTIONS[activeData.classification.transit_julgado]?.label || activeData.classification.transit_julgado}
-                                        </span>
-                                    )}
-                                </div>
                             )}
                         </div>
                     </div>

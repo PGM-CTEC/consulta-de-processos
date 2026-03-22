@@ -1,40 +1,12 @@
 import React from 'react';
 import { BookOpen, Info } from 'lucide-react';
-import { ALL_PHASES, STAGES, SUBSTAGES, TRANSIT_OPTIONS, getSubstagesForStage } from '../constants/phases';
-import { getPhaseColorClasses, getPhaseIcon, getStageColorClasses } from '../utils/phaseColors';
+import { STAGES, SUBSTAGES, TRANSIT_OPTIONS, getSubstagesForStage } from '../constants/phases';
+import { getStageColorClasses } from '../utils/phaseColors';
 
 /**
- * Componente de referência que exibe as 15 fases processuais oficiais
- * Útil para documentação, validação e treinamento de usuários
+ * Componente de referência para a classificação hierárquica de fases processuais
  */
 const PhaseReference = () => {
-  // Agrupar fases por tipo
-  const phasesByType = ALL_PHASES.reduce((acc, phase) => {
-    if (!acc[phase.type]) {
-      acc[phase.type] = [];
-    }
-    acc[phase.type].push(phase);
-    return acc;
-  }, {});
-
-  const typeInfo = {
-    'Conhecimento': {
-      description: 'Fases relacionadas ao processo de conhecimento, divididas por instância',
-      icon: '📋'
-    },
-    'Execução': {
-      description: 'Fases de execução ou cumprimento de sentença',
-      icon: '⚖️'
-    },
-    'Transversal': {
-      description: 'Fase que pode ocorrer tanto em conhecimento quanto em execução',
-      icon: '⏸️'
-    },
-    'Final': {
-      description: 'Fase terminal indicando encerramento definitivo do processo',
-      icon: '📦'
-    }
-  };
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -42,10 +14,10 @@ const PhaseReference = () => {
       <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-8 text-white">
         <div className="flex items-center mb-4">
           <BookOpen className="h-8 w-8 mr-3" />
-          <h1 className="text-3xl font-bold">Referência de Fases Processuais</h1>
+          <h1 className="text-3xl font-bold">Referência de Classificação Processual</h1>
         </div>
         <p className="text-indigo-100 text-lg">
-          Modelo de Classificação PGM-Rio — 15 Fases Oficiais (Versão 2.0 — Fevereiro 2026)
+          Modelo Hierárquico PGM-Rio — Estágio / Subfase / Trânsito em Julgado
         </p>
       </div>
 
@@ -63,41 +35,6 @@ const PhaseReference = () => {
           </div>
         </div>
       </div>
-
-      {/* Fases agrupadas por tipo */}
-      {Object.entries(phasesByType).map(([type, phases]) => (
-        <div key={type} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="bg-gray-50 border-b border-gray-100 px-6 py-4">
-            <div className="flex items-center">
-              <span className="text-2xl mr-3">{typeInfo[type]?.icon}</span>
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">{type}</h2>
-                <p className="text-sm text-gray-600">{typeInfo[type]?.description}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="divide-y divide-gray-100">
-            {phases.map((phase) => (
-              <div key={phase.code} className="p-5 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm">
-                        {phase.code}
-                      </span>
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${getPhaseColorClasses(phase.name)}`}>
-                        {phase.name}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-2xl ml-4">{getPhaseIcon(phase.name)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
 
       {/* Classificação Hierárquica */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">

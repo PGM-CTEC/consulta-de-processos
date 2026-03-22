@@ -5,8 +5,8 @@ import { useForm } from 'react-hook-form';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { bulkSubmit, getBulkJob, getFusionStatus } from '../services/api';
 import * as XLSX from 'xlsx';
-import { getPhaseColorClasses, getPhaseDisplayName, getStageColorClasses } from '../utils/phaseColors';
-import { PHASE_BY_CODE, STAGES } from '../constants/phases';
+import { getStageColorClasses } from '../utils/phaseColors';
+import { STAGES } from '../constants/phases';
 import { exporters } from '../utils/exportHelpers';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -25,7 +25,7 @@ const VIRTUAL_THRESHOLD = 100;
  * Re-renders only when the result data changes.
  */
 const ResultRow = React.memo(({ result, correctedPhase, onEditPhase }) => {
-    const displayPhase = correctedPhase || getPhaseDisplayName(result.phase, result.class_nature);
+    const cls = result.classification;
 
     return (
         <tr className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors">
@@ -40,28 +40,41 @@ const ResultRow = React.memo(({ result, correctedPhase, onEditPhase }) => {
             </td>
             <td className="px-6 py-4">
                 <div className="flex items-center flex-wrap gap-1">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(correctedPhase || result.phase, result.class_nature)}`}>
-                        {displayPhase}
-                    </span>
+                    {/* Stage badge */}
+                    {cls?.stage ? (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getStageColorClasses(cls.stage)}`}>
+                            {cls.stage_label || STAGES[cls.stage]?.label}
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-200">
+                            Indefinido
+                        </span>
+                    )}
+                    {/* Trâns. Julg. badge */}
+                    {cls?.transit_julgado && (
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                            cls.transit_julgado === 'sim'
+                                ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                : cls.transit_julgado === 'nao'
+                                ? 'bg-gray-100 text-gray-600 border border-gray-200'
+                                : 'bg-slate-100 text-slate-500 border border-slate-200'
+                        }`}>
+                            Trâns. Julg.: {cls.transit_julgado === 'sim' ? 'Sim' : cls.transit_julgado === 'nao' ? 'Não' : 'N/A'}
+                        </span>
+                    )}
                     {/* Badge Corrigida */}
                     {correctedPhase && (
                         <span className="px-1.5 py-0.5 text-xs rounded bg-violet-100 text-violet-700 border border-violet-200">
-                            ✓
+                            Corrigida
                         </span>
                     )}
-                    {/* Badge Fusion para resultados em massa */}
+                    {/* Badge Fusion */}
                     {result.phase_source && result.phase_source !== 'datajud' && (
                         <span
                             className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-700 border border-amber-200"
                             title={`Classificado via ${result.phase_source}`}
                         >
-                            F
-                        </span>
-                    )}
-                    {/* Stage badge hierárquico */}
-                    {result.classification?.stage && (
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${getStageColorClasses(result.classification.stage)}`}>
-                            {result.classification.stage_label || STAGES[result.classification.stage]?.label}
+                            Fusion
                         </span>
                     )}
                     {/* Botão de edição */}
@@ -161,20 +174,41 @@ const VirtualResultsBody = ({ items, phaseCorrections, onEditPhase }) => {
                                 </td>
                                 <td className="px-6 py-4" style={{ width: '15%' }}>
                                     <div className="flex items-center flex-wrap gap-1">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getPhaseColorClasses(phaseCorrections?.[result.number] || result.phase, result.class_nature)}`}>
-                                            {phaseCorrections?.[result.number] ? PHASE_BY_CODE[phaseCorrections[result.number]]?.name : getPhaseDisplayName(result.phase, result.class_nature)}
-                                        </span>
-                                        {phaseCorrections?.[result.number] && (
-                                            <span className="px-1.5 py-0.5 text-xs rounded bg-violet-100 text-violet-700 border border-violet-200">
-                                                ✓
+                                        {/* Stage badge */}
+                                        {result.classification?.stage ? (
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getStageColorClasses(result.classification.stage)}`}>
+                                                {result.classification.stage_label || STAGES[result.classification.stage]?.label}
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-200">
+                                                Indefinido
                                             </span>
                                         )}
+                                        {/* Trâns. Julg. badge */}
+                                        {result.classification?.transit_julgado && (
+                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                                result.classification.transit_julgado === 'sim'
+                                                    ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                                    : result.classification.transit_julgado === 'nao'
+                                                    ? 'bg-gray-100 text-gray-600 border border-gray-200'
+                                                    : 'bg-slate-100 text-slate-500 border border-slate-200'
+                                            }`}>
+                                                Trâns. Julg.: {result.classification.transit_julgado === 'sim' ? 'Sim' : result.classification.transit_julgado === 'nao' ? 'Não' : 'N/A'}
+                                            </span>
+                                        )}
+                                        {/* Badge Corrigida */}
+                                        {phaseCorrections?.[result.number] && (
+                                            <span className="px-1.5 py-0.5 text-xs rounded bg-violet-100 text-violet-700 border border-violet-200">
+                                                Corrigida
+                                            </span>
+                                        )}
+                                        {/* Badge Fusion */}
                                         {result.phase_source && result.phase_source !== 'datajud' && (
                                             <span
                                                 className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-700 border border-amber-200"
                                                 title={`Classificado via ${result.phase_source}`}
                                             >
-                                                F
+                                                Fusion
                                             </span>
                                         )}
                                         <button

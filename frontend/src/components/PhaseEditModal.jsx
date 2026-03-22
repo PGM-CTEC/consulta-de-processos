@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
-import { ALL_PHASES, STAGES, SUBSTAGES, TRANSIT_OPTIONS, getSubstagesForStage } from '../constants/phases';
+import { STAGES, SUBSTAGES, TRANSIT_OPTIONS, getSubstagesForStage, hierarchyToLegacyPhase } from '../constants/phases';
 import { submitPhaseCorrection } from '../services/phaseCorrections';
 
 export default function PhaseEditModal({
@@ -12,7 +12,6 @@ export default function PhaseEditModal({
   onClose,
   onSuccess,
 }) {
-  const [selectedPhase, setSelectedPhase] = useState('');
   const [selectedStage, setSelectedStage] = useState('');
   const [selectedSubstage, setSelectedSubstage] = useState('');
   const [selectedTransit, setSelectedTransit] = useState('');
@@ -35,7 +34,7 @@ export default function PhaseEditModal({
 
   // Validações
   const isReasonValid = reason.trim().length >= 10;
-  const isFormValid = selectedPhase && isReasonValid && !isSubmitting;
+  const isFormValid = selectedStage && isReasonValid && !isSubmitting;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,11 +42,13 @@ export default function PhaseEditModal({
 
     if (!isFormValid) return;
 
+    const correctedPhase = hierarchyToLegacyPhase(selectedStage, selectedSubstage, selectedTransit);
+
     setIsSubmitting(true);
     try {
       await submitPhaseCorrection(processNumber, {
-        corrected_phase: selectedPhase,
-        corrected_stage: selectedStage ? Number(selectedStage) : undefined,
+        corrected_phase: correctedPhase,
+        corrected_stage: Number(selectedStage),
         corrected_substage: selectedSubstage || undefined,
         corrected_transit: selectedTransit || undefined,
         reason: reason.trim(),
@@ -57,7 +58,7 @@ export default function PhaseEditModal({
       });
 
       // Sucesso: chamar onSuccess e fechar
-      onSuccess?.(selectedPhase);
+      onSuccess?.(correctedPhase);
       onClose();
     } catch (err) {
       setError(err.response?.data?.detail || 'Erro ao salvar correção. Tente novamente.');
@@ -108,49 +109,45 @@ export default function PhaseEditModal({
 
         {/* Conteúdo */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Fase Atual (Read-only) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Fase Atual
-            </label>
-            <div className="px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg
-                            border border-gray-300 dark:border-gray-600
-                            text-gray-900 dark:text-white">
-              {currentPhase || 'Não informada'}
+          {/* Classificação Atual (Read-only) */}
+          {currentClassification?.stage && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Classificação Atual
+              </label>
+              <div className="px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center gap-2 flex-wrap text-sm">
+                <span className="font-medium text-gray-900 dark:text-white">
+                  {currentClassification.stage_label || STAGES[currentClassification.stage]?.label}
+                </span>
+                {currentClassification.substage && (
+                  <span className="text-gray-500 dark:text-gray-400">
+                    / {currentClassification.substage_label || SUBSTAGES[currentClassification.substage]?.label}
+                  </span>
+                )}
+                {currentClassification.transit_julgado && (
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+                    currentClassification.transit_julgado === 'sim'
+                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                      : currentClassification.transit_julgado === 'nao'
+                      ? 'bg-gray-100 text-gray-600 border border-gray-200'
+                      : 'bg-slate-100 text-slate-500 border border-slate-200'
+                  }`}>
+                    Trâns. Julg.: {TRANSIT_OPTIONS[currentClassification.transit_julgado]?.label || currentClassification.transit_julgado}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Seleção de Fase */}
-          <div>
-            <label htmlFor="phase-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Nova Fase <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="phase-select"
-              value={selectedPhase}
-              onChange={(e) => setSelectedPhase(e.target.value)}
-              className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600
-                         rounded-lg text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">Selecione uma fase...</option>
-              {ALL_PHASES.map((phase) => (
-                <option key={phase.code} value={phase.code}>
-                  {phase.code} - {phase.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Classificação Hierárquica (3 campos) */}
+          {/* Classificação Hierárquica (3 campos obrigatório) */}
           <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              Classificação Hierárquica (opcional)
+              Nova Classificação <span className="text-red-500">*</span>
             </p>
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label htmlFor="stage-select" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                  Estágio
+                  Estágio <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="stage-select"

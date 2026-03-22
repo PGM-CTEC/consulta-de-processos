@@ -1,17 +1,17 @@
-import { PHASE_BY_CODE, STAGES, SUBSTAGES, TRANSIT_OPTIONS } from '../constants/phases';
+import { STAGES, SUBSTAGES, TRANSIT_OPTIONS } from '../constants/phases';
 
 export const RULE_LABELS = {
-    P1_arquivamento: 'Fase 15 — Arquivamento/Baixa Definitiva detectada como último evento relevante. Indica encerramento do processo.',
-    P2_transito_em_julgado: 'Fase 03 — Certidão de Trânsito em Julgado identificada. O mérito foi julgado e a decisão tornou-se definitiva.',
-    P3_sentenca_com_remessa_posterior: 'Fase 04 — Sentença proferida seguida de remessa ao tribunal. Indica recurso à 2ª instância pendente de julgamento.',
-    P3_sentenca_sem_transito: 'Fase 02 — Sentença proferida sem trânsito em julgado. O prazo recursal pode estar em curso.',
-    P4_remessa_sem_sentenca: 'Fase 04 — Remessa/recurso ao tribunal sem sentença de 1ª instância no acervo. Processo tramitando em 2ª instância.',
-    P5_suspensao: 'Fase 13 — Suspensão ou sobrestamento ativo. Processo aguarda decisão de outro feito ou determinação judicial.',
-    P6_fallback_antes_sentenca: 'Fase 01 — Nenhuma âncora processual encontrada (sentença, recurso, arquivamento). Processo em fase inicial de conhecimento.',
-    E1_arquivamento: 'Fase 15 — Arquivamento em processo de execução. Indica satisfação do crédito ou extinção.',
-    E2_suspensao: 'Fase 11 — Execução suspensa. Pode haver embargos, acordo ou determinação judicial.',
-    E3_fallback: 'Fase 10 — Execução em andamento. Nenhuma âncora de suspensão ou arquivamento encontrada.',
-    empty_list_fallback: 'Fase indefinida — Lista de movimentos/documentos vazia. Sem dados suficientes para classificação.',
+    P1_arquivamento: 'Arquivamento/Baixa Definitiva detectada como último evento relevante. Indica encerramento do processo.',
+    P2_transito_em_julgado: 'Certidão de Trânsito em Julgado identificada. O mérito foi julgado e a decisão tornou-se definitiva.',
+    P3_sentenca_com_remessa_posterior: 'Sentença proferida seguida de remessa ao tribunal. Indica recurso à 2ª instância pendente de julgamento.',
+    P3_sentenca_sem_transito: 'Sentença proferida sem trânsito em julgado. O prazo recursal pode estar em curso.',
+    P4_remessa_sem_sentenca: 'Remessa/recurso ao tribunal sem sentença de 1ª instância no acervo. Processo tramitando em 2ª instância.',
+    P5_suspensao: 'Suspensão ou sobrestamento ativo. Processo aguarda decisão de outro feito ou determinação judicial.',
+    P6_fallback_antes_sentenca: 'Nenhuma âncora processual encontrada (sentença, recurso, arquivamento). Processo em fase inicial de conhecimento.',
+    E1_arquivamento: 'Arquivamento em processo de execução. Indica satisfação do crédito ou extinção.',
+    E2_suspensao: 'Execução suspensa. Pode haver embargos, acordo ou determinação judicial.',
+    E3_fallback: 'Execução em andamento. Nenhuma âncora de suspensão ou arquivamento encontrada.',
+    empty_list_fallback: 'Lista de movimentos/documentos vazia. Sem dados suficientes para classificação.',
     fusion_not_found: 'Processo não localizado no banco Fusion/PAV.',
     fusion_error: 'Erro na consulta ao Fusion/PAV.',
     fusion_unavailable: 'Serviço Fusion/PAV não configurado no ambiente.',
@@ -38,16 +38,15 @@ function ConfidenceBadge({ confidence }) {
 export default function ClassificationTrace({ log, classification, compact = false }) {
     if (!log) return null;
 
-    const phaseCode = log.phase ? String(log.phase).padStart(2, '0') : null;
-    const phaseInfo = phaseCode ? PHASE_BY_CODE[phaseCode] : null;
-    const phaseLabel = phaseInfo ? `${phaseCode} — ${phaseInfo.name}` : (log.phase || 'Indefinido');
-
     return (
         <div className={`${compact ? 'p-4' : 'px-6 pb-4'} bg-gray-50 border-t border-gray-100 animate-in fade-in duration-200`}>
             {/* Classificação hierárquica (3 campos) */}
-            {classification && classification.stage && (
-                <div className="py-2 mb-2">
-                    <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide block mb-2">Classificação Hierárquica</span>
+            <div className="py-2 mb-2">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Resultado da Classificação</span>
+                    <ConfidenceBadge confidence={log.confidence} />
+                </div>
+                {classification?.stage ? (
                     <div className="grid grid-cols-3 gap-3">
                         <div className="bg-white rounded-lg border border-gray-200 p-2.5">
                             <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide block">Estágio</span>
@@ -64,7 +63,7 @@ export default function ClassificationTrace({ log, classification, compact = fal
                             </p>
                         </div>
                         <div className="bg-white rounded-lg border border-gray-200 p-2.5">
-                            <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide block">Trânsito em Julgado</span>
+                            <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide block">Trâns. Julg.</span>
                             <p className="text-sm font-bold text-gray-800 mt-0.5">
                                 {classification.transit_julgado
                                     ? (TRANSIT_OPTIONS[classification.transit_julgado]?.label || classification.transit_julgado)
@@ -72,14 +71,9 @@ export default function ClassificationTrace({ log, classification, compact = fal
                             </p>
                         </div>
                     </div>
-                </div>
-            )}
-
-            {/* Resultado da classificação (legacy) */}
-            <div className="flex items-center gap-2 py-2 mb-1">
-                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Resultado (legacy):</span>
-                <span className="text-sm font-bold text-indigo-700">{phaseLabel}</span>
-                <ConfidenceBadge confidence={log.confidence} />
+                ) : (
+                    <p className="text-sm text-gray-500 italic">Indefinido</p>
+                )}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 py-2 text-xs">

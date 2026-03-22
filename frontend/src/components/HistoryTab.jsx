@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Clock, Trash2, Copy, ExternalLink, FileText, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp, Pencil, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { getHistory, clearHistory, searchProcess, confirmPhase, getConfirmedProcesses, getLatestCorrections } from '../services/api';
-import { PHASE_BY_CODE, STAGES, SUBSTAGES, TRANSIT_OPTIONS } from '../constants/phases';
-import { getPhaseColorClasses, getStageColorClasses } from '../utils/phaseColors';
+import { STAGES, SUBSTAGES, TRANSIT_OPTIONS } from '../constants/phases';
+import { getStageColorClasses } from '../utils/phaseColors';
 import PhaseEditModal from './PhaseEditModal';
 import ClassificationTrace from './ClassificationTrace';
 
@@ -34,55 +34,45 @@ function StatusBadge({ status }) {
     );
 }
 
-function PhaseBadge({ phase, corrected, onEdit, onConfirm, confirmed }) {
-    if (!phase || phase === 'Indefinido') {
-        return (
-            <div className="flex items-center gap-1">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-200">
-                    Fase Indefinida
-                </span>
-                {onConfirm && !corrected && (
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onConfirm(); }}
-                        disabled={confirmed}
-                        className={`p-1.5 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-green-500 font-semibold
-                            ${confirmed
-                                ? 'text-white bg-green-600 border-2 border-green-700 shadow-md hover:shadow-lg cursor-default'
-                                : 'text-gray-400 hover:text-green-600 hover:bg-green-50 border-2 border-transparent'}`}
-                        title={confirmed ? 'Fase confirmada como correta ✓' : 'Confirmar fase como correta'}
-                        aria-label="Confirmar fase como correta"
-                    >
-                        <Check className="h-4 w-4" />
-                    </button>
-                )}
-                {onEdit && (
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                        className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
-                                 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors
-                                 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        title="Editar fase"
-                        aria-label="Editar fase processual"
-                    >
-                        <Pencil className="h-3 w-3" />
-                    </button>
-                )}
-            </div>
-        );
-    }
-    const code = String(phase).padStart(2, '0');
-    const phaseInfo = PHASE_BY_CODE[code];
-    const colorCls = getPhaseColorClasses(code);
+function ClassificationBadge({ classification, corrected, onEdit, onConfirm, confirmed }) {
+    const transit = classification?.transit_julgado;
     return (
-        <div className="flex items-center gap-1">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${colorCls}`}>
-                {phaseInfo ? `${code} — ${phaseInfo.name}` : `Fase ${phase}`}
-            </span>
+        <div className="flex items-center gap-1 flex-wrap">
+            {/* Stage badge */}
+            {classification?.stage ? (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getStageColorClasses(classification.stage)}`}>
+                    {classification.stage_label || STAGES[classification.stage]?.label}
+                </span>
+            ) : (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-200">
+                    Indefinido
+                </span>
+            )}
+            {/* Substage */}
+            {classification?.substage && (
+                <span className="text-xs text-gray-500">
+                    {classification.substage_label || SUBSTAGES[classification.substage]?.label}
+                </span>
+            )}
+            {/* Trâns. Julg. badge */}
+            {transit && (
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+                    transit === 'sim'
+                        ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                        : transit === 'nao'
+                        ? 'bg-gray-100 text-gray-600 border border-gray-200'
+                        : 'bg-slate-100 text-slate-500 border border-slate-200'
+                }`}>
+                    Trâns. Julg.: {TRANSIT_OPTIONS[transit]?.label || transit}
+                </span>
+            )}
+            {/* Badge Corrigida */}
             {corrected && (
                 <span className="px-1.5 py-0.5 text-xs rounded bg-violet-100 text-violet-700 border border-violet-200">
                     Corrigida
                 </span>
             )}
+            {/* Botões de ação */}
             {onConfirm && !corrected && (
                 <button
                     onClick={(e) => { e.stopPropagation(); onConfirm(); }}
@@ -283,15 +273,6 @@ function HistoryTab({ labels }) {
                             const isExpanded = expandedId === item.id;
                             const hasLog = !!item.classification_log;
                             const isCorrected = !!phaseCorrections[item.number];
-                            // Use classification_log phase if available (correct/normalized phase), otherwise fall back to item.phase
-                            const classificationLogPhase = (() => {
-                              if (!item.classification_log) return null;
-                              const log = typeof item.classification_log === 'string'
-                                ? JSON.parse(item.classification_log)
-                                : item.classification_log;
-                              return log?.phase;
-                            })();
-                            const displayPhase = phaseCorrections[item.number] || classificationLogPhase || item.phase;
                             const isInlineOpen = inlineDetailId === item.id;
                             return (
                                 <li key={item.id} className="hover:bg-gray-50/50 transition-colors">
@@ -306,15 +287,15 @@ function HistoryTab({ labels }) {
                                                         {item.number}
                                                     </p>
                                                     <StatusBadge status={item.status || 'found'} />
-                                                    {isFound && item.phase && (
-                                                        <PhaseBadge
-                                                            phase={displayPhase}
+                                                    {isFound && (
+                                                        <ClassificationBadge
+                                                            classification={item.classification}
                                                             corrected={isCorrected}
                                                             confirmed={confirmedIds.has(item.number)}
                                                             onEdit={() => setEditingItem(item)}
                                                             onConfirm={async () => {
                                                                 try {
-                                                                    await confirmPhase(item.number, displayPhase);
+                                                                    await confirmPhase(item.number, item.phase);
                                                                     setConfirmedIds(prev => new Set([...prev, item.number]));
                                                                     toast.success('Fase confirmada como correta!');
                                                                 } catch {
@@ -322,16 +303,6 @@ function HistoryTab({ labels }) {
                                                                 }
                                                             }}
                                                         />
-                                                    )}
-                                                    {isFound && item.classification?.stage && (
-                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getStageColorClasses(item.classification.stage)}`}>
-                                                            {item.classification.stage_label || STAGES[item.classification.stage]?.label}
-                                                            {item.classification.substage && (
-                                                                <span className="ml-1 font-normal opacity-75">
-                                                                    / {item.classification.substage_label || SUBSTAGES[item.classification.substage]?.label}
-                                                                </span>
-                                                            )}
-                                                        </span>
                                                     )}
                                                 </div>
                                                 <div className="text-xs text-gray-500 mt-1 space-y-0.5">

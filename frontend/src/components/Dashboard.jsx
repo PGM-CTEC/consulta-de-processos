@@ -2,7 +2,19 @@ import { useState, useEffect, useMemo } from 'react';
 import { BarChart3, TrendingUp, Database, Calendar, RefreshCw, Loader2, AlertCircle, Filter, Trash2 } from 'lucide-react';
 import { getStats, clearStats } from '../services/api';
 import { toast } from 'react-hot-toast';
-import { getPhaseColorClasses, getPhaseProgressBarClasses } from '../utils/phaseColors';
+import { getPhaseProgressBarClasses, getStageColorClasses } from '../utils/phaseColors';
+import { PHASE_BY_CODE } from '../constants/phases';
+
+// Mapeia código legado para número de stage (1-5)
+function stageFromCode(code) {
+    const n = parseInt(code, 10);
+    if (n >= 1 && n <= 9) return 1;
+    if (n >= 10 && n <= 12) return 2;
+    if (n === 13) return 3;
+    if (n === 14) return 5;
+    if (n === 15) return 4;
+    return 1;
+}
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
@@ -229,7 +241,7 @@ const Dashboard = () => {
                         <div>
                             <h2 className="text-lg font-bold text-gray-900 dark:text-white">Processos por Fase</h2>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Todas as 15 fases processuais em ordem lógica
+                                Distribuição por estágio processual
                             </p>
                         </div>
                         <div className="flex gap-2">
@@ -253,8 +265,8 @@ const Dashboard = () => {
                                 <li key={idx} className="space-y-1">
                                     <div className="flex justify-between items-center text-sm">
                                         <div className="flex items-center space-x-2">
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getPhaseColorClasses(phase.phase)}`}>
-                                                {phase.phase}
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${getStageColorClasses(stageFromCode(phase.phase))}`}>
+                                                {PHASE_BY_CODE[phase.phase]?.name || phase.phase}
                                             </span>
                                         </div>
                                         <span className={`font-bold ${phase.count > 0 ? 'text-indigo-600' : 'text-gray-300'}`}>

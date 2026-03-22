@@ -1,17 +1,27 @@
 import { useState, useEffect } from 'react';
 import { Database, AlertCircle, CheckCircle, TrendingUp, RefreshCw, Loader2 } from 'lucide-react';
 import { getPhaseCorrectionsAnalytics } from '../services/api';
-import { getPhaseColorClasses } from '../utils/phaseColors';
+import { getStageColorClasses } from '../utils/phaseColors';
 import { PHASE_BY_CODE, PHASE_BY_NAME } from '../constants/phases';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { toast } from 'react-hot-toast';
 
+function stageFromCode(code) {
+    const n = parseInt(String(code).padStart(2, '0'), 10);
+    if (n >= 1 && n <= 9) return 1;
+    if (n >= 10 && n <= 12) return 2;
+    if (n === 13) return 3;
+    if (n === 14) return 5;
+    if (n === 15) return 4;
+    return 1;
+}
+
 function getPhaseLabel(fase) {
     if (!fase || fase === 'Indefinido') return 'Indefinido';
     const code = String(fase).padStart(2, '0');
-    if (PHASE_BY_CODE[code]) return `${code} — ${PHASE_BY_CODE[code].name}`;
-    if (PHASE_BY_NAME[fase]) return `${PHASE_BY_NAME[fase].code} — ${fase}`;
+    if (PHASE_BY_CODE[code]) return PHASE_BY_CODE[code].name;
+    if (PHASE_BY_NAME[fase]) return fase;
     return fase;
 }
 
@@ -203,7 +213,7 @@ const PhaseCorrectionAnalytics = () => {
                                                 className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                             >
                                                 <td className="py-3 px-4">
-                                                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getPhaseColorClasses(row.fase)}`}>
+                                                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStageColorClasses(stageFromCode(row.fase))}`}>
                                                         {getPhaseLabel(row.fase)}
                                                     </span>
                                                 </td>
@@ -260,7 +270,7 @@ const PhaseCorrectionAnalytics = () => {
                                                 className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                             >
                                                 <td className="py-3 px-4">
-                                                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getPhaseColorClasses(row.fase)}`}>
+                                                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStageColorClasses(stageFromCode(row.fase))}`}>
                                                         {getPhaseLabel(row.fase)}
                                                     </span>
                                                 </td>
