@@ -47,10 +47,10 @@ export default function ClassificationFootnote({ onShowPhases }) {
       {expanded && (
         <div className="px-5 pb-5 pt-1 border-t border-gray-200 dark:border-slate-700">
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
-            As classificações seguem as 15 fases processuais definidas pela Coordenação de Tecnologia da
+            As classificações seguem as 5 fases processuais definidas pela Coordenação de Tecnologia da
             PGM-Rio, baseadas nas Tabelas Processuais Unificadas do CNJ (Res. 46/2007 e 326/2020) e no
             Modelo Nacional de Interoperabilidade (Res. CNJ 455/2022). A classificação usa 3 campos
-            independentes: <strong>Estágio</strong>, <strong>Subfase</strong> e <strong>Trânsito em Julgado</strong>.
+            independentes: <strong>(1) Fase</strong>, <strong>(2) Subfases - para conhecimento e execução</strong> e se houve <strong>(3) Trânsito em Julgado da fase de conhecimento</strong>.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">

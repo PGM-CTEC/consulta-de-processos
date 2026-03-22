@@ -397,7 +397,7 @@ export const SUBSTAGES = {
 export const TRANSIT_OPTIONS = {
   sim: { value: 'sim', label: 'Sim' },
   nao: { value: 'nao', label: 'Não' },
-  na:  { value: 'na',  label: 'N/A' },
+  na: { value: 'na', label: 'N/A (não se aplica)'},
 };
 
 /**
