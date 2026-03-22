@@ -113,11 +113,14 @@ _ANCHOR_REMESSA = re.compile(
     r'agravo\s+de\s+instrumento|recurso\s+(especial|extraordinario|inominado|ordinario))'
 )
 
-# Indicadores de atividade típica de 1ª instância APÓS uma remessa genérica
-# Se presentes, a remessa genérica é tratada como lateral (intra-G1), não como recurso
+# Indicadores de atividade típica de 1ª instância APÓS uma remessa
+# Se presentes, a remessa é tratada como lateral (intra-G1) ou recurso já resolvido,
+# e NÃO como recurso ativo à 2ª instância.
 _ANCHOR_ATIVIDADE_G1 = re.compile(
     r'(saneamento|audiencia\s+de\s+instrucao|'
     r'conclus(ao|os)\s+(para\s+)?(despacho|decisao|julgamento|sentenca)|'
+    r'conclusao\s+ao\s+juiz|'
+    r'despacho\s*/\s*sentenca\s*/\s*decisao|'
     r'decisao\s+(de\s+saneamento|interlocutoria)|'
     r'despacho\s+de\s+(mero\s+expediente|citacao)|'
     r'julgamento|contestacao|replica|impugnacao)'
@@ -390,9 +393,20 @@ class DocumentPhaseClassifier:
         )
 
         # Resolver remessa_idx efetiva com contexto completo (incluindo acórdão)
-        # Superior sempre conta; genérica conta se (a) há acórdão posterior, ou (b) não há G1 posterior
+        # Superior conta — exceto se processo retornou à G1 sem julgamento no tribunal.
+        # Genérica conta se (a) há acórdão posterior, ou (b) não há G1 posterior.
         if remessa_superior_idx is not None:
-            remessa_idx = remessa_superior_idx
+            has_acordao_after = (acordao_idx is not None and acordao_idx < remessa_superior_idx)
+            has_g1_after = cls._has_g1_indicators_after(nomes, remessa_superior_idx)
+            if has_g1_after and not has_acordao_after:
+                # Processo retornou à G1 após o recurso e sem acórdão no tribunal → tratar como lateral
+                remessa_idx = None
+                logger.debug(
+                    "Remessa superior ignorada: atividade G1 posterior detectada sem acórdão "
+                    f"(remessa_idx={remessa_superior_idx})"
+                )
+            else:
+                remessa_idx = remessa_superior_idx
         elif remessa_generica_idx is not None:
             has_acordao_after = (acordao_idx is not None and acordao_idx < remessa_generica_idx)
             has_g1_after = cls._has_g1_indicators_after(nomes, remessa_generica_idx)

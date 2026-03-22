@@ -283,7 +283,15 @@ function HistoryTab({ labels }) {
                             const isExpanded = expandedId === item.id;
                             const hasLog = !!item.classification_log;
                             const isCorrected = !!phaseCorrections[item.number];
-                            const displayPhase = phaseCorrections[item.number] || item.phase;
+                            // Use classification_log phase if available (correct/normalized phase), otherwise fall back to item.phase
+                            const classificationLogPhase = (() => {
+                              if (!item.classification_log) return null;
+                              const log = typeof item.classification_log === 'string'
+                                ? JSON.parse(item.classification_log)
+                                : item.classification_log;
+                              return log?.phase;
+                            })();
+                            const displayPhase = phaseCorrections[item.number] || classificationLogPhase || item.phase;
                             const isInlineOpen = inlineDetailId === item.id;
                             return (
                                 <li key={item.id} className="hover:bg-gray-50/50 transition-colors">
