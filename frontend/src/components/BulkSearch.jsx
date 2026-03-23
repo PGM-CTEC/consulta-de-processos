@@ -29,16 +29,16 @@ const ResultRow = React.memo(({ result, correctedPhase, onEditPhase }) => {
 
     return (
         <tr className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors">
-            <td className="px-6 py-4 font-mono font-bold text-gray-900 dark:text-gray-100 text-sm whitespace-nowrap">
+            <td className="px-6 py-4 font-mono font-bold text-gray-900 dark:text-gray-100 text-sm whitespace-nowrap" style={{ width: '18%' }}>
                 {result.number}
             </td>
-            <td className="px-6 py-4 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+            <td className="px-6 py-4 text-sm font-semibold text-indigo-600 dark:text-indigo-400" style={{ width: '18%' }}>
                 {result.tribunal_name || result.court?.split(' - ')[0] || 'N/A'}
             </td>
-            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400" style={{ width: '18%' }}>
                 {result.court_unit || result.court?.split(' - ')[1] || result.court || 'N/A'}
             </td>
-            <td className="px-6 py-4">
+            <td className="px-6 py-4" style={{ width: '28%' }}>
                 <div className="flex items-center flex-wrap gap-1">
                     {/* Stage badge */}
                     {cls?.stage ? (
@@ -90,7 +90,7 @@ const ResultRow = React.memo(({ result, correctedPhase, onEditPhase }) => {
                     </button>
                 </div>
             </td>
-            <td className="px-6 py-4">
+            <td className="px-6 py-4" style={{ width: '18%' }}>
                 <div className="flex items-center text-green-600 dark:text-green-400 text-xs font-semibold">
                     <CheckCircle className="h-4 w-4 mr-1" /> OK
                 </div>
@@ -140,11 +140,11 @@ const VirtualResultsBody = ({ items, phaseCorrections, onEditPhase }) => {
             <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 z-10">
                     <tr>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '25%' }}>Processo Judicial</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '20%' }}>Tribunal</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '25%' }}>Órgão Judicial / Vara</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '15%' }}>Fase Atual</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '15%' }}>Status</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '18%' }}>Processo Judicial</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '18%' }}>Tribunal</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '18%' }}>Órgão Judicial / Vara</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '28%' }}>Fase Atual</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '18%' }}>Status</th>
                     </tr>
                 </thead>
                 <tbody style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
@@ -163,16 +163,16 @@ const VirtualResultsBody = ({ items, phaseCorrections, onEditPhase }) => {
                                 }}
                                 className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors"
                             >
-                                <td className="px-6 py-4 font-mono font-bold text-gray-900 dark:text-gray-100 text-sm whitespace-nowrap" style={{ width: '25%' }}>
+                                <td className="px-6 py-4 font-mono font-bold text-gray-900 dark:text-gray-100 text-sm whitespace-nowrap" style={{ width: '18%' }}>
                                     {result.number}
                                 </td>
-                                <td className="px-6 py-4 text-sm font-semibold text-indigo-600 dark:text-indigo-400" style={{ width: '20%' }}>
+                                <td className="px-6 py-4 text-sm font-semibold text-indigo-600 dark:text-indigo-400" style={{ width: '18%' }}>
                                     {result.tribunal_name || result.court?.split(' - ')[0] || 'N/A'}
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400" style={{ width: '25%' }}>
+                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400" style={{ width: '18%' }}>
                                     {result.court_unit || result.court?.split(' - ')[1] || result.court || 'N/A'}
                                 </td>
-                                <td className="px-6 py-4" style={{ width: '15%' }}>
+                                <td className="px-6 py-4" style={{ width: '28%' }}>
                                     <div className="flex items-center flex-wrap gap-1">
                                         {/* Stage badge */}
                                         {result.classification?.stage ? (
@@ -223,7 +223,7 @@ const VirtualResultsBody = ({ items, phaseCorrections, onEditPhase }) => {
                                         </button>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4" style={{ width: '15%' }}>
+                                <td className="px-6 py-4" style={{ width: '18%' }}>
                                     <div className="flex items-center text-green-600 dark:text-green-400 text-xs font-semibold">
                                         <CheckCircle className="h-4 w-4 mr-1" /> OK
                                     </div>
@@ -635,11 +635,11 @@ const BulkSearch = () => {
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">
                                     <tr>
-                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Processo Judicial</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Tribunal</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Órgão Judicial / Vara</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Fase Atual</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Status</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '18%' }}>Processo Judicial</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '18%' }}>Tribunal</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '18%' }}>Órgão Judicial / Vara</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '28%' }}>Fase Atual</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest" style={{ width: '18%' }}>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
