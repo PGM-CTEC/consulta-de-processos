@@ -40,12 +40,14 @@ def _consolidar_tres_fontes(
 
     1. Execução sobrescreve Conhecimento (qualquer fonte com 10-14 anula 01-09)
     2. PAV Tree + Fusion concordam → usa PAV Tree (alta confiança)
-    3. PAV Tree disponível → PAV Tree tem precedência
+    3. PAV Tree com valor válido (não "Indefinido") → PAV Tree tem precedência
     4. Fallback Fusion → fallback DataJud
+
+    IMPORTANTE: "Indefinido" não é um código válido e não deve ser usado como prioridade.
     """
     cod_dj  = _extrair_codigo_fase(fase_datajud)
     cod_fu  = _extrair_codigo_fase(fase_fusion)
-    cod_pav = _extrair_codigo_fase(fase_pav_tree)
+    cod_pav = _extrair_codigo_fase(fase_pav_tree) if fase_pav_tree != "Indefinido" else ""
 
     logger.debug(
         f"_consolidar_tres_fontes: DataJud={fase_datajud} (cod={cod_dj}), "
@@ -68,13 +70,13 @@ def _consolidar_tres_fontes(
             logger.debug(f"-> DataJud execução override: {fase_datajud}")
             return fase_datajud, "datajud_execucao_override"
 
-    # Regra 2: PAV Tree + Fusion concordam
+    # Regra 2: PAV Tree + Fusion concordam (ambos com códigos válidos)
     if cod_pav and cod_fu and cod_pav == cod_fu:
         logger.debug(f"-> PAV Tree + Fusion concordam: {fase_pav_tree}")
         return fase_pav_tree, "pav_tree_fusion_concordam"
 
-    # Regra 3: PAV Tree disponível
-    if cod_pav:
+    # Regra 3: PAV Tree com valor válido (não "Indefinido")
+    if cod_pav and fase_pav_tree != "Indefinido":
         logger.debug(f"-> PAV Tree preferred: {fase_pav_tree}")
         return fase_pav_tree, "pav_tree_preferred"
 
@@ -366,11 +368,24 @@ class ProcessService:
         """
         Record a found process in history, avoiding duplicates.
         If already exists, update timestamp, court info, phase and classification log.
+
+        Extracts stage, substage, and transit_julgado from classification_log to ensure
+        they are saved in the history table, not left as NULL.
         """
         log_json = (
             _json.dumps(classification_log, ensure_ascii=False)
             if classification_log else None
         )
+
+        # Extract classification data from log to ensure they're saved
+        cls_stage = None
+        cls_substage = None
+        cls_transit = None
+        if classification_log:
+            cls_stage = classification_log.get("stage")
+            cls_substage = classification_log.get("substage")
+            cls_transit = classification_log.get("transit_julgado")
+
         try:
             existing = self.db.query(models.SearchHistory).filter(
                 models.SearchHistory.number == process.number
@@ -383,9 +398,10 @@ class ProcessService:
                 existing.phase_source = process.phase_source
                 existing.phase = process.phase
                 existing.classification_log = log_json
-                existing.stage = process.stage
-                existing.substage = process.substage
-                existing.transit_julgado = process.transit_julgado
+                # Use classification_log data if available, fallback to process data
+                existing.stage = cls_stage or process.stage
+                existing.substage = cls_substage or process.substage
+                existing.transit_julgado = cls_transit or process.transit_julgado
                 existing.error_type = None
                 existing.error_message = None
             else:
@@ -397,9 +413,10 @@ class ProcessService:
                     phase_source=process.phase_source,
                     phase=process.phase,
                     classification_log=log_json,
-                    stage=process.stage,
-                    substage=process.substage,
-                    transit_julgado=process.transit_julgado,
+                    # Use classification_log data if available, fallback to process data
+                    stage=cls_stage or process.stage,
+                    substage=cls_substage or process.substage,
+                    transit_julgado=cls_transit or process.transit_julgado,
                 )
                 self.db.add(history_entry)
 
