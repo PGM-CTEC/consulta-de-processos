@@ -41,7 +41,7 @@ from typing import Optional
 
 import httpx
 
-from .document_phase_classifier import FusionMovimento
+from services.document_phase_classifier import FusionMovimento
 
 logger = logging.getLogger(__name__)
 

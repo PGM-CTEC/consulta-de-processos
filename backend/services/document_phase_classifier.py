@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
 
-from .hierarchical_classification import (
+from services.hierarchical_classification import (
     Stage, Substage, Transit, HierarchicalResult,
     derive_legacy_phase, detect_transit_from_class_text,
     PHASE_TO_STAGE_SUBSTAGE, _PHASES_WITH_IMPLICIT_TRANSIT,

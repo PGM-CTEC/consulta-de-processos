@@ -41,13 +41,13 @@ def _persist_cookie(cookie: str) -> None:
     except Exception as e:
         logger.warning(f"Não foi possível persistir cookie PAV: {e}")
 
-from .datajud import DataJudClient
-from .phase_analyzer import PhaseAnalyzer
-from .process_service import ProcessService
-from .fusion_api_client import FusionAPIClient
-from .fusion_sql_client import FusionSQLClient
-from .fusion_service import FusionService
-from ..config import settings
+from services.datajud import DataJudClient
+from services.phase_analyzer import PhaseAnalyzer
+from services.process_service import ProcessService
+from services.fusion_api_client import FusionAPIClient
+from services.fusion_sql_client import FusionSQLClient
+from services.fusion_service import FusionService
+from config import settings
 
 
 class ServiceContainer:

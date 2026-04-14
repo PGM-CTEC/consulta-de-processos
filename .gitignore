@@ -13,6 +13,7 @@ backend/__pycache__/
 backend/.pytest_cache/
 venv/
 backend/venv/
+backend/.venv/
 
 # Node / JS builds
 node_modules/

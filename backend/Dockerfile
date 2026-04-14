@@ -27,9 +27,6 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Necessário para imports relativos (from .config import settings) e uvicorn backend.main:app
 COPY backend/ ./backend/
 
-# Garantir diretório de dados para o SQLite
-RUN mkdir -p /app/data
-
 # Porta exposta
 EXPOSE 8000
 
@@ -38,4 +35,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
 # Entry point
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "backend/main.py"]

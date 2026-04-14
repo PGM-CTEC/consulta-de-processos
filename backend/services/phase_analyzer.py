@@ -3,7 +3,7 @@ import json
 from typing import List, Dict, Optional, Any, Tuple
 from datetime import datetime
 
-from .classification_rules import (
+from services.classification_rules import (
     ClassificadorFases, ProcessoJudicial, MovimentoProcessual,
     GrauJurisdicao, DocumentoProcessual, ResultadoClassificacao
 )

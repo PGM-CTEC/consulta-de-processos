@@ -38,7 +38,7 @@ class Settings(BaseSettings):
         return origins
 
     # Database (loaded from secrets manager)
-    DATABASE_URL: str = "sqlite:///./consulta_processual.db"
+    DATABASE_URL: str = "postgresql://postgres:password@localhost/consulta_processual"
     DATABASE_ECHO: bool = False
 
     # DataJud Integration (secrets loaded via SecretsManager)

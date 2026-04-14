@@ -95,8 +95,8 @@ async def run_bulk_job(
     Results are appended incrementally so the polling endpoint always returns
     the latest progress without waiting for all items to finish.
     """
-    from .process_service import ProcessService
-    from .. import schemas
+    from services.process_service import ProcessService
+    import schemas
 
     job.status = "running"
     semaphore = asyncio.Semaphore(max_concurrent)

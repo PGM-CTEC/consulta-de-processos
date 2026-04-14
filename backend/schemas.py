@@ -1,8 +1,8 @@
 from pydantic import BaseModel, field_validator, Field, model_validator
 from typing import List, Optional, Any
 from datetime import datetime
-from .validators import ProcessNumberValidator
-from .exceptions import ValidationException
+from validators import ProcessNumberValidator
+from exceptions import ValidationException
 
 class MovementBase(BaseModel):
     date: datetime

@@ -4,7 +4,7 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.orm import relationship, declarative_mixin
 from sqlalchemy.inspection import inspect as sa_inspect
 from sqlalchemy.sql import func
-from .database import Base
+from database import Base
 
 
 @declarative_mixin

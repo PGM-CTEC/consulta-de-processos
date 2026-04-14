@@ -4,7 +4,7 @@ from typing import List, Optional
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
-from .. import schemas
+import schemas
 
 logger = logging.getLogger(__name__)
 

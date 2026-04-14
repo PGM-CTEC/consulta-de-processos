@@ -7,16 +7,16 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from .datajud import DataJudClient
-from .phase_analyzer import PhaseAnalyzer, DCP_WARNING_MESSAGE
-from .fusion_service import FusionService
-from .fusion_api_client import FusionResult
-from .document_phase_classifier import DocumentPhaseClassifier, ClassificationResult
+from services.datajud import DataJudClient
+from services.phase_analyzer import PhaseAnalyzer, DCP_WARNING_MESSAGE
+from services.fusion_service import FusionService
+from services.fusion_api_client import FusionResult
+from services.document_phase_classifier import DocumentPhaseClassifier, ClassificationResult
 import json as _json
-from .. import models, schemas
-from ..database import transaction_scope
-from ..exceptions import DataJudAPIException, ProcessNotFoundException
-from ..utils.string_cleaner import clean_orgao_name
+import models, schemas
+from database import transaction_scope
+from exceptions import DataJudAPIException, ProcessNotFoundException
+from utils.string_cleaner import clean_orgao_name
 
 logger = logging.getLogger(__name__)
 

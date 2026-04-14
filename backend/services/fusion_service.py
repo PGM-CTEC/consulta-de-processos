@@ -7,8 +7,8 @@ usa API REST PAV como fallback.
 import logging
 from typing import Optional
 
-from .fusion_sql_client import FusionSQLClient, FusionSQLException
-from .fusion_api_client import FusionAPIClient, FusionResult, PAVArvoreResult
+from services.fusion_sql_client import FusionSQLClient, FusionSQLException
+from services.fusion_api_client import FusionAPIClient, FusionResult, PAVArvoreResult
 
 logger = logging.getLogger(__name__)
 

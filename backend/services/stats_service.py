@@ -5,7 +5,7 @@ from typing import List, Optional
 from sqlalchemy import func, extract
 from sqlalchemy.orm import Session
 
-from .. import models, schemas
+import models, schemas
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class StatsService:
 
             # Group by phase - Enhanced logic (Story: BI-002)
             # We want all 15 phases even if count is 0, correctly sorted by code.
-            from .classification_rules import FaseProcessual
+            from services.classification_rules import FaseProcessual
 
             # Get raw counts from DB
             db_phase_counts = (

@@ -20,7 +20,7 @@ import json
 import logging
 import unicodedata
 
-from .hierarchical_classification import (
+from services.hierarchical_classification import (
     Stage, Substage, Transit, HierarchicalResult,
     derive_legacy_phase, detect_transit_from_class,
     PHASE_TO_STAGE_SUBSTAGE,

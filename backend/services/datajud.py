@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple
 
 # Story: REM-050 — External API Resilience (in-memory TTL cache)
-from ..utils.ttl_cache import process_cache
+from utils.ttl_cache import process_cache
 
 # Story: BE-ARCH-002 - Retry Logic for Transient Failures
 try:
@@ -15,9 +15,9 @@ try:
 except ImportError:
     RETRY_AVAILABLE = False
 
-from ..config import settings
-from ..exceptions import DataJudAPIException, InvalidProcessNumberException
-from ..patterns.circuit_breaker import get_registry
+from config import settings
+from exceptions import DataJudAPIException, InvalidProcessNumberException
+from patterns.circuit_breaker import get_registry
 
 logger = logging.getLogger(__name__)
 

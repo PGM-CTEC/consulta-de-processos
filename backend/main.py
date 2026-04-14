@@ -13,23 +13,23 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text, func, distinct
 from sqlalchemy.orm import Session
-from .database import get_db, SessionLocal
-from .services.process_service import ProcessService
-from .services.stats_service import StatsService
-from .services.sql_integration_service import SQLIntegrationService
-from .services.metrics_service import get_metrics_service
-from .services.bulk_queue import bulk_job_manager, run_bulk_job
-from .services.dependency_container import get_fusion_service, get_fusion_api_client, update_fusion_cookie
-from .services.fusion_service import FusionService
-from . import schemas
-from .config import settings
-from .error_handlers import register_exception_handlers
-from .exceptions import ProcessNotFoundException
-from . import models
-from .database import engine
-from .utils.logger import setup_logger, setup_access_logger
-from .utils.redact import redact_dict
-from .middleware import CorrelationIdMiddleware, RequestLoggerMiddleware
+from database import get_db, SessionLocal
+from services.process_service import ProcessService
+from services.stats_service import StatsService
+from services.sql_integration_service import SQLIntegrationService
+from services.metrics_service import get_metrics_service
+from services.bulk_queue import bulk_job_manager, run_bulk_job
+from services.dependency_container import get_fusion_service, get_fusion_api_client, update_fusion_cookie
+from services.fusion_service import FusionService
+import schemas
+from config import settings
+from error_handlers import register_exception_handlers
+from exceptions import ProcessNotFoundException
+import models
+from database import engine
+from utils.logger import setup_logger, setup_access_logger
+from utils.redact import redact_dict
+from middleware import CorrelationIdMiddleware, RequestLoggerMiddleware
 from contextlib import asynccontextmanager
 
 # Sentry setup (Story: REM-013)
@@ -185,9 +185,9 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://plausible.io; "
-        "style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data:; "
+        "script-src 'self' 'unsafe-inline' https://plausible.io https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "img-src 'self' data: https://fastapi.tiangolo.com; "
         "connect-src 'self' https://plausible.io; "
         "font-src 'self'; "
         "frame-ancestors 'none';"
@@ -212,7 +212,7 @@ async def health_check(db: Session = Depends(get_db)):
 
         return {
             "status": "healthy",
-            "service": "Consulta Processual API",
+            "service": "Consulta Fase Processual API",
             "database": "connected",
             "environment": settings.ENVIRONMENT,
             "version": settings.VERSION
@@ -569,7 +569,7 @@ async def submit_phase_correction(
 
     Story: Edição Manual de Fase Processual
     """
-    from .constants import VALID_PHASE_CODES
+    from constants import VALID_PHASE_CODES
 
     # Validar código de fase
     corrected_phase = correction.corrected_phase.zfill(2)
@@ -759,5 +759,10 @@ async def list_phase_corrections(
 @app.get("/circuit-breaker/status", tags=["health"])
 async def get_circuit_breaker_status():
     """Get status of all registered circuit breakers."""
-    from .patterns.circuit_breaker import get_registry
+    from patterns.circuit_breaker import get_registry
     return get_registry().get_status()
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
