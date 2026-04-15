@@ -2,9 +2,9 @@ name: prd
 
 on:
   push:
-    branches: ["desmembramento_backend"]
+    branches: ["production"]
   pull_request:
-    branches: ["desmembramento_backend"]
+    branches: ["production"]
 
 jobs:
   deploy:
@@ -18,7 +18,7 @@ jobs:
         run: |
           cd /opt/apps
           rm -rf consulta-de-processos
-          git clone --branch main --single-branch git@github.com:PGM-CTEC/consulta-de-processos.git
+          git clone --branch production --single-branch git@github.com:PGM-CTEC/consulta-de-processos.git
           cd consulta-de-processos
           rm Dockerfile
           rm .env

@@ -8,11 +8,10 @@ FROM python:3.11-slim AS builder
 WORKDIR /app
 
 # Copiar requirements primeiro (layer caching)
-COPY backend/requirements.txt backend/requirements-runtime.txt ./
+COPY backend/requirements.txt ./
 
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir -r requirements-runtime.txt
+    && pip install --no-cache-dir -r requirements.txt
 
 # Stage 2: Runtime — imagem final enxuta
 FROM python:3.11-slim
