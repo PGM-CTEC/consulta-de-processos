@@ -19,10 +19,8 @@ jobs:
           cd /opt/apps
           rm -rf consulta-de-processos
           git clone --branch production --single-branch git@github.com:PGM-CTEC/consulta-de-processos.git
-          cd consulta-de-processos
-          rm Dockerfile
+          cd consulta-de-processos          
           rm .env
-          cp DockerfilePRD Dockerfile
           cp .env.production .env
           chmod +x ./build.sh
           ./build.sh

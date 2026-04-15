@@ -8,7 +8,7 @@ FROM python:3.11-slim AS builder
 WORKDIR /app
 
 # Copiar requirements primeiro (layer caching)
-COPY backend/requirements.txt ./
+COPY requirements.txt ./
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
@@ -24,14 +24,14 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copiar o pacote backend mantendo a estrutura (backend/main.py → /app/backend/main.py)
 # Necessário para imports relativos (from .config import settings) e uvicorn backend.main:app
-COPY backend/ ./backend/
+COPY . .
 
 # Porta exposta
-EXPOSE 8000
+EXPOSE 8001
 
 # Health check (start_period generoso para cold start)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')" || exit 1
 
 # Entry point
 CMD ["python", "backend/main.py"]
