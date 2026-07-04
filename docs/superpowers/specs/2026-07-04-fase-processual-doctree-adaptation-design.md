@@ -95,19 +95,40 @@ regressão obrigatória** — ver §8.
 
 ### 2.4 Leitura de teor fica fora de escopo nesta fase
 
-Investigação confirmada: não existe hoje, em nenhum lugar do backend, um endpoint
-que devolva conteúdo/arquivo de peça. O endpoint de árvore
+Investigação inicial confirmou que não existe, no **backend deste projeto**,
+nenhum endpoint que devolva conteúdo/arquivo de peça. O endpoint de árvore
 (`/services/arquivos/arvore-processo-by-sistema/{cnj}`, consumido em
 `backend/services/fusion_api_client.py:217-305`) devolve apenas metadados por
 documento (`nomeArquivo`, `tipo`, `dataAutuacao`, `id`/`numeroFolha`) — não o
 conteúdo do PDF.
 
+**Atualização (2026-07-04):** o usuário apontou a existência de um servidor MCP
+interno ("MCP-PAV", `http://10.32.96.226:8010/mcp`, IP privado — só alcançável a
+partir da rede interna/máquina local, não do endpoint de nuvem do Claude) que expõe,
+via bridge OpenAPI (`http://10.32.96.226:8010/mcp/openapi.json`), os seguintes
+endpoints confirmados:
+
+- `GET /api/mcp/pavs?numero_processo=` — metadados do processo (PAV)
+- `GET /api/mcp/arvore_pav?numero_processo=` — árvore de documentos do PAV
+- `GET /api/mcp/arvore_autos?numero_processo=` — árvore de documentos dos autos eletrônicos (PJe/eproc/etc.)
+- `GET /api/mcp/pav_document?document_id=` — **candidato a endpoint de conteúdo** de documento do PAV por id
+- `GET /api/mcp/autos_document?id_documento=&numero_judicial=` — **candidato a endpoint de conteúdo** de documento dos autos eletrônicos
+
+Os dois últimos parecem preencher exatamente a lacuna que motivou marcar a leitura
+de teor como fora de escopo. **Porém o formato real do payload (texto extraído vs.
+apenas mais metadados vs. base64 do PDF) ainda não foi confirmado** — o único teste
+realizado, com o número `3053631-86.2026.8.19.0001`, retornou 404 em todos os
+endpoints (processo não encontrado na base PAV/Fusion, não uma falha do serviço).
+Ver referência de memória `reference_mcp_pav_server` para o registro completo.
+
 A Etapa 1.5/1.6 do doctree (leitura de teor de peças opacas, fallback de teor para
-os até 5 documentos mais recentes antes de consolidar `16`) depende de acesso a
-conteúdo que hoje não existe. Isso vira uma "Fase 2" separada e futura: um spike de
-descoberta para confirmar se PAV/Fusion expõe algum endpoint de conteúdo, antes de
-desenhar o fallback de teor. Não bloqueia a Fase 1 (esta). Ver §9 para o
-detalhamento do que fica de fora.
+os até 5 documentos mais recentes antes de consolidar `16`) continua fora do
+escopo **desta** fase de implementação, mas a natureza do trabalho pendente mudou:
+não é mais um "spike para descobrir se existe endpoint" — é confirmar o formato de
+`pav_document`/`autos_document` com um número de processo real existente na base, e
+então desenhar a integração (incluindo como o backend chamaria esse MCP: via
+cliente HTTP direto aos endpoints REST, ou via protocolo MCP nativo pelos endpoints
+`/sse`+`/messages`). Ver §9 para o detalhamento do que fica de fora desta fase.
 
 ### 2.5 Gancho reservado para LLM futuro
 
@@ -427,11 +448,17 @@ decidido aqui.
 - **Leitura de teor de peças (PDF/conteúdo).** Etapas 1.5 e 1.6 do doctree
   (leitura de teor para peças opacas; fallback de teor dos até 5 documentos mais
   recentes antes de consolidar `16`) e a segunda metade de RE-12 (aproveitamento
-  de "Despacho" quando o conteúdo, não o rótulo, traz ato decisório). Não existe
-  hoje endpoint de conteúdo de documento no backend. Antes de desenhar qualquer
-  fallback de teor, é necessário um spike de descoberta para confirmar se PAV ou
-  Fusion expõem algum endpoint de conteúdo (arquivo/OCR/texto extraído). Esse
-  spike, e o desenho do fallback que dele decorrer, são uma Fase 2 separada,
+  de "Despacho" quando o conteúdo, não o rótulo, traz ato decisório). O backend
+  deste projeto não tem hoje nenhum endpoint próprio de conteúdo de documento, mas
+  existe um servidor MCP interno ("MCP-PAV", `http://10.32.96.226:8010/mcp` — ver
+  §2.4 e a memória de referência `reference_mcp_pav_server`) com dois endpoints
+  candidatos (`pav_document`, `autos_document`) cujo formato de payload ainda não
+  foi confirmado (o teste realizado em 2026-07-04 com um número de processo não
+  encontrou dados). Antes de desenhar qualquer fallback de teor, é necessário: (a)
+  confirmar o formato real desses dois endpoints com um processo existente na
+  base, e (b) decidir como o backend consumiria o MCP-PAV (cliente HTTP direto aos
+  endpoints REST descobertos, ou protocolo MCP nativo via `/sse`+`/messages`). Essa
+  confirmação e o desenho do fallback que dela decorrer são uma Fase 2 separada,
   fora do escopo deste documento — nenhum algoritmo de extração/leitura de teor é
   proposto aqui.
 - **Chamada real a LLM.** O gancho de extensão descrito no §7 é reservado, mas a
