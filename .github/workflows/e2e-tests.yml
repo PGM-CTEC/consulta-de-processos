@@ -11,23 +11,11 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
 
-    services:
-      # Backend API service
-      backend:
-        image: python:3.11
-        ports:
-          - 8000:8000
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          submodules: 'false'
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -43,10 +31,21 @@ jobs:
       - name: Start backend server
         run: |
           cd backend
-          python main.py &
+          python main.py > /tmp/backend.log 2>&1 &
           sleep 10
           # Verify backend is running
-          curl http://localhost:8000/health || exit 1
+          if ! curl http://localhost:8000/health; then
+            echo "Backend failed to start. Logs:"
+            cat /tmp/backend.log
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
         run: |
