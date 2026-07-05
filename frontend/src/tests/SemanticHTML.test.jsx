@@ -17,9 +17,9 @@ vi.mock('../services/api', () => ({
       { tribunal_name: 'STF', count: 5 },
       { tribunal_name: 'STJ', count: 10 },
     ],
-    phases: [
-      { phase: 'Fase 1', class_nature: 'Civil', count: 8 },
-      { phase: 'Fase 2', class_nature: 'Civil', count: 12 },
+    stages: [
+      { stage: 1, count: 8, substages: [] },
+      { stage: 2, count: 12, substages: [] },
     ],
     timeline: [
       { month: 'Jan', count: 15 },
