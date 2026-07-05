@@ -103,6 +103,7 @@ const Dashboard = () => {
     const maxTribunalCount = Math.max(...stats.tribunals.map(t => t.count), 1);
     const maxTimelineCount = Math.max(...stats.timeline.map(t => t.count), 1);
     const maxStageCount = Math.max(...(stats.stages?.map(s => s.count) || []), 1);
+    const maxClassCount = Math.max(...(stats.classes?.map(c => c.count) || []), 1);
 
     return (
         <div className="space-y-6">
@@ -185,10 +186,10 @@ const Dashboard = () => {
             {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Tribunals Chart */}
-                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-                    <h2 className="text-lg font-bold text-gray-900 mb-4">Processos por Tribunal</h2>
+                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="tribunals-heading">
+                    <h2 id="tribunals-heading" className="text-lg font-bold text-gray-900 mb-4">Processos por Tribunal</h2>
                     {stats.tribunals.length > 0 ? (
-                        <figure>
+                        <figure aria-label={`Distribuição de processos por tribunal (${stats.tribunals.length} tribunais)`}>
                             <ul className="space-y-3 list-none p-0">
                                 {stats.tribunals.map((tribunal, idx) => (
                                     <li key={idx} className="space-y-1">
@@ -200,11 +201,30 @@ const Dashboard = () => {
                                             <div
                                                 className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-3 rounded-full transition-all duration-500"
                                                 style={{ width: `${(tribunal.count / maxTribunalCount) * 100}%` }}
+                                                role="meter"
+                                                aria-label={`${tribunal.tribunal_name}: ${tribunal.count} processos`}
+                                                aria-valuenow={tribunal.count}
+                                                aria-valuemin="0"
+                                                aria-valuemax={maxTribunalCount}
                                             />
                                         </div>
                                     </li>
                                 ))}
                             </ul>
+                            <table className="sr-only">
+                                <caption>Processos por tribunal</caption>
+                                <thead>
+                                    <tr><th>Tribunal</th><th>Processos</th></tr>
+                                </thead>
+                                <tbody>
+                                    {stats.tribunals.map((tribunal, idx) => (
+                                        <tr key={idx}>
+                                            <td>{tribunal.tribunal_name}</td>
+                                            <td>{tribunal.count}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </figure>
                     ) : (
                         <p className="text-gray-600 text-sm italic">Nenhum dado disponível</p>
@@ -212,16 +232,16 @@ const Dashboard = () => {
                 </section>
 
                 {/* Stages Chart — Hierarchical */}
-                <section className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 p-6">
+                <section className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 p-6" aria-labelledby="stages-heading">
                     <div className="mb-6">
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">Processos por Estágio</h2>
+                        <h2 id="stages-heading" className="text-lg font-bold text-gray-900 dark:text-white">Processos por Estágio</h2>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Classificação hierárquica: estágio / subfase
                         </p>
                     </div>
 
                     {stagesWithLabels.length > 0 ? (
-                        <figure>
+                        <figure aria-label={`Processos por estágio e fase processual (${stagesWithLabels.length} estágios)`}>
                             <ul className="space-y-5 list-none p-0">
                                 {stagesWithLabels.map((stage) => (
                                     <li key={stage.stage}>
@@ -238,6 +258,11 @@ const Dashboard = () => {
                                             <div
                                                 className={`h-3 rounded-full transition-all duration-500 ${getStageProgressBarClasses(stage.stage)}`}
                                                 style={{ width: `${(stage.count / maxStageCount) * 100}%` }}
+                                                role="meter"
+                                                aria-label={`Fase ${stage.label}: ${stage.count} processos`}
+                                                aria-valuenow={stage.count}
+                                                aria-valuemin="0"
+                                                aria-valuemax={maxStageCount}
                                             />
                                         </div>
                                         {/* Substages */}
@@ -255,6 +280,20 @@ const Dashboard = () => {
                                     </li>
                                 ))}
                             </ul>
+                            <table className="sr-only">
+                                <caption>Processos por estágio e fase processual</caption>
+                                <thead>
+                                    <tr><th>Estágio</th><th>Processos</th></tr>
+                                </thead>
+                                <tbody>
+                                    {stagesWithLabels.map((stage) => (
+                                        <tr key={stage.stage}>
+                                            <td>{stage.stage}. {stage.label}</td>
+                                            <td>{stage.count}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </figure>
                     ) : (
                         <p className="text-gray-500 dark:text-gray-400 text-sm italic">
@@ -266,20 +305,19 @@ const Dashboard = () => {
 
             {/* Process Classes Chart - REPLACING the old redundant Nature filter with actual class stats */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+                <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="classes-heading">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-lg font-bold text-gray-900">Processos por Classe</h2>
+                        <h2 id="classes-heading" className="text-lg font-bold text-gray-900">Processos por Classe</h2>
                         <div className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold flex items-center">
                             <Filter className="h-3 w-3 mr-1" />
                             {stats.classes?.length || 0} Classes
                         </div>
                     </div>
                     {stats.classes && stats.classes.length > 0 ? (
-                        <div className="max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-                            <ul className="space-y-3 list-none p-0">
-                                {stats.classes.map((cls, idx) => {
-                                    const maxClassCount = Math.max(...stats.classes.map(c => c.count), 1);
-                                    return (
+                        <figure aria-label={`Processos por classe processual (${stats.classes.length} classes)`}>
+                            <div className="max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                                <ul className="space-y-3 list-none p-0">
+                                    {stats.classes.map((cls, idx) => (
                                         <li key={idx} className="space-y-1">
                                             <div className="flex justify-between items-center text-sm">
                                                 <span className="font-semibold text-gray-700 truncate mr-2" title={cls.class_nature}>
@@ -291,13 +329,32 @@ const Dashboard = () => {
                                                 <div
                                                     className="bg-indigo-400 h-2 rounded-full transition-all duration-500"
                                                     style={{ width: `${(cls.count / maxClassCount) * 100}%` }}
+                                                    role="meter"
+                                                    aria-label={`${cls.class_nature}: ${cls.count} processos`}
+                                                    aria-valuenow={cls.count}
+                                                    aria-valuemin="0"
+                                                    aria-valuemax={maxClassCount}
                                                 />
                                             </div>
                                         </li>
-                                    );
-                                })}
-                            </ul>
-                        </div>
+                                    ))}
+                                </ul>
+                            </div>
+                            <table className="sr-only">
+                                <caption>Processos por classe processual</caption>
+                                <thead>
+                                    <tr><th>Classe</th><th>Processos</th></tr>
+                                </thead>
+                                <tbody>
+                                    {stats.classes.map((cls, idx) => (
+                                        <tr key={idx}>
+                                            <td>{cls.class_nature}</td>
+                                            <td>{cls.count}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </figure>
                     ) : (
                         <p className="text-gray-600 text-sm italic">Nenhum dado categorizado</p>
                     )}
@@ -305,9 +362,9 @@ const Dashboard = () => {
 
                 {/* Timeline Chart */}
                 {stats.timeline && stats.timeline.length > 0 && (
-                    <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-                        <h2 className="text-lg font-bold text-gray-900 mb-4">Distribuição Temporal (Últimos 12 meses)</h2>
-                        <figure>
+                    <section className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6" aria-labelledby="timeline-heading">
+                        <h2 id="timeline-heading" className="text-lg font-bold text-gray-900 mb-4">Distribuição Temporal (Últimos 12 meses)</h2>
+                        <figure aria-label="Distribuição temporal de processos nos últimos meses">
                             <div className="flex items-end justify-between space-x-2 h-64 px-2">
                                 {stats.timeline.map((item, idx) => {
                                     const height = (item.count / maxTimelineCount) * 100;
@@ -320,6 +377,11 @@ const Dashboard = () => {
                                                 <div
                                                     className="w-full bg-gradient-to-t from-indigo-500 to-indigo-400 rounded-t-lg hover:from-indigo-600 hover:to-indigo-500 transition-all cursor-pointer"
                                                     style={{ height: `${height || 2}%` }}
+                                                    role="meter"
+                                                    aria-label={`${item.month}: ${item.count} processos`}
+                                                    aria-valuenow={item.count}
+                                                    aria-valuemin="0"
+                                                    aria-valuemax={maxTimelineCount}
                                                 />
                                             </div>
                                             <span className="text-[10px] text-gray-600 font-semibold mt-2 transform -rotate-45 origin-top-left">
@@ -329,6 +391,20 @@ const Dashboard = () => {
                                     );
                                 })}
                             </div>
+                            <table className="sr-only">
+                                <caption>Distribuição temporal de processos</caption>
+                                <thead>
+                                    <tr><th>Mês</th><th>Processos</th></tr>
+                                </thead>
+                                <tbody>
+                                    {stats.timeline.map((item, idx) => (
+                                        <tr key={idx}>
+                                            <td>{item.month}</td>
+                                            <td>{item.count}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </figure>
                     </section>
                 )}
