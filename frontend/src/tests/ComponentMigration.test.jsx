@@ -103,13 +103,13 @@ describe('Dashboard Component Migration — REM-035', () => {
     expect(tribunalSection.className).toContain('rounded');
   });
 
-  it('displays phase chart section with Card', async () => {
+  it('displays stage chart section with Card', async () => {
     render(<Dashboard />);
-    await screen.findByText('Processos por Fase');
+    await screen.findByText('Processos por Estágio');
 
-    const phaseSection = screen.getByText('Processos por Fase').closest('section');
-    expect(phaseSection).toBeTruthy();
-    expect(phaseSection.className).toContain('bg-white');
+    const stageSection = screen.getByText('Processos por Estágio').closest('section');
+    expect(stageSection).toBeTruthy();
+    expect(stageSection.className).toContain('bg-white');
   });
 
   it('displays timeline chart section with Card', async () => {
