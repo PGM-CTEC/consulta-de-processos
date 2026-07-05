@@ -71,7 +71,17 @@
       "Bash(for pid:*)",
       "Bash(do)",
       "Bash(taskkill /F /PID $pid)",
-      "Bash(powershell -Command \"Get-Process -Name python* | Stop-Process -Force; Get-Process -Name pythonw* | Stop-Process -Force; Write-Host ''Killed all python processes''\")"
+      "Bash(powershell -Command \"Get-Process -Name python* | Stop-Process -Force; Get-Process -Name pythonw* | Stop-Process -Force; Write-Host ''Killed all python processes''\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git commit -m ' *)",
+      "Bash(npx vitest *)",
+      "Bash(python -m pytest -q)",
+      "Bash(git check-ignore *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(npx eslint *)",
+      "Bash(git stash *)"
     ]
   },
   "hooks": {
