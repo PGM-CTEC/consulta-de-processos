@@ -20,6 +20,8 @@ vi.mock('../utils/phaseColors', () => ({
         border: 'border-blue-300',
     })),
     getPhaseDisplayName: vi.fn((phase) => `Fase ${phase}`),
+    getStageColorClasses: vi.fn(() => 'bg-blue-100 text-blue-800'),
+    getStageProgressBarClasses: vi.fn(() => 'bg-blue-500'),
 }));
 
 describe('Dashboard Chart Accessibility — REM-028', () => {
@@ -31,9 +33,9 @@ describe('Dashboard Chart Accessibility — REM-028', () => {
             { tribunal_name: 'STJ', count: 10 },
             { tribunal_name: 'TJRJ', count: 30 },
         ],
-        phases: [
-            { phase: '01', class_nature: 'conhecimento', count: 8 },
-            { phase: '10', class_nature: 'execucao', count: 12 },
+        stages: [
+            { stage: 1, count: 8, substages: [] },
+            { stage: 2, count: 12, substages: [] },
         ],
         timeline: [
             { month: 'Jan', count: 15 },
