@@ -47,6 +47,11 @@ describe('HistoryTab Component', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         global.confirm.mockReturnValue(true); // Default: user confirms
+        // HistoryTab.loadHistory() chama estas três APIs em Promise.all;
+        // sem mock, as duas abaixo resolvem `undefined` e o acesso a
+        // `confirmed.confirmed_processes` lança, esvaziando o histórico.
+        api.getConfirmedProcesses.mockResolvedValue({ confirmed_processes: [] });
+        api.getLatestCorrections.mockResolvedValue({ corrections: {} });
     });
 
     describe('Loading State', () => {

@@ -28,6 +28,8 @@ vi.mock('../utils/phaseColors', () => ({
         border: 'border-blue-300',
     })),
     getPhaseDisplayName: vi.fn((phase) => `Fase ${phase}`),
+    getStageColorClasses: vi.fn(() => 'bg-blue-100 text-blue-800'),
+    getStageProgressBarClasses: vi.fn(() => 'bg-blue-500'),
 }));
 
 describe('Dashboard Component', () => {
@@ -189,17 +191,25 @@ describe('Dashboard Component', () => {
             expect(container.textContent).toContain('40');
         });
 
-        it('TC-11: renders phase statistics', async () => {
-            api.getStats.mockResolvedValue(mockStatsData);
+        it('TC-11: renders stage statistics with counts', async () => {
+            api.getStats.mockResolvedValue({
+                ...mockStatsData,
+                stages: [
+                    { stage: 1, count: 30, substages: [] },
+                    { stage: 2, count: 70, substages: [] },
+                ],
+            });
 
             const { container } = render(<Dashboard />);
 
             await waitFor(() => {
-                // Mocked getPhaseDisplayName returns "Fase {phase}"
-                expect(container.textContent).toContain('Fase 01');
+                // STAGES[1].label === 'Conhecimento' (constants/phases.js)
+                expect(container.textContent).toContain('Conhecimento');
             });
 
-            expect(container.textContent).toContain('Fase 10');
+            expect(container.textContent).toContain('30');
+            expect(container.textContent).toContain('Execução');
+            expect(container.textContent).toContain('70');
         });
 
         it('TC-12: renders timeline statistics', async () => {
@@ -307,18 +317,22 @@ describe('Dashboard Component', () => {
             expect(container.textContent).not.toContain('TJSP');
         });
 
-        it('TC-17: renders all phase names using utility', async () => {
-            api.getStats.mockResolvedValue(mockStatsData);
+        it('TC-17: renders substage names from SUBSTAGES constant', async () => {
+            api.getStats.mockResolvedValue({
+                ...mockStatsData,
+                stages: [
+                    { stage: 1, count: 30, substages: [{ substage: '1.1', count: 30 }] },
+                ],
+            });
 
             const { container } = render(<Dashboard />);
 
             await waitFor(() => {
-                expect(container.textContent).toContain('Fase 01');
+                expect(container.textContent).toContain('Conhecimento');
             });
 
-            // Verify phase display name utility was called
-            const { getPhaseDisplayName } = await import('../utils/phaseColors');
-            expect(getPhaseDisplayName).toHaveBeenCalled();
+            // SUBSTAGES['1.1'].label === 'Antes da Sentença' (constants/phases.js)
+            expect(container.textContent).toContain('Antes da Sentença');
         });
     });
 

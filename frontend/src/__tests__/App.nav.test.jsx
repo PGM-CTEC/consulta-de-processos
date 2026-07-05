@@ -20,9 +20,9 @@ describe('App — navegação', () => {
     expect(screen.queryByRole('tab', { name: /performance/i })).toBeNull();
   });
 
-  it('não exibe aba Configurações', () => {
+  it('exibe aba Configurações', () => {
     render(<App />);
-    expect(screen.queryByRole('tab', { name: /configurações/i })).toBeNull();
+    expect(screen.getByRole('tab', { name: /configurações/i })).toBeInTheDocument();
   });
 
   it('exibe as 4 abas corretas', () => {
