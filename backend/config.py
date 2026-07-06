@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     FUSION_PAV_SESSION_COOKIE: str = ""  # Cookie JSESSIONID da sessão PAV
     FUSION_PAV_TIMEOUT: int = 30
 
+    # Autenticação via token (POST /auth/token)
+    FUSION_PAV_AUTH_URL: str = "http://pavirtual.pgm.rio.rj.gov.br/services/api/auth/token"
+    FUSION_PAV_USERNAME: str = ""
+    FUSION_PAV_PASSWORD: str = ""
+
     # SQL Server direto (opcional — se vazio, usa apenas API REST)
     FUSION_SQL_HOST: str = ""
     FUSION_SQL_PORT: int = 1433
@@ -94,8 +99,8 @@ class Settings(BaseSettings):
 
     @property
     def fusion_api_configured(self) -> bool:
-        """True se o cookie de sessão PAV estiver configurado."""
-        return bool(self.FUSION_PAV_SESSION_COOKIE)
+        """True se houver cookie ou credenciais de token configurados."""
+        return bool(self.FUSION_PAV_SESSION_COOKIE or self.FUSION_PAV_USERNAME)
 
     model_config = SettingsConfigDict(
         env_file=".env",

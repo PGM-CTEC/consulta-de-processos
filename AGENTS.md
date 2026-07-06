@@ -1,65 +1,65 @@
-# AGENTS.md - Synkra AIOS (Codex CLI)
+# AGENTS.md — Consulta Processual (PGM-Rio)
 
-Este arquivo define as instrucoes do projeto para o Codex CLI.
+Monorepo: Python backend (`backend/`) + React 19 frontend (`frontend/`).
 
-<!-- AIOS-MANAGED-START: core -->
-## Core Rules
+## Commands
 
-1. Siga a Constitution em `.aios-core/constitution.md`
-2. Priorize `CLI First -> Observability Second -> UI Third`
-3. Trabalhe por stories em `docs/stories/`
-4. Nao invente requisitos fora dos artefatos existentes
-<!-- AIOS-MANAGED-END: core -->
+```bash
+# Backend
+cd backend && pip install -r requirements.txt
+uvicorn backend.main:app --reload           # Dev :8000
 
-<!-- AIOS-MANAGED-START: quality -->
-## Quality Gates
+# Frontend (--legacy-peer-deps required)
+cd frontend && npm install --legacy-peer-deps
+npm run dev                                  # Dev :5173
+npm run build
+npm run lint                                 # ESLint
+npm run storybook                            # Storybook :6006
 
-- Rode `npm run lint`
-- Rode `npm run typecheck`
-- Rode `npm test`
-- Atualize checklist e file list da story antes de concluir
-<!-- AIOS-MANAGED-END: quality -->
+# Tests
+cd backend && python -m pytest -q            # Backend (pytest, 44 test files)
+cd frontend && npm test -- --run             # Frontend (Vitest, jsdom)
+npm run e2e                                  # Root Playwright (3 browsers + mobile)
+cd frontend && npm run test:coverage         # Coverage (v8)
+```
 
-<!-- AIOS-MANAGED-START: codebase -->
-## Project Map
+`.env` required at root (`cp .env.example .env`).
 
-- Core framework: `.aios-core/`
-- CLI entrypoints: `bin/`
-- Shared packages: `packages/`
-- Tests: `tests/`
-- Docs: `docs/`
-<!-- AIOS-MANAGED-END: codebase -->
+## Architecture
 
-<!-- AIOS-MANAGED-START: commands -->
-## Common Commands
+- **Data sources** (priority): DataJud API → Fusion REST API → Fusion SQL Server
+- **Backend auto-migrates** DB schema on startup (`main.py::lifespan`): adds columns for hierarchical classification to existing tables
+- **Phase classification**: hierarchical 3-field model (stage 1-5, substage "1.1"-"2.3", transit_julgado). Legacy flat phase "01"-"15" maintained for compatibility
+- **Phase correction system**: manual corrections stored in `phase_corrections` + `phase_confirmations` tables → ML training data for classifier
+- **Fusion/PAV integration**: `FusionService` (SQL first → API fallback), cookie-session auth via PAV, bookmarklet updates cookie at `PATCH /fusion/cookie`
+- **Patterns**: CircuitBreaker on `DataJudClient`, SoftDeleteMixin on models, AuditLog via SQLAlchemy event listeners
+- **Middleware order** (`main.py`): CorrelationId runs outermost (added last), RequestLogger runs inside it — this is intentional so correlation ID is available to the logger
 
-- `npm run sync:ide`
-- `npm run sync:ide:check`
-- `npm run sync:skills:codex`
-- `npm run sync:skills:codex:global` (opcional; neste repo o padrao e local-first)
-- `npm run validate:structure`
-- `npm run validate:agents`
-<!-- AIOS-MANAGED-END: commands -->
+## Project structure
 
-<!-- AIOS-MANAGED-START: shortcuts -->
-## Agent Shortcuts
+```
+backend/         # FastAPI app (main.py entrypoint)
+  services/      # process_service, fusion_service, datajud, phase_analyzer, etc
+  patterns/      # CircuitBreaker
+  middleware/    # CorrelationIdMiddleware, RequestLoggerMiddleware
+  tests/         # 44 pytest files
+frontend/        # Vite + React 19 + TailwindCSS
+  src/
+    services/    # api.js (axios), phaseCorrections.js
+    stores/      # zustand: searchStore, settingsStore
+    components/  # ui/, SearchProcess, BulkSearch, ProcessDetails, etc
+    tests/       # 26 Vitest test files
+    constants/   # phases.js
+fase-processual-doctree/   # Classification rules & decision tree
+scripts/         # backup_db.sh, restore_database.sh
+```
 
-Preferencia de ativacao no Codex CLI:
-1. Use `/skills` e selecione `aios-<agent-id>` vindo de `.codex/skills` (ex.: `aios-architect`)
-2. Se preferir, use os atalhos abaixo (`@architect`, `/architect`, etc.)
+## Quirks
 
-Interprete os atalhos abaixo carregando o arquivo correspondente em `.aios-core/development/agents/` (fallback: `.codex/agents/`), renderize o greeting via `generate-greeting.js` e assuma a persona ate `*exit`:
-
-- `@architect`, `/architect`, `/architect.md` -> `.aios-core/development/agents/architect.md`
-- `@dev`, `/dev`, `/dev.md` -> `.aios-core/development/agents/dev.md`
-- `@qa`, `/qa`, `/qa.md` -> `.aios-core/development/agents/qa.md`
-- `@pm`, `/pm`, `/pm.md` -> `.aios-core/development/agents/pm.md`
-- `@po`, `/po`, `/po.md` -> `.aios-core/development/agents/po.md`
-- `@sm`, `/sm`, `/sm.md` -> `.aios-core/development/agents/sm.md`
-- `@analyst`, `/analyst`, `/analyst.md` -> `.aios-core/development/agents/analyst.md`
-- `@devops`, `/devops`, `/devops.md` -> `.aios-core/development/agents/devops.md`
-- `@data-engineer`, `/data-engineer`, `/data-engineer.md` -> `.aios-core/development/agents/data-engineer.md`
-- `@ux-design-expert`, `/ux-design-expert`, `/ux-design-expert.md` -> `.aios-core/development/agents/ux-design-expert.md`
-- `@squad-creator`, `/squad-creator`, `/squad-creator.md` -> `.aios-core/development/agents/squad-creator.md`
-- `@aios-master`, `/aios-master`, `/aios-master.md` -> `.aios-core/development/agents/aios-master.md`
-<!-- AIOS-MANAGED-END: shortcuts -->
+- **`npm install` requires `--legacy-peer-deps`** (react 19 + old deps)
+- **Vite dev server proxies** `/processes`, `/health`, `/stats`, `/history`, `/settings`, `/fusion`, `/sql`, `/openapi.json`, `/phase-corrections`, `/phase-confirmations` → `http://127.0.0.1:8000`
+- **Sentry is optional**: guarded by try/except import in `main.py`; Sentry DSN in `.env`
+- **Rate limiting** via slowapi (disabled by default, `RATE_LIMIT_ENABLED=false`)
+- Frontend API uses `VITE_API_BASE_URL || '/'` (proxied in dev, configurable in prod)
+- Root `package.json` only has Playwright e2e scripts; frontend has its own `package.json`
+- No CI workflows committed (`.github/workflows/` is empty)

@@ -279,6 +279,8 @@ class FusionAPIClient:
                 tipo = str(doc.get("tipo") or "")
                 if not nome and not data_aut:
                     continue
+                if nome.strip().lower() == "despacho":
+                    continue
                 try:
                     movimentos.append(FusionMovimento(
                         data=_parse_date(data_aut) if data_aut else None,
